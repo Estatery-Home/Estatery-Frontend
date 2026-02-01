@@ -168,7 +168,7 @@ export function LoginForm() {
               </Label>
             </div>
             <Link
-              to="/auth/forgot-password"
+              to="/auth/verify-otp"
               className="text-sm font-medium text-[#2563eb] hover:underline focus:outline-none focus:ring-2 focus:ring-[#0369a1] focus:ring-offset-2 rounded"
             >
               Forgot Password?

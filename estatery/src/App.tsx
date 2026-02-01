@@ -5,7 +5,10 @@ import { PublicRoute } from "@/components";
 
 import Login from "@/screens/auth/Login";
 import NotFound from "@/screens/NotFound";
-import Signup from "./screens/auth/Signup";
+import Signup from "@/screens/auth/Signup";
+import ForgotPassword from "@/screens/auth/forgotPassword";
+import VerifyOTP from "@/screens/auth/VerifyOTP";
+import CreateNewPassword from "@/screens/auth/CreateNewPassword";
 
 export default function App() {
   return (
@@ -32,6 +35,39 @@ export default function App() {
               <Signup />
              </PublicRoute>
             } /> 
+
+          <Route
+            path="/auth/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth/forgotPassword"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth/verify-otp"
+            element={
+              <PublicRoute>
+                <VerifyOTP />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth/create-new-password"
+            element={
+              <PublicRoute>
+                <CreateNewPassword />
+              </PublicRoute>
+            }
+          />
 
           {/* Add more screens here as you create them, e.g.: */}
           {/* <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} /> */}
