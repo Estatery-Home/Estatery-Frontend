@@ -1,0 +1,51 @@
+export type SearchResultType = "query" | "agent" | "property" | "section";
+
+export type SearchResult = {
+  id: string;
+  type: SearchResultType;
+  label: string;
+  subtitle?: string;
+  href?: string;
+  avatar?: string;
+};
+
+export const agents: SearchResult[] = [
+  { id: "a1", type: "agent", label: "Claudia Fairchild", subtitle: "Agent", href: "/dashboard/agents/a1", avatar: "C" },
+  { id: "a2", type: "agent", label: "Clara Withmore", subtitle: "Agent", href: "/dashboard/agents/a2", avatar: "C" },
+  { id: "a3", type: "agent", label: "Clarisa Stone", subtitle: "Agent", href: "/dashboard/agents/a3", avatar: "C" },
+  { id: "a4", type: "agent", label: "Jonathan Cruz", subtitle: "Agent", href: "/dashboard/agents/a4", avatar: "J" },
+  { id: "a5", type: "agent", label: "Sarah Lee", subtitle: "Agent", href: "/dashboard", avatar: "S" },
+];
+
+export const sections: SearchResult[] = [
+  { id: "s1", type: "section", label: "Dashboard", href: "/dashboard" },
+  { id: "s2", type: "section", label: "Agents", href: "/dashboard/agents" },
+  { id: "s3", type: "section", label: "Clients", href: "/dashboard/clients" },
+  { id: "s4", type: "section", label: "Properties", href: "/dashboard/properties" },
+  { id: "s5", type: "section", label: "Analytics", href: "/dashboard/analytics" },
+  { id: "s6", type: "section", label: "Recent Payments", href: "/dashboard" },
+];
+
+function getPropertyResults(properties: { id: string; name: string; location: string }[]): SearchResult[] {
+  return properties.map((p) => ({
+    id: p.id,
+    type: "property" as const,
+    label: p.name,
+    subtitle: p.location,
+    href: `/dashboard/properties/${p.id}`,
+  }));
+}
+
+export function searchAll(query: string, propertyNames: { id: string; name: string; location: string }[]): SearchResult[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+
+  const propertyResults = getPropertyResults(propertyNames);
+  const all: SearchResult[] = [
+    ...agents.filter((a) => a.label.toLowerCase().includes(q) || a.subtitle?.toLowerCase().includes(q)),
+    ...sections.filter((s) => s.label.toLowerCase().includes(q)),
+    ...propertyResults.filter((p) => p.label.toLowerCase().includes(q) || p.subtitle?.toLowerCase().includes(q)),
+  ];
+
+  return all.slice(0, 12);
+}

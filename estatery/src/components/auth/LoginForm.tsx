@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,8 @@ function isWrongEmail(email: string): boolean {
 }
 
 export function LoginForm() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [keepLoggedIn, setKeepLoggedIn] = React.useState(false);
@@ -44,8 +47,8 @@ export function LoginForm() {
     }
 
     setEmailError(null);
-    console.log("Login attempt", { email, password, keepLoggedIn });
-    alert("Login submitted! (Demo – wire to your auth API.)");
+    login();
+    navigate("/dashboard");
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
