@@ -17,6 +17,7 @@ import {
   Headphones,
   MessageCircle,
   ChevronLeft,
+  LogOut,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,7 @@ const salesNav = [
 ];
 
 const bottomNav = [
-  { to: "/dashboard/settings", label: "Setting", icon: Settings },
+  { to: "/settings/settings", label: "Settings", icon: Settings },
   { to: "/dashboard/help", label: "Help Center", icon: Headphones },
   { to: "/dashboard/feedback", label: "Feedback", icon: MessageCircle },
 ];
@@ -48,9 +49,11 @@ const bottomNav = [
 type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
+  /** Called when user clicks Logout. If provided, shows confirmation dialog instead of navigating. */
+  onLogoutClick?: () => void;
 };
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
@@ -98,7 +101,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ))}
         </div>
 
-        {/* Sales Chanel - no divider */}
+        {/* Sales Chanel */}
         {!collapsed && (
           <p className="mb-1.5 mt-4 px-3 pt-1 text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
             Sales Chanel
@@ -121,6 +124,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {!collapsed && <span className="truncate">{item.label}</span>}
             </NavLink>
           ))}
+          {onLogoutClick && (
+            <button
+              type="button"
+              onClick={onLogoutClick}
+              className={cn(
+                "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+              )}
+              aria-label="Logout"
+            >
+              <LogOut className="size-5 shrink-0" />
+              {!collapsed && <span className="truncate">Logout</span>}
+            </button>
+          )}
         </div>
       </nav>
     </aside>

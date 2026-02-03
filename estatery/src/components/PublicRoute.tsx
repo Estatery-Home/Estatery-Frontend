@@ -14,7 +14,7 @@ type PublicRouteProps = {
  * Wraps public-only pages (e.g. login, signup). If the user is authenticated,
  * redirects to redirectTo. Otherwise renders children.
  */
-export default function PublicRoute({ children, redirectTo = "/" }: PublicRouteProps) {
+export default function PublicRoute({ children, redirectTo = "/dashboard" }: PublicRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 

@@ -1,12 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   TopBar,
+  LogoutConfirmDialog,
   OverviewCards,
   ListingsChart,
   MyProperties,
@@ -15,8 +18,11 @@ import {
 
 export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [lastUpdated] = React.useState("July 08, 2025");
   const [refreshing, setRefreshing] = React.useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -27,9 +33,19 @@ export default function Dashboard() {
     // Placeholder: trigger CSV export
   };
 
+  const handleLogoutConfirm = () => {
+    logout();
+    setLogoutDialogOpen(false);
+    navigate("/auth/login", { replace: true });
+  };
+
   return (
     <div className="flex min-h-screen bg-[#f1f5f9]">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onLogoutClick={() => setLogoutDialogOpen(true)}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-auto p-6">
@@ -83,6 +99,11 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+      <LogoutConfirmDialog
+        open={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        onConfirm={handleLogoutConfirm}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 export { DashboardLayout } from "./DashboardLayout";
+export { LogoutConfirmDialog } from "./LogoutConfirmDialog";
 export { Sidebar } from "./Sidebar";
 export { TopBar } from "./TopBar";
 export { OverviewCards } from "./OverviewCards";

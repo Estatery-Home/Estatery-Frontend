@@ -14,6 +14,8 @@ import PropertiesList from "@/screens/dashboard/PropertiesList";
 import Notifications from "@/screens/dashboard/Notifications";
 import NotificationDetail from "@/screens/dashboard/NotificationDetail";
 import { PlaceholderPage } from "@/screens/dashboard/PlaceholderPage";
+import { DashboardLayout } from "@/components/dashboard";
+import Settings from "@/screens/settings/settings";
 
 export default function App() {
   return (
@@ -180,10 +182,12 @@ export default function App() {
             }
           />
           <Route
-            path="/dashboard/settings"
+            path="/settings/settings"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Settings" />
+                <DashboardLayout>
+                  <Settings />
+                </DashboardLayout>
               </ProtectedRoute>
             }
           />
