@@ -20,7 +20,7 @@ export const agents: SearchResult[] = [
 export const sections: SearchResult[] = [
   { id: "s1", type: "section", label: "Dashboard", href: "/dashboard" },
   { id: "s2", type: "section", label: "Agents", href: "/dashboard/agents" },
-  { id: "s3", type: "section", label: "Clients", href: "/dashboard/clients" },
+  { id: "s3", type: "section", label: "Clients", href: "/clients/clients" },
   { id: "s4", type: "section", label: "Properties", href: "/dashboard/properties" },
   { id: "s5", type: "section", label: "Analytics", href: "/dashboard/analytics" },
   { id: "s6", type: "section", label: "Recent Payments", href: "/dashboard" },

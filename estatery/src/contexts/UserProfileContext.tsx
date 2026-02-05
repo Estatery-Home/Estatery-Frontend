@@ -1,0 +1,96 @@
+"use client";
+
+import * as React from "react";
+
+export type UserProfile = {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  avatar?: string | null;
+};
+
+type UserProfileContextValue = {
+  profile: UserProfile;
+  updateProfile: (partial: Partial<UserProfile>) => void;
+};
+
+const UserProfileContext = React.createContext<UserProfileContextValue | null>(null);
+
+const STORAGE_KEY = "estatery-user-profile";
+
+function getInitialProfile(): UserProfile {
+  if (typeof window === "undefined") {
+    return {
+      name: "Sarah Lee",
+      role: "Agent",
+      email: "sarah.lee@example.com",
+      phone: "+1 (555) 123-4567",
+      avatar: null,
+    };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return {
+        name: "Sarah Lee",
+        role: "Agent",
+        email: "sarah.lee@example.com",
+        phone: "+1 (555) 123-4567",
+        avatar: null,
+      };
+    }
+    const parsed = JSON.parse(raw) as UserProfile;
+    return {
+      name: parsed.name || "Sarah Lee",
+      role: parsed.role || "Agent",
+      email: parsed.email || "sarah.lee@example.com",
+      phone: parsed.phone || "+1 (555) 123-4567",
+      avatar: parsed.avatar ?? null,
+    };
+  } catch {
+    return {
+      name: "Sarah Lee",
+      role: "Agent",
+      email: "sarah.lee@example.com",
+      phone: "+1 (555) 123-4567",
+      avatar: null,
+    };
+  }
+}
+
+export function UserProfileProvider({ children }: { children: React.ReactNode }) {
+  const [profile, setProfile] = React.useState<UserProfile>(() => getInitialProfile());
+
+  const updateProfile = React.useCallback((partial: Partial<UserProfile>) => {
+    setProfile((prev) => {
+      const next = { ...prev, ...partial };
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  }, []);
+
+  const value = React.useMemo(
+    () => ({
+      profile,
+      updateProfile,
+    }),
+    [profile, updateProfile]
+  );
+
+  return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>;
+}
+
+export function useUserProfile(): UserProfileContextValue {
+  const ctx = React.useContext(UserProfileContext);
+  if (!ctx) {
+    throw new Error("useUserProfile must be used within a UserProfileProvider");
+  }
+  return ctx;
+}
+

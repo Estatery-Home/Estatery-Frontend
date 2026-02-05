@@ -27,7 +27,7 @@ const BRAND = "Luxeyline";
 const mainNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/dashboard/agents", label: "Agents", icon: Users },
-  { to: "/dashboard/clients", label: "Clients", icon: UserCircle },
+  { to: "/clients/clients", label: "Clients", icon: UserCircle },
   { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/dashboard/calendar", label: "Calendar", icon: Calendar },
   { to: "/dashboard/messages", label: "Messages", icon: MessageSquare },
@@ -43,7 +43,7 @@ const salesNav = [
 const bottomNav = [
   { to: "/settings/settings", label: "Settings", icon: Settings },
   { to: "/dashboard/help", label: "Help Center", icon: Headphones },
-  { to: "/dashboard/feedback", label: "Feedback", icon: MessageCircle },
+  { to: "/dashboard/feedback", label: "Feedback", icon: MessageCircle }, 
 ];
 
 type SidebarProps = {

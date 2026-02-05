@@ -1,218 +1,68 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
-const STEPS = [
-  { id: 1, label: "Basic Information" },
-  { id: 2, label: "Location Details" },
-  { id: 3, label: "Property Details" },
-  { id: 4, label: "Property Images" },
-] as const;
 
-type AddPropertyModalProps = {
-  open: boolean;
-  onClose: () => void;
-};
+export function AddPropertyLocationStep() {
+  const [fullAddress, setFullAddress] = React.useState("");
+  const [addressLength, setAddressLength] = React.useState(0);
+  const [cityRegionZip, setCityRegionZip] = React.useState("");
+  const [mapLocation, setMapLocation] = React.useState("");
 
-export function AddProperty2({ open, onClose }: AddPropertyModalProps) {
-  const [step, setStep] = React.useState(1);
-  const [title, setTitle] = React.useState("Modern 3-Bedroom Family Home in Suburban Area");
-  const [description, setDescription] = React.useState("");
-  const [descLength, setDescLength] = React.useState(50);
-  const [propertyType, setPropertyType] = React.useState("House");
-  const [status, setStatus] = React.useState("For Sale");
-  const [price, setPrice] = React.useState("$350,000");
-  const [listingDate, setListingDate] = React.useState("2025-07-22");
-
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleFullAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
-    setDescription(v);
-    setDescLength(Math.min(v.length, 200));
+    setFullAddress(v);
+    setAddressLength(Math.min(v.length, 200));
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" aria-hidden onClick={onClose} />
-      <div
-        className="relative z-10 w-full max-w-2xl rounded-2xl border border-[#e2e8f0] bg-white shadow-xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-property-title"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
-          <h2 id="add-property-title" className="text-xl font-semibold text-[#1e293b]">
-            Add New Property
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-9 items-center justify-center rounded-lg text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-            aria-label="Close"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
+    <div className="space-y-5">
+      <h3 className="text-lg font-semibold text-[#1e293b]">Location Details</h3>
 
-        {/* Step indicator */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[#e2e8f0] px-6 py-3">
-          {STEPS.map((s, i) => (
-            <React.Fragment key={s.id}>
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-medium",
-                    step === s.id
-                      ? "bg-[var(--logo)] text-white"
-                      : "bg-[#f1f5f9] text-[#64748b]"
-                  )}
-                >
-                  {s.id}
-                </div>
-                <span
-                  className={cn(
-                    "text-sm",
-                    step === s.id ? "font-medium text-[#1e293b]" : "text-[#64748b]"
-                  )}
-                >
-                  {s.label}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && <span className="text-[#cbd5e1]">|</span>}
-            </React.Fragment>
-          ))}
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="full-address" className="text-[#1e293b]">
+          Full Address
+        </Label>
+        <textarea
+          id="full-address"
+          value={fullAddress}
+          onChange={handleFullAddressChange}
+          maxLength={200}
+          rows={4}
+          placeholder="Placeholder"
+          className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+        />
+        <p className="text-right text-xs text-[#64748b]">{addressLength}/200</p>
+      </div>
 
-        {/* Step 1: Basic Information */}
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
-          {step === 2 && (
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="property-title" className="text-[#1e293b]">
-                  Location Details
-                </Label>
-                <Input
-                  id="property-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="border-[#e2e8f0] bg-white text-[#1e293b]"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="property-description" className="text-[#1e293b]">
-                  Property Description
-                </Label>
-                <textarea
-                  id="property-description"
-                  value={description}
-                  onChange={handleDescriptionChange}
-                  maxLength={200}
-                  rows={4}
-                  placeholder="Enter property description..."
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                />
-                <p className="text-right text-xs text-[#64748b]">{descLength}/200</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="property-type" className="text-[#1e293b]">
-                  Property Type
-                </Label>
-                <Select value={propertyType} onValueChange={setPropertyType}>
-                  <SelectTrigger id="property-type" className="border-[#e2e8f0] bg-white text-[#1e293b]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="House">House</SelectItem>
-                    <SelectItem value="Apartment">Apartment</SelectItem>
-                    <SelectItem value="Condo">Condo</SelectItem>
-                    <SelectItem value="Land">Land</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status" className="text-[#1e293b]">
-                  Status
-                </Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="status" className="border-[#e2e8f0] bg-white text-[#1e293b]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="For Sale">For Sale</SelectItem>
-                    <SelectItem value="For Rent">For Rent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price" className="text-[#1e293b]">
-                    Price
-                  </Label>
-                  <Input
-                    id="price"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="$350,000"
-                    className="border-[#e2e8f0] bg-white text-[#1e293b]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="listing-date" className="text-[#1e293b]">
-                    Listing Date
-                  </Label>
-                  <Input
-                    id="listing-date"
-                    type="date"
-                    value={listingDate}
-                    onChange={(e) => setListingDate(e.target.value)}
-                    className="border-[#e2e8f0] bg-white text-[#1e293b]"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          {step > 1   && (
-            <p className="text-[#64748b]">Steps 2–4 can be implemented here (Location, Details, Images).</p>
-          )}
+      <div className="space-y-2">
+        <Label htmlFor="city-region-zip" className="text-[#1e293b]">
+          City / Region / Zip Code
+        </Label>
+        <Input
+          id="city-region-zip"
+          value={cityRegionZip}
+          onChange={(e) => setCityRegionZip(e.target.value)}
+          placeholder="Placeholder"
+          className="border-[#e2e8f0] bg-white text-[#1e293b]"
+        />
+      </div>
 
-        {step > 2  && (
-            <p className="text-[#64748b]">Steps 3–4 can be implemented here (Location, Details, Images).</p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-[#e2e8f0] px-6 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => (step < 4 ? setStep(step + 1) : onClose())}
-            className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
-          >
-            {step < 4 ? "Continue" : "Save"}
-          </Button>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="map-location" className="text-[#1e293b]">
+          Map Location
+        </Label>
+        <Input
+          id="map-location"
+          value={mapLocation}
+          onChange={(e) => setMapLocation(e.target.value)}
+          placeholder="Placeholder"
+          className="border-[#e2e8f0] bg-white text-[#1e293b]"
+        />
       </div>
     </div>
   );
 }
+

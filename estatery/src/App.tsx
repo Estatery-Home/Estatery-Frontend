@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { PublicRoute, ProtectedRoute } from "@/components";
 
 import Login from "@/screens/auth/Login";
@@ -16,12 +17,14 @@ import NotificationDetail from "@/screens/dashboard/NotificationDetail";
 import { PlaceholderPage } from "@/screens/dashboard/PlaceholderPage";
 import { DashboardLayout } from "@/components/dashboard";
 import Settings from "@/screens/settings/settings";
+import Clients from "@/screens/clients/clients";
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+      <UserProfileProvider>
+        <BrowserRouter>
+          <Routes>
           {/* Redirect root to login */}
           <Route path="/" element={<Navigate to="/auth/login" replace />} />
 
@@ -126,10 +129,10 @@ export default function App() {
             }
           />
           <Route
-            path="/dashboard/clients"
+            path="/clients/clients"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Clients" />
+                <Clients/>
               </ProtectedRoute>
             }
           />
@@ -219,7 +222,8 @@ export default function App() {
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </UserProfileProvider>
+   </AuthProvider>
   );
 }

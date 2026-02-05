@@ -13,12 +13,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AddPropertyLocationStep } from "./AddProperty2";
+import { AddPropertyDetailsStep } from "./AddProperty3";
+import { AddPropertyMediaStep } from "./AddProperty4";
+import { AddPropertyContactStep } from "./AddProperty5";
+
 
 const STEPS = [
   { id: 1, label: "Basic Information" },
   { id: 2, label: "Location Details" },
   { id: 3, label: "Property Details" },
-  { id: 4, label: "Property Images" },
+  { id: 4, label: "Photos & Media" },
+  { id: 5, label: "Contact Information" },
 ] as const;
 
 type AddPropertyModalProps = {
@@ -35,11 +41,53 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
   const [status, setStatus] = React.useState("For Sale");
   const [price, setPrice] = React.useState("$350,000");
   const [listingDate, setListingDate] = React.useState("2025-07-22");
+  const [contactName, setContactName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [agent, setAgent] = React.useState("");
+  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setDescription(v);
     setDescLength(Math.min(v.length, 200));
+  };
+
+  const handleContactChange = (
+    field: "contactName" | "phone" | "email" | "agent",
+    value: string
+  ) => {
+    if (field === "contactName") setContactName(value);
+    if (field === "phone") setPhone(value);
+    if (field === "email") setEmail(value);
+    if (field === "agent") setAgent(value);
+  };
+
+  const handleSave = () => {
+    setIsSaving(true);
+
+    const payload = {
+      title,
+      description,
+      propertyType,
+      status,
+      price,
+      listingDate,
+      contactName,
+      phone,
+      email,
+      agent,
+    };
+
+    // Simulate async save
+    setTimeout(() => {
+      console.log("Saved property:", payload);
+      setIsSaving(false);
+      setShowSaveDialog(false);
+      onClose();
+      setStep(1);
+    }, 700);
   };
 
   if (!open) return null;
@@ -97,7 +145,7 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
           ))}
         </div>
 
-        {/* Step 1: Basic Information */}
+        {/* Step content */}
         <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
           {step === 1 && (
             <div className="space-y-5">
@@ -185,29 +233,92 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
               </div>
             </div>
           )}
-          {step > 1 && (
-            <p className="text-[#64748b]">Steps 2–4 can be implemented here (Location, Details, Images).</p>
+          {/* Step 2: Location Details */}
+          {step === 2 && <AddPropertyLocationStep />}
+          {step === 3 && <AddPropertyDetailsStep />}
+          {step === 4 && <AddPropertyMediaStep />}
+          {step === 5 && (
+            <AddPropertyContactStep
+              contactName={contactName}
+              phone={phone}
+              email={email}
+              agent={agent}
+              onChange={handleContactChange}
+            />
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-[#e2e8f0] px-6 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => (step < 4 ? setStep(step + 1) : onClose())}
-            className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
-          >
-            {step < 4 ? "Continue" : "Save"}
-          </Button>
+        <div className="flex justify-between border-t border-[#e2e8f0] px-6 py-4">
+          <div>
+            {step > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(step - 1)}
+                className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
+              >
+                Back
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (step < STEPS.length) {
+                  setStep(step + 1);
+                } else {
+                  setShowSaveDialog(true);
+                }
+              }}
+              className="bg-[var(--logo)] text-white shadow-sm transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95"
+            >
+              {step < STEPS.length ? "Continue" : "Save"}
+            </Button>
+          </div>
         </div>
+
+        {showSaveDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="rounded-2xl bg-white px-8 py-7 text-center shadow-xl">
+              <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[var(--logo)]">
+                <span className="text-lg">!</span>
+              </div>
+              <h3 className="mb-1 text-lg font-semibold text-[#1e293b]">Save Your Changes?</h3>
+              <p className="mb-6 text-sm text-[#64748b]">
+                You&apos;ve made some changes. Make sure to save them before you leave.
+              </p>
+              <div className="flex justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => setShowSaveDialog(false)}
+                  className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={handleSave}
+                  className="bg-[var(--logo)] text-white shadow-md transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95"
+                >
+                  {isSaving ? "Saving..." : "Yes, Save"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
