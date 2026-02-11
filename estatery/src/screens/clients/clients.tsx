@@ -6,15 +6,10 @@ import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  Sidebar,
-  TopBar,
-  LogoutConfirmDialog,
-  OverviewCards,
-  ListingsChart,
-  MyProperties,
-  RecentPayments,
-} from "@/components/dashboard";
+import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
+import { ClientsCards } from "@/components/clients/ClientsCards";
+import { ClientsTable } from "@/components/clients/clientsTable";
+import { clientsTableData } from "@/lib/clients";
 
 export default function Clients() {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
@@ -30,7 +25,42 @@ export default function Clients() {
   };
 
   const handleExport = () => {
-    // Placeholder: trigger CSV export
+    const header = [
+      "Client ID",
+      "Client Name",
+      "Property Name",
+      "Property Address",
+      "Type",
+      "Amount",
+      "Next Payment",
+      "Status",
+    ];
+
+    const rows = clientsTableData.map((c) => [
+      c.clientId,
+      c.name,
+      c.propertyName,
+      c.propertyAddress,
+      c.type,
+      c.amount.toString(),
+      c.nextPayment,
+      c.status,
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "clients.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleLogoutConfirm = () => {
@@ -50,10 +80,10 @@ export default function Clients() {
         <TopBar />
         <main className="flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-7xl space-y-6">
-            {/* Dashboard header */}
+            {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-[#1e293b]">Welcome back, Sarah!</h1>
+                <h1 className="text-2xl font-bold text-[#1e293b]">My Clients</h1>
                 <p className="mt-1 text-[#64748b]">
                   Track and manage your property dashboard efficiently.
                 </p>
@@ -81,14 +111,11 @@ export default function Clients() {
               </div>
             </div>
 
-            {/* Overview cards (3) + My Properties side column; ListingsChart below; My Properties spans both rows */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-x-6 lg:gap-y-2 lg:items-stretch">
-              <div className="lg:col-span-3">
-                <OverviewCards />
-              </div>
-            </div>
+            {/* Summary cards */}
+            <ClientsCards />
 
-           
+            {/* Clients table */}
+            <ClientsTable />
           </div>
         </main>
       </div>

@@ -18,6 +18,13 @@ import { PlaceholderPage } from "@/screens/dashboard/PlaceholderPage";
 import { DashboardLayout } from "@/components/dashboard";
 import Settings from "@/screens/settings/settings";
 import Clients from "@/screens/clients/clients";
+import ClientDetail from "@/screens/clients/ClientDetail";
+import Messages from "@/screens/dashboard/Messages";
+import Calendar from "@/screens/dashboard/Calendar";
+import Leads from "@/screens/dashboard/Leads";
+import Discounts from "@/screens/dashboard/Discounts";
+import Analytics from "@/screens/dashboard/Analytics";
+import Agents from "@/screens/dashboard/Agents";
 
 export default function App() {
   return (
@@ -124,7 +131,7 @@ export default function App() {
             path="/dashboard/agents"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Agents" />
+                <Agents />
               </ProtectedRoute>
             }
           />
@@ -132,7 +139,15 @@ export default function App() {
             path="/clients/clients"
             element={
               <ProtectedRoute>
-                <Clients/>
+                <Clients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/:clientId"
+            element={
+              <ProtectedRoute>
+                <ClientDetail />
               </ProtectedRoute>
             }
           />
@@ -140,7 +155,7 @@ export default function App() {
             path="/dashboard/analytics"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Analytics" />
+                <Analytics />
               </ProtectedRoute>
             }
           />
@@ -148,7 +163,7 @@ export default function App() {
             path="/dashboard/calendar"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Calendar" />
+                <Calendar />
               </ProtectedRoute>
             }
           />
@@ -156,7 +171,7 @@ export default function App() {
             path="/dashboard/messages"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Messages" />
+                <Messages />
               </ProtectedRoute>
             }
           />
@@ -164,7 +179,7 @@ export default function App() {
             path="/dashboard/leads"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Leads" />
+                <Leads />
               </ProtectedRoute>
             }
           />
@@ -180,7 +195,7 @@ export default function App() {
             path="/dashboard/discounts"
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Discounts" />
+                <Discounts />
               </ProtectedRoute>
             }
           />
