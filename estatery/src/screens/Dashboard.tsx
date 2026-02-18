@@ -15,22 +15,63 @@ import {
   MyProperties,
   RecentPayments,
 } from "@/components/dashboard";
+import { properties } from "@/lib/properties";
 
 export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
-  const [lastUpdated] = React.useState("July 08, 2025");
+  const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
   const [refreshing, setRefreshing] = React.useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleRefresh = () => {
     setRefreshing(true);
+    setLastUpdated(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }));
     setTimeout(() => setRefreshing(false), 800);
   };
 
   const handleExport = () => {
-    // Placeholder: trigger CSV export
+    const overview = [
+      ["Metric", "Value", "Trend"],
+      ["Total Revenue", "₵23,569.00", "+12%"],
+      ["Total Properties Sale", "904", "-8.5%"],
+      ["Total Properties Rent", "573", "+5.7%"],
+    ];
+
+    const paymentHeader = ["Payment ID", "Date", "Property", "Address", "Customer", "Type", "Amount", "Status"];
+    const payments = [
+      ["23487", "July 08, 2025", "Oak Grove Estates", "123 Oak St", "David Martinez", "Rent", "₵293.00", "Pending"],
+      ["23488", "July 09, 2025", "Maple Heights", "456 Maple Ave", "Sarah Johnson", "Rent", "₵320.00", "Failed"],
+      ["23489", "July 10, 2025", "Pine View", "789 Pine Rd", "Mike Chen", "Sale", "₵15,200.00", "Completed"],
+    ];
+
+    const propertyHeader = ["ID", "Name", "Location", "Price", "Type", "Status"];
+    const propertyRows = properties.map((p) => [p.id, p.name, p.location, p.price, p.type ?? "", p.status ?? ""]);
+
+    const csvSections = [
+      ["Dashboard Overview"],
+      ...overview.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
+      [""],
+      ["Recent Payments"],
+      paymentHeader.map((c) => `"${c}"`).join(","),
+      ...payments.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
+      [""],
+      ["My Properties"],
+      propertyHeader.map((c) => `"${c}"`).join(","),
+      ...propertyRows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
+    ];
+
+    const csvContent = csvSections.map((row) => (Array.isArray(row) ? row.join(",") : row)).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `dashboard-export-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleLogoutConfirm = () => {
@@ -40,15 +81,20 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-7xl space-y-6">
             {/* Dashboard header */}
             <div className="flex flex-wrap items-start justify-between gap-4">

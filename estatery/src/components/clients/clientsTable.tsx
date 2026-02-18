@@ -4,6 +4,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter as FilterIcon, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ import { clientsTableData, type ClientStatus } from "@/lib/clients";
 
 type SortField = "name" | "amount" | "nextPayment";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 8;
 
 export function ClientsTable() {
   const navigate = useNavigate();
@@ -105,17 +106,6 @@ export function ClientsTable() {
       setSortDirection("asc");
     }
   };
-
-  const handlePrevPage = () => {
-    setPage((p) => Math.max(1, p - 1));
-  };
-
-  const handleNextPage = () => {
-    setPage((p) => Math.min(pageCount, p + 1));
-  };
-
-  const showingFrom = filteredAndSorted.length === 0 ? 0 : startIndex + 1;
-  const showingTo = Math.min(endIndex, filteredAndSorted.length);
 
   return (
     <section className="space-y-4">
@@ -236,7 +226,7 @@ export function ClientsTable() {
                   <td className="px-4 py-3 text-right align-middle text-[#0f172a]">
                     {client.amount.toLocaleString("en-US", {
                       style: "currency",
-                      currency: "USD",
+                      currency: "GHS",
                       minimumFractionDigits: 2,
                     })}
                   </td>
@@ -280,45 +270,13 @@ export function ClientsTable() {
             )}
           </tbody>
         </table>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2e8f0] px-4 py-3 text-xs text-[#64748b]">
-          <p>
-            Showing <span className="font-medium text-[#1e293b]">{showingFrom}</span>–
-            <span className="font-medium text-[#1e293b]">{showingTo}</span> of{" "}
-            <span className="font-medium text-[#1e293b]">{filteredAndSorted.length}</span> clients
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrevPage}
-              disabled={safePage === 1}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full border border-[#e2e8f0] text-xs text-[#0f172a]",
-                safePage === 1 && "cursor-not-allowed opacity-40",
-                safePage > 1 && "hover:bg-[#f1f5f9]"
-              )}
-              aria-label="Previous page"
-            >
-              {"<"}
-            </button>
-            <span className="text-xs text-[#64748b]">
-              Page <span className="font-medium text-[#1e293b]">{safePage}</span> of{" "}
-              <span className="font-medium text-[#1e293b]">{pageCount}</span>
-            </span>
-            <button
-              type="button"
-              onClick={handleNextPage}
-              disabled={safePage === pageCount}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full border border-[#e2e8f0] text-xs text-[#0f172a]",
-                safePage === pageCount && "cursor-not-allowed opacity-40",
-                safePage < pageCount && "hover:bg-[#f1f5f9]"
-              )}
-              aria-label="Next page"
-            >
-              {">"}
-            </button>
-          </div>
-        </div>
+        <Pagination
+          totalItems={filteredAndSorted.length}
+          pageSize={PAGE_SIZE}
+          currentPage={safePage}
+          onPageChange={setPage}
+          itemLabel="clients"
+        />
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 import { properties } from "@/lib/properties";
 import { clientsTableData } from "@/lib/clients";
 
@@ -24,6 +25,7 @@ export default function Analytics() {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [range, setRange] = React.useState<Range>("30d");
+  const [page, setPage] = React.useState(1);
 
   const handleLogoutConfirm = () => {
     logout();
@@ -38,17 +40,27 @@ export default function Analytics() {
 
   const viewsSeries = trafficData[range];
   const maxViews = Math.max(...viewsSeries, 1);
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(properties.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageProperties = properties.slice(startIdx, startIdx + PAGE_SIZE);
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -93,47 +105,52 @@ export default function Analytics() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Home className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Active Properties</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{totalProperties}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Active Properties</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{totalProperties}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#ecfdf3] text-[#15803d]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#ecfdf3] text-[#15803d] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Users className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Clients</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{totalClients}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Clients</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{totalClients}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#fef3c7] text-[#b45309]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#fef3c7] text-[#b45309] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Activity className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Occupancy Rate</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{occupancyRate}%</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Occupancy Rate</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{occupancyRate}%</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <TrendingUp className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Active Discounts</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{activeDiscounts}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Active Discounts</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{activeDiscounts}</p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
-              <section className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between gap-2">
+              <section className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.005]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+                <div className="relative mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <div className="flex size-8 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
                       <LineChart className="size-4" />
@@ -178,8 +195,9 @@ export default function Analytics() {
                 </div>
               </section>
 
-              <section className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center gap-2">
+              <section className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.005]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+                <div className="relative mb-3 flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-[#ecfdf3] text-[#15803d]">
                     <PieChart className="size-4" />
                   </div>
@@ -190,7 +208,7 @@ export default function Analytics() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="relative flex items-center gap-4">
                   <div className="relative flex h-32 w-32 items-center justify-center">
                     <div className="size-28 rounded-full bg-[#e5e7eb]" />
                     <div className="absolute size-24 rounded-full border-[10px] border-t-[#1d4ed8] border-r-[#22c55e] border-b-[#f97316] border-l-[#e5e7eb] bg-white" />
@@ -220,8 +238,9 @@ export default function Analytics() {
               </section>
             </div>
 
-            <section className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
+            <section className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.005]">
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+              <div className="relative mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
                     <Users className="size-4" />
@@ -234,7 +253,7 @@ export default function Analytics() {
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="min-w-[640px] w-full table-auto text-sm">
                   <thead className="bg-[#f8fafc] text-xs font-medium uppercase tracking-wide text-[#64748b]">
                     <tr>
@@ -246,7 +265,7 @@ export default function Analytics() {
                     </tr>
                   </thead>
                   <tbody>
-                    {properties.slice(0, 5).map((p) => (
+                    {pageProperties.map((p) => (
                       <tr key={p.id} className="border-t border-[#e2e8f0] hover:bg-[#f8fafc]">
                         <td className="px-4 py-2 align-middle text-sm text-[#0f172a]">
                           {p.name}
@@ -268,6 +287,13 @@ export default function Analytics() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                totalItems={properties.length}
+                pageSize={PAGE_SIZE}
+                currentPage={safePage}
+                onPageChange={setPage}
+                itemLabel="properties"
+              />
             </section>
           </div>
         </main>

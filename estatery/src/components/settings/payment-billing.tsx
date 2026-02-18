@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, MoreVertical, Download, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 
 const PAYMENT_METHODS = [
   { brand: "MasterCard", last4: "1573", expiry: "05/27", isPrimary: true },
@@ -13,12 +14,18 @@ const PAYMENT_METHODS = [
 ];
 
 const INVOICES = [
-  { id: "018298", date: "Jan 20, 2025", plan: "Pro Plan", amount: "$79" },
-  { id: "015274", date: "Feb 20, 2025", plan: "Basic Plan", amount: "$29" },
+  { id: "018298", date: "Jan 20, 2025", plan: "Pro Plan", amount: "₵79" },
+  { id: "015274", date: "Feb 20, 2025", plan: "Basic Plan", amount: "₵29" },
 ];
 
 export function PaymentBilling() {
   const [email, setEmail] = useState("robertjohnson@gmail.com");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(INVOICES.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageInvoices = INVOICES.slice(startIdx, startIdx + PAGE_SIZE);
 
   return (
     <div className="space-y-10">
@@ -34,9 +41,10 @@ export function PaymentBilling() {
           {PAYMENT_METHODS.map((card) => (
             <div
               key={card.last4}
-              className="flex items-center justify-between rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm"
+              className="group relative overflow-hidden flex items-center justify-between rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.005]"
             >
-              <div className="flex items-center gap-4">
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+              <div className="relative flex items-center gap-4">
                 <div className="flex h-12 w-16 items-center justify-center rounded-lg bg-[#f1f5f9] text-lg font-bold text-[#1e293b]">
                   {card.brand.slice(0, 2)}
                 </div>
@@ -102,11 +110,12 @@ export function PaymentBilling() {
             </button>
           </div>
 
-          <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.01] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.005]">
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+            <div className="relative flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h4 className="font-semibold text-[#1e293b]">Basic Plan</h4>
-                <p className="mt-1 text-2xl font-bold text-[#1e293b]">$29 <span className="text-sm font-normal text-[#64748b]">/month</span></p>
+                <p className="mt-1 text-2xl font-bold text-[#1e293b]">₵29 <span className="text-sm font-normal text-[#64748b]">/month</span></p>
                 <p className="mt-2 text-sm text-[#64748b]">All the basics for starting a new business</p>
               </div>
               <Button
@@ -120,7 +129,7 @@ export function PaymentBilling() {
             </div>
             <Button
               type="button"
-              className="mt-4 bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+              className="relative mt-4 bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
             >
               Change Plan
             </Button>
@@ -140,7 +149,7 @@ export function PaymentBilling() {
                   </tr>
                 </thead>
                 <tbody>
-                  {INVOICES.map((inv) => (
+                  {pageInvoices.map((inv) => (
                     <tr key={inv.id} className="border-b border-[#e2e8f0] last:border-0">
                       <td className="px-4 py-3 text-[#1e293b]">#{inv.id}</td>
                       <td className="px-4 py-3 text-[#64748b]">{inv.date}</td>
@@ -159,6 +168,13 @@ export function PaymentBilling() {
                   ))}
                 </tbody>
               </table>
+              <Pagination
+                totalItems={INVOICES.length}
+                pageSize={PAGE_SIZE}
+                currentPage={safePage}
+                onPageChange={setPage}
+                itemLabel="invoices"
+              />
             </div>
           </div>
 

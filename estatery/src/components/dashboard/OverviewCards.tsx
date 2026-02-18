@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const cards = [
   {
     title: "Total Revenue",
-    value: "$23,569.00",
+    value: "₵23,569.00",
     trend: "+12%",
     trendUp: true,
     label: "from last month",
@@ -43,25 +43,27 @@ export function OverviewCards() {
       {cards.map((card) => (
         <div
           key={card.title}
-          className="group relative rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-[#cbd5e1]"
+          className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]"
         >
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-medium text-[#64748b]">{card.title}</p>
+          {/* Shine sweep effect on hover */}
+          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+          <div className="relative flex items-start justify-between gap-2">
+            <p className="text-sm font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">{card.title}</p>
             <div
               className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105",
+                "flex size-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3",
                 card.iconBg,
                 card.iconColor
               )}
             >
-              <card.icon className="size-5" />
+              <card.icon className="size-5 transition-transform duration-300 group-hover:scale-110" />
             </div>
           </div>
-          <p className="mt-2 text-xl font-bold text-[#1e293b]">{card.value}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <p className="relative mt-2 text-xl font-bold text-[#1e293b] transition-transform duration-300 group-hover:scale-[1.02]">{card.value}</p>
+          <div className="relative mt-2 flex flex-wrap items-center gap-2 text-sm">
             <span
               className={cn(
-                "rounded-md px-2 py-0.5 font-medium",
+                "rounded-md px-2 py-0.5 font-medium transition-transform duration-300 group-hover:scale-105",
                 card.trendUp
                   ? "bg-[#dcfce7] text-[#16a34a]"
                   : "bg-[#fee2e2] text-[#dc2626]"

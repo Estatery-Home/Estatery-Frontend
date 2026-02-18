@@ -19,6 +19,7 @@ import {
 import { DashboardLayout } from "@/components/dashboard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 
 type PaymentStatus = "Success" | "Pending" | "Failed";
 type PaymentType = "Rent" | "Sale";
@@ -44,7 +45,7 @@ const PAYMENTS: Payment[] = [
     customer: "David Martinez",
     customerInitial: "D",
     type: "Rent",
-    amount: "$293.00",
+    amount: "₵293.00",
     status: "Success",
   },
   {
@@ -55,7 +56,7 @@ const PAYMENTS: Payment[] = [
     customer: "Sarah Johnson",
     customerInitial: "S",
     type: "Rent",
-    amount: "$320.00",
+    amount: "₵320.00",
     status: "Success",
   },
   {
@@ -66,9 +67,19 @@ const PAYMENTS: Payment[] = [
     customer: "Michael Smith",
     customerInitial: "M",
     type: "Rent",
-    amount: "$275.00",
+    amount: "₵275.00",
     status: "Pending",
   },
+  { id: "23490", date: "July 11, 2025", property: "Sunset Terrace", address: "321 Sunset Blvd", customer: "Emma Wilson", customerInitial: "E", type: "Rent", amount: "₵450.00", status: "Success" },
+  { id: "23491", date: "July 12, 2025", property: "Lakeside Villa", address: "555 Lake Dr", customer: "James Brown", customerInitial: "J", type: "Sale", amount: "₵8,500.00", status: "Success" },
+  { id: "23492", date: "July 13, 2025", property: "Urban Heights", address: "100 Main St", customer: "Anna Davis", customerInitial: "A", type: "Rent", amount: "₵380.00", status: "Pending" },
+  { id: "23493", date: "July 14, 2025", property: "Green Valley", address: "200 Valley Rd", customer: "Chris Lee", customerInitial: "C", type: "Rent", amount: "₵520.00", status: "Success" },
+  { id: "23494", date: "July 15, 2025", property: "Harbor View", address: "77 Harbor St", customer: "Maria Garcia", customerInitial: "M", type: "Sale", amount: "₵12,000.00", status: "Failed" },
+  { id: "23495", date: "July 16, 2025", property: "Park Place", address: "88 Park Ave", customer: "Tom Anderson", customerInitial: "T", type: "Rent", amount: "₵610.00", status: "Pending" },
+  { id: "23496", date: "July 17, 2025", property: "Riverside", address: "33 River Ln", customer: "Lisa Moore", customerInitial: "L", type: "Rent", amount: "₵295.00", status: "Success" },
+  { id: "23497", date: "July 18, 2025", property: "Hilltop Manor", address: "99 Hill Rd", customer: "Paul Clark", customerInitial: "P", type: "Sale", amount: "₵9,200.00", status: "Pending" },
+  { id: "23498", date: "July 19, 2025", property: "Downtown Loft", address: "44 Center St", customer: "Rachel Green", customerInitial: "R", type: "Rent", amount: "₵720.00", status: "Success" },
+  { id: "23499", date: "July 20, 2025", property: "Garden View", address: "12 Garden St", customer: "Steve Adams", customerInitial: "S", type: "Rent", amount: "₵410.00", status: "Success" },
 ];
 
 // Revenue chart data by period
@@ -89,7 +100,7 @@ const CHART_DATA: Record<string, ChartData> = {
     fullDateLabels: ["Jul 7, 2025", "Jul 13, 2025"],
     thisPeriod: [18.2, 19.5, 20.1, 21.8, 22.5, 23.0, 23.57],
     lastPeriod: [15.0, 16.2, 17.0, 16.8, 17.5, 18.0, 18.5],
-    totalRevenue: "$23,569.00",
+    totalRevenue: "₵23,569.00",
     changePercent: "10,5",
   },
   monthly: {
@@ -97,7 +108,7 @@ const CHART_DATA: Record<string, ChartData> = {
     fullDateLabels: ["June 15, 2025", "July 15, 2025"],
     thisPeriod: [12.5, 14.2, 15.8, 16.5, 18.2, 19.0, 20.5, 21.2, 22.8, 23.2, 23.57],
     lastPeriod: [11.0, 12.5, 13.8, 14.5, 15.2, 14.8, 15.5, 16.2, 17.0, 17.5, 18.5],
-    totalRevenue: "$23,569.00",
+    totalRevenue: "₵23,569.00",
     changePercent: "10,5",
   },
   yearly: {
@@ -105,7 +116,7 @@ const CHART_DATA: Record<string, ChartData> = {
     fullDateLabels: ["Jan 1, 2025", "Dec 31, 2025"],
     thisPeriod: [58, 62, 68, 72],
     lastPeriod: [52, 55, 60, 65],
-    totalRevenue: "$260,000.00",
+    totalRevenue: "₵260,000.00",
     changePercent: "8,2",
   },
 };
@@ -399,6 +410,7 @@ export default function Transactions() {
   const [rowMenuOpen, setRowMenuOpen] = React.useState<string | null>(null);
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState<PaymentStatus | "all">("all");
+  const [page, setPage] = React.useState(1);
 
   const handleRefresh = () => {
     setHeaderRefreshing(true);
@@ -443,6 +455,13 @@ export default function Transactions() {
     }
     return list;
   }, [payments, search, statusFilter, sortAsc]);
+
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(filteredPayments.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pagePayments = filteredPayments.slice(startIdx, startIdx + PAGE_SIZE);
+  React.useEffect(() => setPage(1), [search, statusFilter, sortAsc]);
 
   const allSelected = filteredPayments.length > 0 && filteredPayments.every((p) => selectedIds.has(p.id));
   const someSelected = filteredPayments.some((p) => selectedIds.has(p.id));
@@ -668,7 +687,7 @@ export default function Transactions() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments.map((p) => (
+                {pagePayments.map((p) => (
                   <tr
                     key={p.id}
                     className="border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fafc]"
@@ -767,6 +786,13 @@ export default function Transactions() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            totalItems={filteredPayments.length}
+            pageSize={PAGE_SIZE}
+            currentPage={safePage}
+            onPageChange={setPage}
+            itemLabel="payments"
+          />
           {filteredPayments.length === 0 && (
             <p className="px-4 py-8 text-center text-sm text-[#94a3b8]">No payments found.</p>
           )}

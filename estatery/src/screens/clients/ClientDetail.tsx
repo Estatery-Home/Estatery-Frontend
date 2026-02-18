@@ -5,6 +5,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { Calendar, Edit3, FileText, Mail, Phone, MessageCircle, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import {
@@ -36,6 +37,7 @@ export default function ClientDetail() {
 
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | ClientTransactionStatus>("all");
+  const [page, setPage] = React.useState(1);
   const [selectedTxIds, setSelectedTxIds] = React.useState<Set<string>>(new Set());
 
   const [editName, setEditName] = React.useState(detail?.name ?? "");
@@ -50,15 +52,20 @@ export default function ClientDetail() {
 
   if (!detail) {
     return (
-      <div className="flex min-h-screen bg-[#f1f5f9]">
+      <div className="min-h-screen bg-[#f1f5f9]">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onLogoutClick={() => setLogoutDialogOpen(true)}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-h-screen flex-col transition-[margin] duration-300",
+            sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+          )}
+        >
           <TopBar />
-          <main className="flex-1 overflow-auto p-6">
+          <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
             <div className="mx-auto max-w-4xl rounded-xl border border-[#e2e8f0] bg-white p-8 text-center shadow-sm">
               <p className="text-[#64748b]">Client not found.</p>
               <Button
@@ -96,6 +103,13 @@ export default function ClientDetail() {
     if (statusFilter !== "all" && tx.status !== statusFilter) return false;
     return true;
   });
+
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(filteredTx.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageTx = filteredTx.slice(startIdx, startIdx + PAGE_SIZE);
+  React.useEffect(() => setPage(1), [search, statusFilter]);
 
   const allChecked = filteredTx.length > 0 && filteredTx.every((t) => selectedTxIds.has(t.id));
   const someChecked = filteredTx.some((t) => selectedTxIds.has(t.id)) && !allChecked;
@@ -147,15 +161,20 @@ export default function ClientDetail() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <Link
               to="/clients/clients"
@@ -346,7 +365,7 @@ export default function ClientDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTx.map((tx) => {
+                    {pageTx.map((tx) => {
                       const checked = selectedTxIds.has(tx.id);
                       return (
                         <tr
@@ -375,7 +394,7 @@ export default function ClientDetail() {
                           <td className="px-4 py-3 text-right align-middle text-[#0f172a]">
                             {tx.amount.toLocaleString("en-US", {
                               style: "currency",
-                              currency: "USD",
+                              currency: "GHS",
                               minimumFractionDigits: 2,
                             })}
                           </td>
@@ -411,6 +430,13 @@ export default function ClientDetail() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                totalItems={filteredTx.length}
+                pageSize={PAGE_SIZE}
+                currentPage={safePage}
+                onPageChange={setPage}
+                itemLabel="transactions"
+              />
             </section>
           </div>
         </main>

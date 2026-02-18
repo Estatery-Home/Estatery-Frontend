@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { General } from "@/components/settings/general";
@@ -38,8 +39,13 @@ function copyProfile(p: UserProfile): UserProfile {
   };
 }
 
+const VALID_SECTIONS = ["general", "plan-pricing", "my-account", "payment-billing", "tax-duties", "link-account", "time-language", "password", "notifications"];
+
 export default function Settings() {
-  const [activeSection, setActiveSection] = useState<string>("general");
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const initialSection = sectionParam && VALID_SECTIONS.includes(sectionParam) ? sectionParam : "general";
+  const [activeSection, setActiveSection] = useState<string>(initialSection);
   const { profile, updateProfile } = useUserProfile();
   const { saveNotifications, revertNotifications } = useSettings();
   const [draft, setDraft] = useState<UserProfile>(() => copyProfile(profile));

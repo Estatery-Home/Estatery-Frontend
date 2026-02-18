@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   MessageCircle,
@@ -17,11 +18,11 @@ import { DashboardLayout } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
-  { icon: FileQuestion, label: "Getting Started", desc: "Setup and onboarding guides", color: "from-blue-500 to-cyan-500" },
-  { icon: Settings, label: "Account & Settings", desc: "Profile, security, preferences", color: "from-violet-500 to-purple-500" },
-  { icon: CreditCard, label: "Billing", desc: "Payments and subscriptions", color: "from-emerald-500 to-teal-500" },
-  { icon: Shield, label: "Privacy & Security", desc: "Data protection, 2FA", color: "from-amber-500 to-orange-500" },
-  { icon: Zap, label: "Integrations", desc: "APIs and third-party tools", color: "from-rose-500 to-pink-500" },
+  { icon: FileQuestion, label: "Getting Started", desc: "Setup and onboarding guides", color: "from-blue-500 to-cyan-500", link: null },
+  { icon: Settings, label: "Account & Settings", desc: "Profile, security, preferences", color: "from-violet-500 to-purple-500", link: "/settings/settings" },
+  { icon: CreditCard, label: "Billing", desc: "Payments and subscriptions", color: "from-emerald-500 to-teal-500", link: "/settings/settings?section=payment-billing" },
+  { icon: Shield, label: "Privacy & Security", desc: "Data protection, 2FA", color: "from-amber-500 to-orange-500", link: "/privacy-security" },
+  { icon: Zap, label: "Integrations", desc: "APIs and third-party tools", color: "from-rose-500 to-pink-500", link: null },
 ];
 
 const FAQ_ITEMS = [
@@ -65,34 +66,53 @@ export default function HelpCenter() {
         <section>
           <h2 className="mb-4 text-lg font-semibold text-[#1e293b]">Browse by topic</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORIES.map((item, i) => (
-              <button
-                key={item.label}
-                type="button"
-                className={cn(
-                  "group flex items-start gap-4 rounded-xl border border-[#e2e8f0] bg-white p-5 text-left shadow-sm transition-all duration-300",
-                  "hover:-translate-y-1 hover:border-[#cbd5e1] hover:shadow-lg hover:shadow-slate-200/50",
-                  "focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2"
-                )}
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                <div
-                  className={cn(
-                    "flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-110",
-                    item.color
-                  )}
+            {CATEGORIES.map((item, i) => {
+              const cardClass = cn(
+                "group relative overflow-hidden flex items-start gap-4 rounded-xl border border-[#e2e8f0] bg-white p-5 text-left shadow-sm transition-all duration-300 ease-out",
+                "hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]",
+                "focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2"
+              );
+              const content = (
+                <>
+                  <div
+                    className={cn(
+                      "flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-110",
+                      item.color
+                    )}
+                  >
+                    <item.icon className="size-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-[#1e293b] transition-colors group-hover:text-[#1976d2]">
+                      {item.label}
+                    </h3>
+                    <p className="mt-0.5 text-sm text-[#64748b]">{item.desc}</p>
+                  </div>
+                  <ChevronDown className="ml-auto size-5 shrink-0 -rotate-90 text-[#94a3b8] transition-colors group-hover:text-[#1976d2]" />
+                </>
+              );
+              return item.link ? (
+                <Link
+                  key={item.label}
+                  to={item.link}
+                  className={cardClass}
+                  style={{ animationDelay: `${i * 50}ms` }}
                 >
-                  <item.icon className="size-6" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-[#1e293b] transition-colors group-hover:text-[#1976d2]">
-                    {item.label}
-                  </h3>
-                  <p className="mt-0.5 text-sm text-[#64748b]">{item.desc}</p>
-                </div>
-                <ChevronDown className="ml-auto size-5 shrink-0 -rotate-90 text-[#94a3b8] transition-colors group-hover:text-[#1976d2]" />
-              </button>
-            ))}
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  {content}
+                </Link>
+              ) : (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={cardClass}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  {content}
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -106,8 +126,8 @@ export default function HelpCenter() {
                 <div
                   key={i}
                   className={cn(
-                    "overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm transition-all duration-300",
-                    "hover:border-[#cbd5e1] hover:shadow-md"
+                    "group overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm transition-all duration-300 ease-out",
+                    "hover:-translate-y-0.5 hover:border-[#cbd5e1] hover:shadow-lg"
                   )}
                 >
                   <button
@@ -148,11 +168,12 @@ export default function HelpCenter() {
             <a
               href="mailto:support@luxeyline.com"
               className={cn(
-                "group flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300",
-                "hover:-translate-y-1 hover:border-[#1976d2]/30 hover:shadow-lg hover:shadow-[#1976d2]/10"
+                "group relative overflow-hidden flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300 ease-out",
+                "hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#1976d2]/30 hover:shadow-xl active:scale-[1.01]"
               )}
             >
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-[#e3f2fd] text-[#1976d2] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#1976d2] group-hover:text-white">
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+              <div className="relative flex size-14 items-center justify-center rounded-2xl bg-[#e3f2fd] text-[#1976d2] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#1976d2] group-hover:text-white">
                 <Mail className="size-7" />
               </div>
               <div className="text-center">
@@ -165,11 +186,12 @@ export default function HelpCenter() {
               href="#"
               onClick={(e) => e.preventDefault()}
               className={cn(
-                "group flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300",
-                "hover:-translate-y-1 hover:border-[#1976d2]/30 hover:shadow-lg hover:shadow-[#1976d2]/10"
+                "group relative overflow-hidden flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300 ease-out",
+                "hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#1976d2]/30 hover:shadow-xl active:scale-[1.01]"
               )}
             >
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-[#e8f5e9] text-[#2e7d32] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#2e7d32] group-hover:text-white">
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+              <div className="relative flex size-14 items-center justify-center rounded-2xl bg-[#e8f5e9] text-[#2e7d32] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#2e7d32] group-hover:text-white">
                 <MessageCircle className="size-7" />
               </div>
               <div className="text-center">
@@ -181,11 +203,12 @@ export default function HelpCenter() {
             <a
               href="tel:+1234567890"
               className={cn(
-                "group flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300",
-                "hover:-translate-y-1 hover:border-[#1976d2]/30 hover:shadow-lg hover:shadow-[#1976d2]/10"
+                "group relative overflow-hidden flex flex-col items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-all duration-300 ease-out",
+                "hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#1976d2]/30 hover:shadow-xl active:scale-[1.01]"
               )}
             >
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-[#fff3e0] text-[#e65100] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#e65100] group-hover:text-white">
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+              <div className="relative flex size-14 items-center justify-center rounded-2xl bg-[#fff3e0] text-[#e65100] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#e65100] group-hover:text-white">
                 <Phone className="size-7" />
               </div>
               <div className="text-center">

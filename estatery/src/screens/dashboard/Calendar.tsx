@@ -290,15 +290,20 @@ export default function Calendar() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="text-2xl font-bold text-[#1e293b]">{monthLabel}</h1>

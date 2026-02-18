@@ -34,16 +34,17 @@ export function MyProperties() {
           <Link
             key={prop.id}
             to={`/dashboard/properties/${prop.id}`}
-            className="group flex gap-3 rounded-lg border border-[#e2e8f0] p-3 transition-all duration-200 hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:shadow-sm"
+            className="group relative flex overflow-hidden gap-3 rounded-lg border border-[#e2e8f0] bg-white p-3 transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-lg active:scale-[1.01]"
           >
-            <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#f1f5f9]">
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-[#f1f5f9]">
               <img
                 src={prop.image}
                 alt=""
                 className="size-full object-cover transition-transform duration-200 group-hover:scale-105"
               />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1">
               <p className="truncate font-medium text-[#1e293b] group-hover:text-[var(--logo)]">
                 {prop.name}
               </p>

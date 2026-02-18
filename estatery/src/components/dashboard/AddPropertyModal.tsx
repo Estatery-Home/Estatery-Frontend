@@ -39,7 +39,7 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
   const [descLength, setDescLength] = React.useState(50);
   const [propertyType, setPropertyType] = React.useState("House");
   const [status, setStatus] = React.useState("For Sale");
-  const [price, setPrice] = React.useState("$350,000");
+  const [price, setPrice] = React.useState("₵350,000");
   const [listingDate, setListingDate] = React.useState("2025-07-22");
   const [contactName, setContactName] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -214,7 +214,7 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
                     id="price"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="$350,000"
+                    placeholder="₵350,000"
                     className="border-[#e2e8f0] bg-white text-[#1e293b]"
                   />
                 </div>

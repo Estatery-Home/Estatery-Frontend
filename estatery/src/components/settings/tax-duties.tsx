@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Pagination } from "@/components/ui";
 
 const TAX_ROWS = [
   { country: "United States", collecting: "Taxes", percentage: "20%", flag: "🇺🇸" },
@@ -24,6 +25,12 @@ export function TaxDuties() {
     "123 Elm Street, Springfield, IL 62704"
   );
   const [mailingAddress, setMailingAddress] = useState("456 Maple Avenue, Rivertown, TX 75001");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(TAX_ROWS.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageRows = TAX_ROWS.slice(startIdx, startIdx + PAGE_SIZE);
 
   return (
     <div className="space-y-10">
@@ -46,7 +53,7 @@ export function TaxDuties() {
                 </tr>
               </thead>
               <tbody>
-                {TAX_ROWS.map((row) => (
+                {pageRows.map((row) => (
                   <tr key={row.country} className="border-b border-[#e2e8f0] last:border-0">
                     <td className="flex items-center gap-2 px-4 py-3 text-[#1e293b]">
                       <span className="text-lg" aria-hidden>{row.flag}</span>
@@ -58,6 +65,13 @@ export function TaxDuties() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              totalItems={TAX_ROWS.length}
+              pageSize={PAGE_SIZE}
+              currentPage={safePage}
+              onPageChange={setPage}
+              itemLabel="tax entries"
+            />
           </div>
         </div>
       </section>

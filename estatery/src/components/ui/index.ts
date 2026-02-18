@@ -11,3 +11,4 @@ export {
   SelectItem,
 } from "./select";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Pagination } from "./pagination";

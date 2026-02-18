@@ -52,11 +52,12 @@ export function General() {
             <Label htmlFor="currency" className="text-[#1e293b]">
               Currency <span className="text-[#dc2626]">*</span>
             </Label>
-            <Select defaultValue="usd">
+            <Select defaultValue="ghs">
               <SelectTrigger id="currency" className="border-[#e2e8f0] bg-white text-[#1e293b]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="ghs">Ghana Cedis (₵)</SelectItem>
                 <SelectItem value="usd">US Dollar</SelectItem>
                 <SelectItem value="eur">Euro</SelectItem>
                 <SelectItem value="gbp">British Pound</SelectItem>

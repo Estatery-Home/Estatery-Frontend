@@ -7,7 +7,9 @@ import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 import { properties } from "@/lib/properties";
+import { LeadsSummaryCards } from "@/components/leads/LeadCards";
 
 type LeadStage = "New" | "Contacted" | "Tour Scheduled" | "Negotiation" | "Closed";
 
@@ -29,7 +31,7 @@ const mockLeads: Lead[] = [
     email: "james.smith@example.com",
     propertyId: "03483",
     source: "Website",
-    budget: "$600–$800 / month",
+    budget: "₵600–₵800 / month",
     stage: "New",
     createdAt: "2025-07-10",
   },
@@ -39,7 +41,7 @@ const mockLeads: Lead[] = [
     email: "linda.johnson@example.com",
     propertyId: "03484",
     source: "Ads",
-    budget: "$1,000–$1,400 / month",
+    budget: "₵1,000–₵1,400 / month",
     stage: "Contacted",
     createdAt: "2025-07-09",
   },
@@ -49,7 +51,7 @@ const mockLeads: Lead[] = [
     email: "robert.brown@example.com",
     propertyId: "03485",
     source: "Referral",
-    budget: "$2,000–$3,000 / month",
+    budget: "₵2,000–₵3,000 / month",
     stage: "Tour Scheduled",
     createdAt: "2025-07-08",
   },
@@ -59,7 +61,7 @@ const mockLeads: Lead[] = [
     email: "jessica.wilson@example.com",
     propertyId: "03486",
     source: "Website",
-    budget: "$700–$900 / month",
+    budget: "₵700–₵900 / month",
     stage: "Negotiation",
     createdAt: "2025-07-05",
   },
@@ -69,10 +71,15 @@ const mockLeads: Lead[] = [
     email: "michael.taylor@example.com",
     propertyId: "03487",
     source: "Referral",
-    budget: "$1,200–$1,800 / month",
+    budget: "₵1,200–₵1,800 / month",
     stage: "Closed",
     createdAt: "2025-07-02",
   },
+  { id: "L-3426", name: "Emily Davis", email: "emily.d@example.com", propertyId: "03483", source: "Website", budget: "₵550–₵700 / month", stage: "New", createdAt: "2025-07-11" },
+  { id: "L-3427", name: "Daniel White", email: "daniel.w@example.com", propertyId: "03484", source: "Ads", budget: "₵1,100–₵1,300 / month", stage: "Contacted", createdAt: "2025-07-10" },
+  { id: "L-3428", name: "Sofia Martinez", email: "sofia.m@example.com", propertyId: "03485", source: "Referral", budget: "₵2,200–₵2,800 / month", stage: "Tour Scheduled", createdAt: "2025-07-09" },
+  { id: "L-3429", name: "Kevin Harris", email: "kevin.h@example.com", propertyId: "03486", source: "Website", budget: "₵780–₵950 / month", stage: "Negotiation", createdAt: "2025-07-08" },
+  { id: "L-3430", name: "Olivia King", email: "olivia.k@example.com", propertyId: "03487", source: "Referral", budget: "₵1,400–₵1,700 / month", stage: "Closed", createdAt: "2025-07-05" },
 ];
 
 export default function Leads() {
@@ -83,6 +90,7 @@ export default function Leads() {
   const [stageFilter, setStageFilter] = React.useState<LeadStage | "All">("All");
   const [search, setSearch] = React.useState("");
   const [leads, setLeads] = React.useState<Lead[]>(mockLeads);
+  const [page, setPage] = React.useState(1);
 
   const handleLogoutConfirm = () => {
     logout();
@@ -95,6 +103,7 @@ export default function Leads() {
   const closedLeads = leads.filter((l) => l.stage === "Closed").length;
   const conversionRate = totalLeads === 0 ? 0 : Math.round((closedLeads / totalLeads) * 100);
 
+  const PAGE_SIZE = 10;
   const filteredLeads = leads.filter((l) => {
     if (stageFilter !== "All" && l.stage !== stageFilter) return false;
     const term = search.trim().toLowerCase();
@@ -105,6 +114,12 @@ export default function Leads() {
       l.id.toLowerCase().includes(term)
     );
   });
+
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageLeads = filteredLeads.slice(startIdx, startIdx + PAGE_SIZE);
+  React.useEffect(() => setPage(1), [stageFilter, search]);
 
   const handleAdvanceStage = (id: string) => {
     setLeads((prev) =>
@@ -119,15 +134,20 @@ export default function Leads() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -161,19 +181,8 @@ export default function Leads() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-[#64748b]">Total Leads</p>
-                <p className="mt-2 text-2xl font-bold text-[#0f172a]">{totalLeads}</p>
-              </div>
-              <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-[#64748b]">Active Pipeline</p>
-                <p className="mt-2 text-2xl font-bold text-[#0f172a]">{activeLeads}</p>
-              </div>
-              <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-[#64748b]">Conversion Rate</p>
-                <p className="mt-2 text-2xl font-bold text-[#0f172a]">{conversionRate}%</p>
-              </div>
+            <div className="grid gap-4 ">
+              <LeadsSummaryCards />
             </div>
 
             <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
@@ -195,7 +204,7 @@ export default function Leads() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLeads.map((lead) => {
+                    {pageLeads.map((lead) => {
                       const property = properties.find((p) => p.id === lead.propertyId);
                       return (
                         <tr key={lead.id} className="border-t border-[#e2e8f0] hover:bg-[#f8fafc]">
@@ -281,6 +290,13 @@ export default function Leads() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                totalItems={filteredLeads.length}
+                pageSize={PAGE_SIZE}
+                currentPage={safePage}
+                onPageChange={setPage}
+                itemLabel="leads"
+              />
             </section>
           </div>
         </main>

@@ -1,43 +1,43 @@
 "use client";
 
 import * as React from "react";
-import { PieChart, Clock, CheckCircle,  } from "lucide-react";
+import {  PersonStanding, Activity, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const cards = [
   {
-    title: "Total Clients",
-    value: "249",
-    trend: "-8.5%",
+    title: "Total Leads",
+    value: "50",
+    trend: "+8.5%",
     trendUp: true,
     label: "from last month",
-    icon: PieChart,
+    icon: PersonStanding,
     iconBg: "bg-[#e5e7eb]",
     iconColor: "text-[#1d4ed8]",
   },
   {
-    title: "On Going Client",
+    title: "Active Pipeline",
     value: "56",
-    trend: "-8,5%",
+    trend: "+8,5%",
     trendUp: false,
     label: "from last month",
-    icon: Clock,
+    icon: Activity,
     iconBg: "bg-[#e5e7eb]",
     iconColor: "text-[#1d4ed8]",
   },
   {
-    title: "Completed Client",
-    value: "127",
-    trend: "-8.5%",
+    title: "Conversion Rate",
+    value: "20%",
+    trend: "+8.5%",
     trendUp: true,
     label: "from last month",
-    icon: CheckCircle,
+    icon: Percent,
     iconBg: "bg-[#e5e7eb]",
     iconColor: "text-[#1d4ed8]",
   },
 ];
 
-export function ClientsCards() {
+export function LeadsSummaryCards() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (

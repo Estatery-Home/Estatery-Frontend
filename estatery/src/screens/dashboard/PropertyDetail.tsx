@@ -4,6 +4,7 @@ import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Bed, Bath, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { getPropertyById, getOtherProperties } from "@/lib/properties";
@@ -26,15 +27,20 @@ export default function PropertyDetail() {
 
   if (!property) {
     return (
-      <div className="flex min-h-screen bg-[#f1f5f9]">
+      <div className="min-h-screen bg-[#f1f5f9]">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           onLogoutClick={() => setLogoutDialogOpen(true)}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-h-screen flex-col transition-[margin] duration-300",
+            sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+          )}
+        >
           <TopBar />
-          <main className="flex-1 overflow-auto p-6">
+          <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
             <div className="mx-auto max-w-4xl rounded-xl border border-[#e2e8f0] bg-white p-8 text-center shadow-sm">
               <p className="text-[#64748b]">Property not found.</p>
               <Button
@@ -57,15 +63,20 @@ export default function PropertyDetail() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <Link
               to="/dashboard"
@@ -130,16 +141,17 @@ export default function PropertyDetail() {
                   <Link
                     key={prop.id}
                     to={`/dashboard/properties/${prop.id}`}
-                    className="group rounded-xl border border-[#e2e8f0] bg-white shadow-sm overflow-hidden transition-all duration-200 hover:border-[#cbd5e1] hover:shadow-md"
+                    className="group relative overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]"
                   >
-                    <div className="aspect-[4/3] overflow-hidden bg-[#f1f5f9]">
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#f1f5f9]">
                       <img
                         src={prop.image}
                         alt={prop.name}
                         className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                       />
                     </div>
-                    <div className="p-4">
+                    <div className="relative p-4">
                       <p className="font-medium text-[#1e293b] group-hover:text-[var(--logo)] truncate">
                         {prop.name}
                       </p>

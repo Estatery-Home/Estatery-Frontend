@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Search, Filter, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Property } from "@/lib/properties";
+import { Pagination } from "@/components/ui";
 
 type PropertyListingTableProps = {
   properties: Property[];
@@ -13,6 +14,7 @@ type PropertyListingTableProps = {
 export function PropertyListingTable({ properties }: PropertyListingTableProps) {
   const [search, setSearch] = React.useState("");
   const [sortBy, setSortBy] = React.useState("Last Updated");
+  const [page, setPage] = React.useState(1);
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return properties;
@@ -24,6 +26,13 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
         p.id.includes(q)
     );
   }, [properties, search]);
+
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageProps = filtered.slice(startIdx, startIdx + PAGE_SIZE);
+  React.useEffect(() => setPage(1), [search]);
 
   return (
     <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
@@ -81,7 +90,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
             </tr>
           </thead>
           <tbody>
-            {filtered.map((prop) => (
+            {pageProps.map((prop) => (
               <tr
                 key={prop.id}
                 className="border-b border-[#e2e8f0] transition-colors hover:bg-[#f8fafc]"
@@ -139,6 +148,13 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
           </tbody>
         </table>
       </div>
+      <Pagination
+        totalItems={filtered.length}
+        pageSize={PAGE_SIZE}
+        currentPage={safePage}
+        onPageChange={setPage}
+        itemLabel="properties"
+      />
     </div>
   );
 }

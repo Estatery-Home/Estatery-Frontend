@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
@@ -31,6 +31,12 @@ const HelpCenter = lazy(() => import("@/screens/dashboard/HelpCenter"));
 const Feedback = lazy(() => import("@/screens/dashboard/Feedback"));
 const Welcome = lazy(() => import("@/screens/Welcome"));
 const NotFound = lazy(() => import("@/screens/NotFound"));
+
+function SettingsWithSection() {
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section") ?? "default";
+  return <Settings key={section} />;
+}
 
 function PageFallback() {
   return (
@@ -223,7 +229,7 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <DashboardLayout>
-                      <Settings />
+                      <SettingsWithSection />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }
@@ -252,6 +258,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              
 
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -41,9 +41,9 @@ function getData(range: Range) {
   }
 }
 
-const Y_LABELS = ["$0", "$200", "$400", "$600", "$800", "$1K"];
-const Y_SCALE_MAX = 1000; // Fixed scale so bar heights match Y-axis figures; $600 = 60%
-const AVG_AT = 600; // Avg line at $600 on Y-axis = 60% from bottom
+const Y_LABELS = ["₵0", "₵200", "₵400", "₵600", "₵800", "₵1K"];
+const Y_SCALE_MAX = 1000; // Fixed scale so bar heights match Y-axis figures; ₵600 = 60%
+const AVG_AT = 600; // Avg line at ₵600 on Y-axis = 60% from bottom
 
 export function ListingsChart() {
   const [range, setRange] = React.useState<Range>("monthly");
@@ -51,7 +51,7 @@ export function ListingsChart() {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
   const data = getData(range);
-  // Fixed Y scale 0–$1K so bar heights match axis figures; taller chart area = taller bars
+  // Fixed Y scale 0–₵1K so bar heights match axis figures; taller chart area = taller bars
   const scaleMax = Y_SCALE_MAX;
 
   const handleRefresh = () => {
@@ -131,7 +131,7 @@ export function ListingsChart() {
                 />
               ))}
             </div>
-            {/* Avg line at $600 on Y-axis (60% from bottom) */}
+            {/* Avg line at ₵600 on Y-axis (60% from bottom) */}
             <div
               className="absolute left-0 right-0 border-t-2 border-dashed border-[#1e293b]"
               style={{

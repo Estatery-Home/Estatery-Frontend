@@ -12,16 +12,39 @@ import { ClientsTable } from "@/components/clients/clientsTable";
 import { clientsTableData } from "@/lib/clients";
 
 export default function Clients() {
+  const STORAGE_KEY = "clients-last-updated";
+  const defaultLastUpdated = "July 08, 2025";
+
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
-  const [lastUpdated] = React.useState("July 08, 2025");
+  const [lastUpdated, setLastUpdated] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return stored;
+    }
+    return defaultLastUpdated;
+  });
   const [refreshing, setRefreshing] = React.useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    const now = new Date();
+    const formatted = now.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setTimeout(() => {
+      setLastUpdated(formatted);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, formatted);
+      }
+      setRefreshing(false);
+    }, 800);
   };
 
   const handleExport = () => {
@@ -70,15 +93,20 @@ export default function Clients() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-7xl space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">

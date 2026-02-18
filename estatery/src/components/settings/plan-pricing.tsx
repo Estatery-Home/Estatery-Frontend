@@ -63,15 +63,16 @@ export function PlanPricing() {
           <div
             key={plan.name}
             className={cn(
-              "flex flex-col rounded-xl border bg-white p-6 shadow-sm",
-              plan.isCurrent ? "border-[var(--logo)] ring-2 ring-[var(--logo)]/20" : "border-[#e2e8f0]"
+              "group relative overflow-hidden flex flex-col rounded-xl border bg-white p-6 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl active:scale-[1.01]",
+              plan.isCurrent ? "border-[var(--logo)] ring-2 ring-[var(--logo)]/20" : "border-[#e2e8f0] hover:border-[#cbd5e1]"
             )}
           >
-            <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+            <div className="relative flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h4 className="font-semibold text-[#1e293b]">{plan.name}</h4>
                 <p className="mt-1 text-2xl font-bold text-[#1e293b]">
-                  ${plan.price}{" "}
+                  ₵{plan.price}{" "}
                   <span className="text-sm font-normal text-[#64748b]">/ month</span>
                 </p>
               </div>
@@ -87,8 +88,8 @@ export function PlanPricing() {
                 {plan.action}
               </Button>
             </div>
-            <p className="mt-3 text-sm text-[#64748b]">{plan.description}</p>
-            <ul className="mt-6 space-y-3">
+            <p className="relative mt-3 text-sm text-[#64748b]">{plan.description}</p>
+            <ul className="relative mt-6 space-y-3">
               {plan.features.map((feature) => (
                 <li key={feature} className="flex items-center gap-2 text-sm text-[#1e293b]">
                   <Check className="size-4 shrink-0 text-[var(--logo)]" strokeWidth={2.5} />

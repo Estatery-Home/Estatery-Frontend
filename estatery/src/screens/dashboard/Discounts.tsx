@@ -7,6 +7,7 @@ import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui";
 
 type DiscountStatus = "Active" | "Scheduled" | "Expired";
 
@@ -61,6 +62,7 @@ export default function Discounts() {
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [discounts, setDiscounts] = React.useState<Discount[]>(initialDiscounts);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
 
   const [draftName, setDraftName] = React.useState("");
   const [draftCode, setDraftCode] = React.useState("");
@@ -77,6 +79,11 @@ export default function Discounts() {
   const totalActive = discounts.filter((d) => d.status === "Active").length;
   const totalScheduled = discounts.filter((d) => d.status === "Scheduled").length;
   const totalExpired = discounts.filter((d) => d.status === "Expired").length;
+  const PAGE_SIZE = 10;
+  const pageCount = Math.max(1, Math.ceil(discounts.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const startIdx = (safePage - 1) * PAGE_SIZE;
+  const pageDiscounts = discounts.slice(startIdx, startIdx + PAGE_SIZE);
 
   const handleToggleStatus = (id: string) => {
     setDiscounts((prev) =>
@@ -116,15 +123,20 @@ export default function Discounts() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[margin] duration-300",
+          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+        )}
+      >
         <TopBar />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -144,31 +156,34 @@ export default function Discounts() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Percent className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Active Discounts</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{totalActive}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Active Discounts</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{totalActive}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#fffbeb] text-[#b45309]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#fffbeb] text-[#b45309] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Clock className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Scheduled</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{totalScheduled}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Scheduled</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{totalScheduled}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#ecfdf3] text-[#15803d]">
+              <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#ecfdf3] text-[#15803d] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <CheckCircle2 className="size-4" />
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-[#64748b]">Expired</p>
-                  <p className="mt-1 text-2xl font-bold text-[#0f172a]">{totalExpired}</p>
+                <div className="relative min-w-0">
+                  <p className="text-xs font-medium text-[#64748b] transition-colors duration-300 group-hover:text-[#475569]">Expired</p>
+                  <p className="mt-1 text-2xl font-bold text-[#0f172a] transition-transform duration-300 group-hover:scale-[1.02]">{totalExpired}</p>
                 </div>
               </div>
             </div>
@@ -192,7 +207,7 @@ export default function Discounts() {
                     </tr>
                   </thead>
                   <tbody>
-                    {discounts.map((d) => (
+                    {pageDiscounts.map((d) => (
                       <tr key={d.id} className="border-t border-[#e2e8f0] hover:bg-[#f8fafc]">
                         <td className="px-4 py-2 align-middle text-sm text-[#0f172a]">
                           {d.name}
@@ -253,6 +268,13 @@ export default function Discounts() {
                   </tbody>
                 </table>
               </div>
+              <Pagination
+                totalItems={discounts.length}
+                pageSize={PAGE_SIZE}
+                currentPage={safePage}
+                onPageChange={setPage}
+                itemLabel="discounts"
+              />
             </section>
           </div>
         </main>
