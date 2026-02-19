@@ -103,7 +103,7 @@ export default function Leads() {
   const closedLeads = leads.filter((l) => l.stage === "Closed").length;
   const conversionRate = totalLeads === 0 ? 0 : Math.round((closedLeads / totalLeads) * 100);
 
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 8;
   const filteredLeads = leads.filter((l) => {
     if (stageFilter !== "All" && l.stage !== stageFilter) return false;
     const term = search.trim().toLowerCase();
