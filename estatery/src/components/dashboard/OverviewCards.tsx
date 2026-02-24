@@ -13,7 +13,7 @@ const cards = [
     label: "from last month",
     icon: CircleDollarSign,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
   {
     title: "Total Properties Sale",
@@ -23,7 +23,7 @@ const cards = [
     label: "from last month",
     icon: Building2,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
   {
     title: "Total Properties Rent",
@@ -33,7 +33,7 @@ const cards = [
     label: "from last month",
     icon: HandCoins,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
 ];
 

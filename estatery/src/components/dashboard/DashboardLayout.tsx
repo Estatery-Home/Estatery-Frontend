@@ -4,6 +4,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "./index";
 
 type DashboardLayoutProps = {
@@ -11,7 +12,7 @@ type DashboardLayoutProps = {
 };
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div

@@ -196,6 +196,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Property Info</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Type</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Price</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Rental Period</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Status</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Views</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Last Updated</th>
@@ -239,7 +240,8 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                     {prop.type ?? "Rent"}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.price}</td>
+                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.price}{prop.period}</td>
+                <td className="px-3 py-2 text-[#64748b] sm:px-4">{prop.rentalPeriod ?? "—"}</td>
                 <td className="px-3 py-2 sm:px-4">
                   <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
                     {prop.status ?? "Available"}

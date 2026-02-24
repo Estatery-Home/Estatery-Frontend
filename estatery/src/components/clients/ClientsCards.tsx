@@ -13,7 +13,7 @@ const cards = [
     label: "from last month",
     icon: PieChart,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
   {
     title: "On Going Client",
@@ -23,7 +23,7 @@ const cards = [
     label: "from last month",
     icon: Clock,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
   {
     title: "Completed Client",
@@ -33,7 +33,7 @@ const cards = [
     label: "from last month",
     icon: CheckCircle,
     iconBg: "bg-[#e5e7eb]",
-    iconColor: "text-[#1d4ed8]",
+    iconColor: "text-[var(--logo)]",
   },
 ];
 

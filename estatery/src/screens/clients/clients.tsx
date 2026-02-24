@@ -6,6 +6,7 @@ import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { ClientsCards } from "@/components/clients/ClientsCards";
 import { ClientsTable } from "@/components/clients/clientsTable";
@@ -15,7 +16,7 @@ export default function Clients() {
   const STORAGE_KEY = "clients-last-updated";
   const defaultLastUpdated = "July 08, 2025";
 
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState(() => {
     if (typeof window !== "undefined") {
@@ -96,7 +97,7 @@ export default function Clients() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div

@@ -255,7 +255,7 @@ export function SignupForm() {
             </div>
             <Link
               to="/auth/login"
-              className="text-sm font-medium text-[#2563eb] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
+              className="text-sm font-medium text-[var(--logo)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
             >
               Already have an account?
             </Link>
@@ -266,7 +266,7 @@ export function SignupForm() {
             className={cn(
               "w-full rounded-lg text-white",
               (nameError || emailError || passwordError)
-                ? "bg-[#1d4ed8] hover:bg-[#1e40af]"
+                ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 : hasTyped
                   ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                   : "bg-[#97ADDE] hover:bg-[#7d9ad4]"

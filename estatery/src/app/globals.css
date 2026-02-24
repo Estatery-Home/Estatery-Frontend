@@ -3,11 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  /* Logo / brand colors (light baby blue from logo) */
-  --logo: #90caf9;
-  --logo-hover: #64b5f6;
-  --logo-muted: #e3f2fd;
-  --primary: 210 100% 50%;
+  /* Logo / brand colors (vibrant royal blue from HomeLogo) */
+  --logo: #2563eb;
+  --logo-hover: #1d4ed8;
+  --logo-muted: #dbeafe;
+  --primary: 221 83% 53%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 210 20% 15%;
@@ -18,7 +18,7 @@
   --accent: 210 20% 96%;
   --accent-foreground: 210 20% 15%;
   --input: 210 20% 90%;
-  --ring: 210 100% 50%;
+  --ring: 221 83% 53%;
   --radius: 0.5rem;
 }
 

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { Property } from "@/lib/properties";
 import { AddPropertyLocationStep } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
 import { AddPropertyMediaStep } from "./AddProperty4";
@@ -30,9 +31,10 @@ const STEPS = [
 type AddPropertyModalProps = {
   open: boolean;
   onClose: () => void;
+  onPropertyAdded?: (property: Omit<Property, "id">) => void;
 };
 
-export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
+export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddPropertyModalProps) {
   const [step, setStep] = React.useState(1);
   const [title, setTitle] = React.useState("Modern 3-Bedroom Family Home in Suburban Area");
   const [description, setDescription] = React.useState("");
@@ -40,6 +42,7 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
   const [propertyType, setPropertyType] = React.useState("House");
   const [status, setStatus] = React.useState("For Sale");
   const [price, setPrice] = React.useState("₵350,000");
+  const [rentalPeriod, setRentalPeriod] = React.useState("1 year");
   const [listingDate, setListingDate] = React.useState("2025-07-22");
   const [contactName, setContactName] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -47,6 +50,11 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
   const [agent, setAgent] = React.useState("");
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [location, setLocation] = React.useState("");
+  const [beds, setBeds] = React.useState<number | undefined>();
+  const [baths, setBaths] = React.useState<number | undefined>();
+  const [sqft, setSqft] = React.useState<string | undefined>();
+  const [imageUrl, setImageUrl] = React.useState<string>("/images/property-1.webp");
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
@@ -67,26 +75,38 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
   const handleSave = () => {
     setIsSaving(true);
 
-    const payload = {
-      title,
+    const newProperty: Omit<Property, "id"> = {
+      name: title,
+      location: location || "Address to be added",
+      price: price.replace(/\/month$/, "").trim() || price,
+      period: status === "For Rent" ? "/month" : "/month",
+      rentalPeriod: status === "For Rent" ? rentalPeriod : undefined,
+      image: imageUrl,
       description,
-      propertyType,
-      status,
-      price,
-      listingDate,
-      contactName,
-      phone,
-      email,
-      agent,
+      beds,
+      baths,
+      sqft,
+      type: status === "For Rent" ? "Rent" : "Sale",
+      status: "Available",
+      views: 0,
+      lastUpdated: new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+      }),
     };
 
-    // Simulate async save
     setTimeout(() => {
-      console.log("Saved property:", payload);
+      onPropertyAdded?.(newProperty);
       setIsSaving(false);
       setShowSaveDialog(false);
       onClose();
       setStep(1);
+      setLocation("");
+      setBeds(undefined);
+      setBaths(undefined);
+      setSqft(undefined);
+      setImageUrl("/images/property-1.webp");
     }, 700);
   };
 
@@ -208,35 +228,90 @@ export function AddPropertyModal({ open, onClose }: AddPropertyModalProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price" className="text-[#1e293b]">
-                    Price
+                    {status === "For Rent" ? "Rent Price" : "Price"}
                   </Label>
                   <Input
                     id="price"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="₵350,000"
+                    placeholder={status === "For Rent" ? "₵2,500/month" : "₵350,000"}
                     className="border-[#e2e8f0] bg-white text-[#1e293b]"
                   />
                 </div>
+                {status === "For Rent" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="rental-period" className="text-[#1e293b]">
+                      Rental Period
+                    </Label>
+                    <Select value={rentalPeriod} onValueChange={setRentalPeriod}>
+                      <SelectTrigger id="rental-period" className="border-[#e2e8f0] bg-white text-[#1e293b]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3 months">3 months</SelectItem>
+                        <SelectItem value="6 months">6 months</SelectItem>
+                        <SelectItem value="1 year">1 year</SelectItem>
+                        <SelectItem value="2 years">2 years</SelectItem>
+                        <SelectItem value="3 years">3 years</SelectItem>
+                        <SelectItem value="5 years">5 years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-[#64748b]">The house is available for this duration</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="listing-date" className="text-[#1e293b]">
+                      Listing Date
+                    </Label>
+                    <Input
+                      id="listing-date"
+                      type="date"
+                      value={listingDate}
+                      onChange={(e) => setListingDate(e.target.value)}
+                      className="border-[#e2e8f0] bg-white text-[#1e293b]"
+                    />
+                  </div>
+                )}
+              </div>
+              {status === "For Rent" && (
                 <div className="space-y-2">
-                  <Label htmlFor="listing-date" className="text-[#1e293b]">
+                  <Label htmlFor="listing-date-rent" className="text-[#1e293b]">
                     Listing Date
                   </Label>
                   <Input
-                    id="listing-date"
+                    id="listing-date-rent"
                     type="date"
                     value={listingDate}
                     onChange={(e) => setListingDate(e.target.value)}
-                    className="border-[#e2e8f0] bg-white text-[#1e293b]"
+                    className="w-full max-w-[200px] border-[#e2e8f0] bg-white text-[#1e293b]"
                   />
                 </div>
-              </div>
+              )}
             </div>
           )}
           {/* Step 2: Location Details */}
-          {step === 2 && <AddPropertyLocationStep />}
-          {step === 3 && <AddPropertyDetailsStep />}
-          {step === 4 && <AddPropertyMediaStep />}
+          {step === 2 && (
+            <AddPropertyLocationStep
+              location={location}
+              onLocationChange={setLocation}
+            />
+          )}
+          {step === 3 && (
+            <AddPropertyDetailsStep
+              beds={beds}
+              baths={baths}
+              sqft={sqft}
+              onBedsChange={setBeds}
+              onBathsChange={setBaths}
+              onSqftChange={setSqft}
+            />
+          )}
+          {step === 4 && (
+            <AddPropertyMediaStep
+              imageUrl={imageUrl}
+              onImageChange={setImageUrl}
+            />
+          )}
           {step === 5 && (
             <AddPropertyContactStep
               contactName={contactName}

@@ -204,7 +204,7 @@ export function RecentPayments() {
                   </div>
                 </td>
                 <td className="py-3 pr-4">
-                  <span className="rounded-md bg-[#dbeafe] px-2 py-0.5 text-xs font-medium text-[#1d4ed8]">
+                  <span className="rounded-md bg-[var(--logo-muted)] px-2 py-0.5 text-xs font-medium text-[var(--logo)]">
                     {p.type}
                   </span>
                 </td>

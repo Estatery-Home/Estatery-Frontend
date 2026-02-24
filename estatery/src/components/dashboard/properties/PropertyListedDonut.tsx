@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
-function getDonutData(seed: number) {
+function getDonutData(properties: { status?: string }[], seed: number) {
   const rnd = (base: number, variance: number) =>
     Math.max(0, Math.floor(base + Math.sin(seed * 0.5) * variance));
   const baseAvailable = properties.filter((p) => p.status === "Available").length || 47;
@@ -19,10 +19,11 @@ function getDonutData(seed: number) {
 
 export function PropertyListedDonut() {
   const [refreshKey, setRefreshKey] = React.useState(0);
+  const { properties } = useProperties();
 
   const { available, rent, sold } = React.useMemo(
-    () => getDonutData(refreshKey),
-    [refreshKey]
+    () => getDonutData(properties, refreshKey),
+    [properties, refreshKey]
   );
   const total = available + rent + sold;
   const pct = Math.round((sold / total) * 100);
@@ -58,7 +59,7 @@ export function PropertyListedDonut() {
               cy="50"
               r={r}
               fill="none"
-              stroke="#1d4ed8"
+              stroke="var(--logo)"
               strokeWidth="16"
               strokeDasharray={`${availLen} ${circumference}`}
               strokeDashoffset="0"
@@ -97,7 +98,7 @@ export function PropertyListedDonut() {
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full bg-[#1d4ed8]" />
+            <span className="size-3 shrink-0 rounded-full bg-[var(--logo)]" />
             <span className="text-sm font-medium text-[#0f172a]">Available Properties</span>
           </div>
           <span className="text-sm text-[#64748b]">{available}</span>

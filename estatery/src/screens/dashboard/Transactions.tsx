@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Calendar,
   RefreshCw,
+  ChevronDown,
   Download,
   Upload,
   CheckCircle2,
@@ -11,7 +12,6 @@ import {
   XCircle,
   Search,
   Filter,
-  ArrowUpDown,
   MoreVertical,
   TrendingUp,
 } from "lucide-react";
@@ -252,7 +252,7 @@ function RevenueChart({
           <div className="flex flex-col gap-0.5">
             <p className="text-xl font-bold text-[#1e293b]">{totalRevenue}</p>
             <p className="flex items-center gap-1 text-xs text-[#64748b]">
-              <span className="flex items-center gap-1 font-medium text-[#1976d2]">
+              <span className="flex items-center gap-1 font-medium text-[var(--logo)]">
                 <TrendingUp className="size-3" />
                 ↑ {changePercent.replace(",", ".")}%
               </span>
@@ -261,7 +261,7 @@ function RevenueChart({
           </div>
           <div className="flex gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[#1976d2]" />
+              <span className="size-2.5 rounded-sm bg-[var(--logo)]" />
               <span className="text-xs text-[#64748b]">This period</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -283,8 +283,8 @@ function RevenueChart({
         >
           <defs>
             <linearGradient id="thisGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1976d2" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="#1976d2" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="var(--logo)" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="var(--logo)" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="lastGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#84cc16" stopOpacity={0.3} />
@@ -354,7 +354,7 @@ function RevenueChart({
           <path
             d={thisPath}
             fill="none"
-            stroke="#1976d2"
+            stroke="var(--logo)"
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -383,7 +383,7 @@ function RevenueChart({
                 cx={toX(hoverIndex)}
                 cy={toY(thisPeriod[hoverIndex] ?? 0)}
                 r={4}
-                fill="#1976d2"
+                fill="var(--logo)"
                 stroke="white"
                 strokeWidth={1.5}
               />
@@ -425,7 +425,7 @@ function RevenueChart({
                   {period === "yearly" && " 2025"}
                   {period === "weekly" && ", 2025"}
                 </span>
-                <span className="font-semibold text-[#1976d2]">
+                <span className="font-semibold text-[var(--logo)]">
                   {formatVal(thisPeriod[hoverIndex] ?? 0)}
                 </span>
               </div>
@@ -454,11 +454,17 @@ export default function Transactions() {
   const [period, setPeriod] = React.useState("monthly");
   const [payments, setPayments] = React.useState<Payment[]>(PAYMENTS);
   const [search, setSearch] = React.useState("");
-  const [sortAsc, setSortAsc] = React.useState(true);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [rowMenuOpen, setRowMenuOpen] = React.useState<string | null>(null);
+  const [statusChangeModal, setStatusChangeModal] = React.useState<{
+    paymentId: string;
+    newStatus: PaymentStatus;
+  } | null>(null);
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState<PaymentStatus | "all">("all");
+  const filterContainerRef = React.useRef<HTMLDivElement>(null);
+  const rowMenuRef = React.useRef<HTMLTableCellElement | null>(null);
+  const [typeFilter, setTypeFilter] = React.useState<PaymentType | "all">("all");
   const [page, setPage] = React.useState(1);
 
   const handleRefresh = () => {
@@ -527,6 +533,8 @@ export default function Transactions() {
     e.target.value = "";
   };
 
+  const parseDate = (d: string) => new Date(d).getTime() || 0;
+
   const filteredPayments = React.useMemo(() => {
     let list = payments;
     const s = search.toLowerCase();
@@ -542,20 +550,18 @@ export default function Transactions() {
     if (statusFilter !== "all") {
       list = list.filter((p) => p.status === statusFilter);
     }
-    if (sortAsc) {
-      list = [...list].sort((a, b) => a.date.localeCompare(b.date));
-    } else {
-      list = [...list].sort((a, b) => b.date.localeCompare(a.date));
+    if (typeFilter !== "all") {
+      list = list.filter((p) => p.type === typeFilter);
     }
-    return list;
-  }, [payments, search, statusFilter, sortAsc]);
+    return [...list].sort((a, b) => parseDate(b.date) - parseDate(a.date));
+  }, [payments, search, statusFilter, typeFilter]);
 
   const PAGE_SIZE = 10;
   const pageCount = Math.max(1, Math.ceil(filteredPayments.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const startIdx = (safePage - 1) * PAGE_SIZE;
   const pagePayments = filteredPayments.slice(startIdx, startIdx + PAGE_SIZE);
-  React.useEffect(() => setPage(1), [search, statusFilter, sortAsc]);
+  React.useEffect(() => setPage(1), [search, statusFilter, typeFilter]);
 
   const allSelected = filteredPayments.length > 0 && filteredPayments.every((p) => selectedIds.has(p.id));
   const someSelected = filteredPayments.some((p) => selectedIds.has(p.id));
@@ -578,13 +584,27 @@ export default function Transactions() {
   };
 
   React.useEffect(() => {
-    const handler = () => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (filterContainerRef.current?.contains(target)) return;
+      if (rowMenuRef.current?.contains(target)) return;
       setRowMenuOpen(null);
       setFilterOpen(false);
     };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const handleConfirmStatusChange = (paymentId: string, newStatus: PaymentStatus) => {
+    setPayments((prev) =>
+      prev.map((p) => (p.id === paymentId ? { ...p, status: newStatus } : p))
+    );
+    if (statusFilter !== "all" && statusFilter !== newStatus) {
+      setStatusFilter("all");
+    }
+    setStatusChangeModal(null);
+    setRowMenuOpen(null);
+  };
 
   const statusClass: Record<PaymentStatus, string> = {
     Success: "bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0]",
@@ -658,8 +678,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.05s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <CheckCircle2 className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <CheckCircle2 className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">Completed Transactions</p>
@@ -671,8 +691,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.1s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <Clock className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <Clock className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">On Progress Transactions</p>
@@ -684,8 +704,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.15s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <XCircle className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <XCircle className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">Cancelled Transactions</p>
@@ -711,23 +731,31 @@ export default function Transactions() {
                   aria-label="Search payments"
                 />
               </div>
-              <div className="relative">
+              <div className="relative" ref={filterContainerRef}>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFilterOpen((v) => !v);
-                  }}
-                  className="flex items-center gap-1.5 rounded-md border border-[#f1f5f9] bg-white px-2.5 py-1.5 text-xs text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                  onClick={() => setFilterOpen((v) => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                    statusFilter !== "all"
+                      ? "border-[var(--logo)] bg-[var(--logo-muted)] font-medium text-[var(--logo)] hover:bg-[var(--logo-muted)]"
+                      : "border-[#f1f5f9] bg-white text-[#64748b] hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                  )}
                 >
                   <Filter className="size-3.5" />
                   Filter
+                  {statusFilter !== "all" && (
+                    <span className="size-1.5 rounded-full bg-[var(--logo)]" />
+                  )}
                 </button>
                 {filterOpen && (
                   <div
-                    className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Status
+                    </p>
                     {(["all", "Success", "Pending", "Failed"] as const).map((opt) => (
                       <button
                         key={opt}
@@ -749,14 +777,18 @@ export default function Transactions() {
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setSortAsc((a) => !a)}
-                className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
-              >
-                <ArrowUpDown className="size-3.5" />
-                Sort by
-              </button>
+              <div className="relative flex items-center">
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as PaymentType | "all")}
+                  className="cursor-pointer appearance-none rounded-lg border border-[#e2e8f0] bg-white py-1.5 pl-2.5 pr-8 text-xs text-[#1e293b] transition-colors hover:border-[#cbd5e1] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+                >
+                  <option value="all">All</option>
+                  <option value="Rent">Rent</option>
+                  <option value="Sale">Sale</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-[#64748b]" />
+              </div>
             </div>
           </div>
 
@@ -811,7 +843,7 @@ export default function Transactions() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="rounded-full bg-[#dbeafe] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]">
+                      <span className="rounded-full bg-[var(--logo-muted)] px-2.5 py-0.5 text-xs font-medium text-[var(--logo)]">
                         {p.type}
                       </span>
                     </td>
@@ -826,7 +858,10 @@ export default function Transactions() {
                         {p.status}
                       </span>
                     </td>
-                    <td className="relative px-3 py-2">
+                    <td
+                      className="relative px-3 py-2"
+                      ref={rowMenuOpen === p.id ? rowMenuRef : undefined}
+                    >
                       <button
                         type="button"
                         onClick={(e) => {
@@ -840,39 +875,31 @@ export default function Transactions() {
                       </button>
                       {rowMenuOpen === p.id && (
                         <div
-                          className="absolute right-4 top-full z-20 mt-1 min-w-[140px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                          className="absolute right-0 top-full z-[100] mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-xl"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              alert(`View payment ${p.id}`);
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                          >
-                            View details
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              alert(`Edit payment ${p.id}`);
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayments((prev) => prev.filter((x) => x.id !== p.id));
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#ef4444] hover:bg-[#fef2f2]"
-                          >
-                            Delete
-                          </button>
+                          <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                            Change status
+                          </p>
+                          {(["Success", "Pending", "Failed"] as const).map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              onClick={() => {
+                                setStatusChangeModal({ paymentId: p.id, newStatus: status });
+                                setRowMenuOpen(null);
+                              }}
+                              disabled={p.status === status}
+                              className={cn(
+                                "flex w-full px-4 py-2 text-left text-sm",
+                                p.status === status
+                                  ? "cursor-not-allowed text-[#94a3b8]"
+                                  : "text-[#1e293b] hover:bg-[#f8fafc]"
+                              )}
+                            >
+                              Change to {status}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </td>
@@ -893,6 +920,47 @@ export default function Transactions() {
           )}
         </div>
       </div>
+
+      {/* Status change confirmation modal */}
+      {statusChangeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setStatusChangeModal(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-lg font-semibold text-[#1e293b]">Change status?</h3>
+            <p className="mb-6 text-sm text-[#64748b]">
+              Are you sure you want to change this payment&apos;s status to{" "}
+              <span className="font-medium text-[#1e293b]">{statusChangeModal.newStatus}</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStatusChangeModal(null);
+                }}
+                className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-medium text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmStatusChange(statusChangeModal.paymentId, statusChangeModal.newStatus);
+                }}
+                className="rounded-lg bg-[var(--logo)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--logo-hover)]"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

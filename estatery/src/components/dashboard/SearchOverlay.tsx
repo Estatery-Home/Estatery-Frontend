@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { searchAll, type SearchResult } from "@/lib/searchData";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 type SearchOverlayProps = {
   open: boolean;
@@ -16,6 +16,7 @@ type SearchOverlayProps = {
 
 export function SearchOverlay({ open, onClose, initialQuery = "" }: SearchOverlayProps) {
   const navigate = useNavigate();
+  const { properties } = useProperties();
   const [query, setQuery] = React.useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -23,7 +24,7 @@ export function SearchOverlay({ open, onClose, initialQuery = "" }: SearchOverla
 
   const propertyList = React.useMemo(
     () => properties.map((p) => ({ id: p.id, name: p.name, location: p.location })),
-    []
+    [properties]
   );
   const results = React.useMemo(() => searchAll(query, propertyList), [query, propertyList]);
 

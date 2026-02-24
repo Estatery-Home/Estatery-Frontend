@@ -6,16 +6,18 @@ import { ArrowLeft, MapPin, Bed, Bath, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { getPropertyById, getOtherProperties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
 
+  const { getPropertyById, getOtherProperties } = useProperties();
   const property = id ? getPropertyById(id) : undefined;
   const moreProperties = property ? getOtherProperties(property.id) : [];
 
@@ -30,7 +32,7 @@ export default function PropertyDetail() {
       <div className="min-h-screen bg-[#f1f5f9]">
         <Sidebar
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggle={onToggle}
           onLogoutClick={() => setLogoutDialogOpen(true)}
         />
         <div
@@ -66,7 +68,7 @@ export default function PropertyDetail() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -103,8 +105,13 @@ export default function PropertyDetail() {
                 </p>
                 <p className="mt-4 text-2xl font-bold text-[var(--logo)]">
                   {property.price}
-                  <span className="text-base font-normal text-[#64748b]"> per month</span>
+                  <span className="text-base font-normal text-[#64748b]">{property.period}</span>
                 </p>
+                {property.rentalPeriod && (
+                  <p className="mt-1 text-sm text-[#64748b]">
+                    Rental period: <span className="font-medium text-[#1e293b]">{property.rentalPeriod}</span>
+                  </p>
+                )}
                 {(property.beds != null || property.baths != null || property.sqft) && (
                   <div className="mt-4 flex flex-wrap gap-6 text-sm text-[#64748b]">
                     {property.beds != null && (

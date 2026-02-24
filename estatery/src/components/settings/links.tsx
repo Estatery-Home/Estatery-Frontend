@@ -2,8 +2,11 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useSettings } from "@/contexts/SettingsContext";
 
 export function Links() {
+  const { links, setLinks } = useSettings();
+
   return (
     <div className="space-y-0">
       {/* Links Settings */}
@@ -17,60 +20,53 @@ export function Links() {
         <div className="min-w-0 flex-1 grid grid-cols-1 gap-4 ">
           <div className="space-y-2">
             <Label htmlFor="instagram" className="text-[#1e293b]">
-              Instagram 
+              Instagram
             </Label>
             <Input
-              id="instagram" 
-              defaultValue="https://www.instagram.com/luxeyline"
+              id="instagram"
+              value={links.instagram}
+              onChange={(e) => setLinks((p) => ({ ...p, instagram: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
-      
+
           <div className="space-y-2">
             <Label htmlFor="facebook" className="text-[#1e293b]">
-              Facebook 
+              Facebook
             </Label>
             <Input
-              id="facebook" 
-              defaultValue="https://www.facebook.com/luxeyline"
+              id="facebook"
+              value={links.facebook}
+              onChange={(e) => setLinks((p) => ({ ...p, facebook: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="twitter" className="text-[#1e293b]">
-              Twitter 
+              Twitter
             </Label>
             <Input
-              id="twitter" 
-              defaultValue="https://www.twitter.com/luxeyline"
+              id="twitter"
+              value={links.twitter}
+              onChange={(e) => setLinks((p) => ({ ...p, twitter: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="youtube" className="text-[#1e293b]">
-              YouTube 
+              YouTube
             </Label>
             <Input
-              id="youtube" 
-              defaultValue="https://www.youtube.com/luxeyline"
+              id="youtube"
+              value={links.youtube}
+              onChange={(e) => setLinks((p) => ({ ...p, youtube: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
-
-
-         
-         
-
-          
-         
         </div>
       </section>
-
-       
-
-    
     </div>
   );
 }

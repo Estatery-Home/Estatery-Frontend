@@ -4,17 +4,37 @@ import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+type AddPropertyLocationStepProps = {
+  location?: string;
+  onLocationChange?: (location: string) => void;
+};
 
-export function AddPropertyLocationStep() {
-  const [fullAddress, setFullAddress] = React.useState("");
+export function AddPropertyLocationStep({
+  location = "",
+  onLocationChange,
+}: AddPropertyLocationStepProps) {
+  const [fullAddress, setFullAddress] = React.useState(
+    location.split(" | ")[0] || ""
+  );
   const [addressLength, setAddressLength] = React.useState(0);
-  const [cityRegionZip, setCityRegionZip] = React.useState("");
+  const [cityRegionZip, setCityRegionZip] = React.useState(
+    location.split(" | ")[1] || ""
+  );
   const [mapLocation, setMapLocation] = React.useState("");
 
   const handleFullAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setFullAddress(v);
     setAddressLength(Math.min(v.length, 200));
+    const combined = cityRegionZip ? `${v} | ${cityRegionZip}` : v;
+    onLocationChange?.(combined);
+  };
+
+  const handleCityRegionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setCityRegionZip(v);
+    const combined = fullAddress ? `${fullAddress} | ${v}` : v;
+    onLocationChange?.(combined);
   };
 
   return (
@@ -44,7 +64,7 @@ export function AddPropertyLocationStep() {
         <Input
           id="city-region-zip"
           value={cityRegionZip}
-          onChange={(e) => setCityRegionZip(e.target.value)}
+          onChange={handleCityRegionChange}
           placeholder="Placeholder"
           className="border-[#e2e8f0] bg-white text-[#1e293b]"
         />

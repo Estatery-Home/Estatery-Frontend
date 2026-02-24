@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -139,7 +140,7 @@ function nextAgentId(agents: Agent[]): string {
 export default function Agents() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState<AgentStatus | "All">("All");
   const [search, setSearch] = React.useState("");
@@ -247,7 +248,7 @@ export default function Agents() {
     <div className="min-h-screen bg-[#f8fafc]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -277,8 +278,8 @@ export default function Agents() {
               </div>
             </div>
 
-            {/* Stats cards */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* Stats cards + Performance tips + Approve queue */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {statCards.map((card) => (
                 <div
                   key={card.title}
@@ -303,6 +304,34 @@ export default function Agents() {
                   </div>
                 </div>
               ))}
+              <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <div className="relative flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
+                    <Sparkles className="size-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Performance tips</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                      Agents with quick response times close up to 3x more deals.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <div className="relative flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                    <Clock className="size-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Approval queue</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                      New sign-ups appear here for review. Use Approve to activate.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Search, Filters, Actions */}
@@ -364,8 +393,8 @@ export default function Agents() {
               </Button>
             </div>
 
-            {/* Agent cards grid + Tips panel */}
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            {/* Agent cards grid */}
+            <div>
               <section>
                 <h2 className="mb-4 text-lg font-semibold text-slate-800">Agent Directory</h2>
 
@@ -623,36 +652,6 @@ export default function Agents() {
                 </>
                 )}
               </section>
-
-              {/* Tips sidebar */}
-              <aside className="space-y-4 lg:max-w-[320px]">
-                <div className="sticky top-6 space-y-4">
-                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-100">
-                        <Sparkles className="size-4 text-indigo-600" />
-                      </div>
-                      <h3 className="font-semibold text-slate-800">Performance tips</h3>
-                    </div>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      Agents with quick response times and consistent follow-ups close up to 3x more
-                      deals. Assign hot leads to your highest rated agents to increase conversion.
-                    </p>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100">
-                        <Clock className="size-4 text-amber-600" />
-                      </div>
-                      <h3 className="font-semibold text-slate-800">Approval queue</h3>
-                    </div>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      New agent sign-ups from the Notifications page will appear here for review.
-                      Use the Approve button to activate their account.
-                    </p>
-                  </div>
-                </div>
-              </aside>
             </div>
           </div>
         </main>

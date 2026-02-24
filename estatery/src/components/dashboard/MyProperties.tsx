@@ -4,10 +4,11 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 export function MyProperties() {
   const [refreshing, setRefreshing] = React.useState(false);
+  const { properties } = useProperties();
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -50,9 +51,11 @@ export function MyProperties() {
               </p>
               <p className="truncate text-sm text-[#64748b]">{prop.location}</p>
               <p className="mt-0.5 text-sm font-medium text-[#1e293b]">
-                {prop.price}
-                <span className="text-xs font-normal text-[#64748b]"> per month</span>
+                {prop.price}{prop.period}
               </p>
+              {prop.rentalPeriod && (
+                <p className="text-xs text-[#64748b]">{prop.rentalPeriod}</p>
+              )}
             </div>
           </Link>
         ))}

@@ -171,7 +171,7 @@ export function LoginForm() {
             </label>
             <Link
               to="/auth/forgot-password"
-              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[#2563eb] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--logo)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
             >
               Forgot Password?
             </Link>
@@ -182,7 +182,7 @@ export function LoginForm() {
             className={cn(
               "w-full rounded-lg text-white",
               emailError
-                ? "bg-[#1d4ed8] hover:bg-[#1e40af]"
+                ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 : hasTyped
                   ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                   : "bg-[#97ADDE] hover:bg-[#7d9ad4]"

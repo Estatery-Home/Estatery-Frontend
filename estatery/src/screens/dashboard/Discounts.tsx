@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Tag, Percent, Clock, CheckCircle2 } from "lucide-react";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ const initialDiscounts: Discount[] = [
 export default function Discounts() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [discounts, setDiscounts] = React.useState<Discount[]>(initialDiscounts);
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -126,7 +127,7 @@ export default function Discounts() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -158,7 +159,7 @@ export default function Discounts() {
             <div className="grid gap-4 md:grid-cols-3">
               <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--logo-muted)] text-[var(--logo)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Percent className="size-4" />
                 </div>
                 <div className="relative min-w-0">

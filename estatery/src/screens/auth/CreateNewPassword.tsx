@@ -120,7 +120,7 @@ export default function CreateNewPassword() {
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-[#64748b]">
-            <Link to="/auth/login" className="font-medium text-[#2563eb] underline hover:no-underline">
+            <Link to="/auth/login" className="font-medium text-[var(--logo)] underline hover:no-underline">
               Back to Login
             </Link>
           </p>

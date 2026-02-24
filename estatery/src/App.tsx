@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom"
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { PropertiesProvider } from "@/contexts/PropertiesContext";
 import { PublicRoute, ProtectedRoute } from "@/components";
 
 // Lazy-load all screens – only the current route loads, cutting initial JS and TBT
@@ -51,6 +52,7 @@ export default function App() {
     <AuthProvider>
       <UserProfileProvider>
         <SettingsProvider>
+        <PropertiesProvider>
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>
             <Routes>
@@ -264,6 +266,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </PropertiesProvider>
         </SettingsProvider>
       </UserProfileProvider>
     </AuthProvider>

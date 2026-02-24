@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Check, MoreVertical, Download, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
@@ -19,8 +20,8 @@ const INVOICES = [
 ];
 
 export function PaymentBilling() {
-  const [email, setEmail] = useState("robertjohnson@gmail.com");
-  const [page, setPage] = useState(1);
+  const { payment, setPayment } = useSettings();
+  const [page, setPage] = React.useState(1);
   const PAGE_SIZE = 10;
   const pageCount = Math.max(1, Math.ceil(INVOICES.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -188,8 +189,8 @@ export function PaymentBilling() {
               <Input
                 id="billing-email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={payment.billingEmail}
+                onChange={(e) => setPayment((p) => ({ ...p, billingEmail: e.target.value }))}
                 className="mt-1.5 border-[#e2e8f0] bg-white text-[#1e293b]"
               />
             </div>

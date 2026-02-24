@@ -6,6 +6,7 @@ import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import {
   Sidebar,
   TopBar,
@@ -15,14 +16,15 @@ import {
   MyProperties,
   RecentPayments,
 } from "@/components/dashboard";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 export default function Dashboard() {
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
   const [refreshing, setRefreshing] = React.useState(false);
   const { logout } = useAuth();
+  const { properties } = useProperties();
   const navigate = useNavigate();
 
   const handleRefresh = () => {
@@ -84,7 +86,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
