@@ -1,81 +1,122 @@
 "use client";
 
+import * as React from "react";
 import { RefreshCw } from "lucide-react";
+import { properties } from "@/lib/properties";
+
+function getDonutData(seed: number) {
+  const rnd = (base: number, variance: number) =>
+    Math.max(0, Math.floor(base + Math.sin(seed * 0.5) * variance));
+  const baseAvailable = properties.filter((p) => p.status === "Available").length || 47;
+  const baseRent = properties.filter((p) => p.status === "Rented").length || 23;
+  const baseSold = properties.filter((p) => p.status === "Sold").length || 12;
+  return {
+    available: Math.max(1, rnd(baseAvailable, 8)),
+    rent: Math.max(1, rnd(baseRent, 5)),
+    sold: Math.max(1, rnd(baseSold, 4)),
+  };
+}
 
 export function PropertyListedDonut() {
-  const available = 47;
-  const rent = 23;
-  const sold = 12;
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
+  const { available, rent, sold } = React.useMemo(
+    () => getDonutData(refreshKey),
+    [refreshKey]
+  );
   const total = available + rent + sold;
   const pct = Math.round((sold / total) * 100);
 
+  const r = 40;
+  const circumference = 2 * Math.PI * r;
+
+  const availLen = (available / total) * circumference;
+  const rentLen = (rent / total) * circumference;
+  const soldLen = (sold / total) * circumference;
+
   return (
     <div className="flex flex-col rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1e293b]">Property Listed</h3>
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between border-b border-[#e2e8f0] pb-4">
+        <h3 className="text-lg font-bold text-[#0f172a]">Property Listed</h3>
         <button
           type="button"
-          className="flex size-9 items-center justify-center rounded-lg border border-[#e2e8f0] text-[#64748b] hover:bg-[#f1f5f9]"
+          onClick={() => setRefreshKey((k) => k + 1)}
+          className="flex size-9 items-center justify-center rounded-lg border border-[#e2e8f0] bg-[#f1f5f9] text-[#64748b] transition-colors hover:bg-[#e2e8f0] hover:text-[#475569]"
           aria-label="Refresh"
         >
           <RefreshCw className="size-4" />
         </button>
       </div>
-      <div className="flex flex-col items-center sm:flex-row sm:gap-6">
+
+      {/* Full circular donut chart */}
+      <div className="flex flex-col items-center py-2">
         <div className="relative size-40 shrink-0">
           <svg viewBox="0 0 100 100" className="size-full -rotate-90">
             <circle
               cx="50"
               cy="50"
-              r="40"
+              r={r}
               fill="none"
-              stroke="var(--logo)"
+              stroke="#1d4ed8"
               strokeWidth="16"
-              strokeDasharray={`${(available / total) * 251} 251`}
+              strokeDasharray={`${availLen} ${circumference}`}
               strokeDashoffset="0"
             />
             <circle
               cx="50"
               cy="50"
-              r="40"
+              r={r}
               fill="none"
               stroke="#22c55e"
               strokeWidth="16"
-              strokeDasharray={`${(rent / total) * 251} 251`}
-              strokeDashoffset={`-${(available / total) * 251}`}
+              strokeDasharray={`${rentLen} ${circumference}`}
+              strokeDashoffset={-availLen}
             />
             <circle
               cx="50"
               cy="50"
-              r="40"
+              r={r}
               fill="none"
               stroke="#f97316"
               strokeWidth="16"
-              strokeDasharray={`${(sold / total) * 251} 251`}
-              strokeDashoffset={`-${((available + rent) / total) * 251}`}
+              strokeDasharray={`${soldLen} ${circumference}`}
+              strokeDashoffset={-(availLen + rentLen)}
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-[#1e293b]">{pct}%</span>
-            <span className="text-xs text-[#64748b]">sold</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-2">
+            <span className="text-2xl font-bold leading-none text-[#0f172a]">{pct}%</span>
           </div>
         </div>
-        <div className="mt-4 flex flex-col gap-2 sm:mt-0">
+        <p className="mt-1 text-center text-xs text-[#94a3b8]">
+          of your property has sold
+        </p>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-[var(--logo)]" />
-            <span className="text-sm text-[#64748b]">Available Properties ({available})</span>
+            <span className="size-3 shrink-0 rounded-full bg-[#1d4ed8]" />
+            <span className="text-sm font-medium text-[#0f172a]">Available Properties</span>
           </div>
+          <span className="text-sm text-[#64748b]">{available}</span>
+        </div>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-[#22c55e]" />
-            <span className="text-sm text-[#64748b]">Rent Properties ({rent})</span>
+            <span className="size-3 shrink-0 rounded-full bg-[#22c55e]" />
+            <span className="text-sm font-medium text-[#0f172a]">Rent Properties</span>
           </div>
+          <span className="text-sm text-[#64748b]">{rent}</span>
+        </div>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-[#f97316]" />
-            <span className="text-sm text-[#64748b]">Sold Properties ({sold})</span>
+            <span className="size-3 shrink-0 rounded-full bg-[#f97316]" />
+            <span className="text-sm font-medium text-[#0f172a]">Sold Properties</span>
           </div>
+          <span className="text-sm text-[#64748b]">{sold}</span>
         </div>
       </div>
-      <p className="mt-4 text-center text-sm text-[#64748b]">{pct}% of your property has sold</p>
     </div>
   );
 }

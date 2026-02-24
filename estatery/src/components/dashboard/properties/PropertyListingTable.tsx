@@ -4,35 +4,88 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Property } from "@/lib/properties";
+import type { Property, PropertyType, PropertyStatus } from "@/lib/properties";
 import { Pagination } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type PropertyListingTableProps = {
   properties: Property[];
 };
 
+function parseLastUpdated(s: string | undefined): number {
+  if (!s) return 0;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function parsePrice(price: string): number {
+  const num = price.replace(/[^0-9.]/g, "");
+  return parseFloat(num) || 0;
+}
+
 export function PropertyListingTable({ properties }: PropertyListingTableProps) {
   const [search, setSearch] = React.useState("");
   const [sortBy, setSortBy] = React.useState("Last Updated");
+  const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [page, setPage] = React.useState(1);
+  const [filterOpen, setFilterOpen] = React.useState(false);
+  const [filterType, setFilterType] = React.useState<"all" | PropertyType>("all");
+  const [filterStatus, setFilterStatus] = React.useState<"all" | PropertyStatus>("all");
 
   const filtered = React.useMemo(() => {
-    if (!search.trim()) return properties;
-    const q = search.toLowerCase();
-    return properties.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q) ||
-        p.id.includes(q)
-    );
-  }, [properties, search]);
+    let result = properties;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.location.toLowerCase().includes(q) ||
+          p.id.includes(q)
+      );
+    }
+    if (filterType !== "all") {
+      result = result.filter((p) => p.type === filterType);
+    }
+    if (filterStatus !== "all") {
+      result = result.filter((p) => p.status === filterStatus);
+    }
+    return result;
+  }, [properties, search, filterType, filterStatus]);
 
-  const PAGE_SIZE = 10;
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const sorted = React.useMemo(() => {
+    const arr = filtered.slice();
+    const mult = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      if (sortBy === "Last Updated") {
+        return mult * (parseLastUpdated(a.lastUpdated) - parseLastUpdated(b.lastUpdated));
+      }
+      if (sortBy === "Price") {
+        return mult * (parsePrice(a.price) - parsePrice(b.price));
+      }
+      if (sortBy === "Views") {
+        return mult * ((a.views ?? 0) - (b.views ?? 0));
+      }
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortBy, sortDir]);
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value;
+    if (v === sortBy) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(v);
+      setSortDir(v === "Last Updated" ? "desc" : "asc");
+    }
+  };
+
+  const PAGE_SIZE = 8;
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const startIdx = (safePage - 1) * PAGE_SIZE;
-  const pageProps = filtered.slice(startIdx, startIdx + PAGE_SIZE);
-  React.useEffect(() => setPage(1), [search]);
+  const pageProps = sorted.slice(startIdx, startIdx + PAGE_SIZE);
+  React.useEffect(() => setPage(1), [search, filterType, filterStatus]);
 
   return (
     <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
@@ -49,22 +102,82 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
               className="w-40 rounded-lg border border-[#e2e8f0] bg-white py-2 pl-9 pr-3 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20 sm:w-48"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-[#e2e8f0] text-[#1e293b] hover:bg-[#f8fafc]"
-          >
-            <Filter className="mr-1.5 size-4" />
-            Filter
-          </Button>
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterOpen((o) => !o)}
+              className={cn(
+                "border-[#e2e8f0] text-[#1e293b] hover:bg-[#f8fafc]",
+                (filterType !== "all" || filterStatus !== "all") && "border-[var(--logo)] bg-[var(--logo-muted)]"
+              )}
+            >
+              <Filter className="mr-1.5 size-4" />
+              Filter
+              {(filterType !== "all" || filterStatus !== "all") && (
+                <span className="ml-1 size-1.5 rounded-full bg-[var(--logo)]" />
+              )}
+            </Button>
+            {filterOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setFilterOpen(false)}
+                  aria-hidden
+                />
+                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-[#e2e8f0] bg-white p-4 shadow-lg">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                    Type
+                  </p>
+                  <div className="flex gap-2">
+                    {(["all", "Rent", "Sale"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setFilterType(opt)}
+                        className={cn(
+                          "rounded-lg px-3 py-1.5 text-sm",
+                          filterType === opt
+                            ? "bg-[var(--logo)] text-white"
+                            : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                        )}
+                      >
+                        {opt === "all" ? "All" : opt}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mb-3 mt-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                    Status
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["all", "Available", "Rented", "Sold"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setFilterStatus(opt)}
+                        className={cn(
+                          "rounded-lg px-3 py-1.5 text-sm",
+                          filterStatus === opt
+                            ? "bg-[var(--logo)] text-white"
+                            : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                        )}
+                      >
+                        {opt === "all" ? "All" : opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[var(--logo)] focus:outline-none"
+            onChange={handleSortChange}
+            className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
           >
             <option value="Last Updated">Sort by: Last Updated</option>
-            <option value="Price">Price</option>
-            <option value="Views">Views</option>
+            <option value="Price">Sort by: Price</option>
+            <option value="Views">Sort by: Views</option>
           </select>
         </div>
       </div>
@@ -72,21 +185,21 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
         <table className="w-full min-w-[800px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#e2e8f0] bg-[#f8fafc]">
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">
+              <th className="px-3 py-3 font-medium text-[#64748b] sm:px-4">
                 <input
                   type="checkbox"
                   className="rounded border-[#e2e8f0]"
                   aria-label="Select all"
                 />
               </th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Property ID</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Property Info</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Type</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Price</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Status</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Views</th>
-              <th className="px-4 py-3 font-medium text-[#64748b] sm:px-6">Last Updated</th>
-              <th className="px-4 py-3 sm:px-6" aria-label="Actions" />
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Property ID</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Property Info</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Type</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Price</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Status</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Views</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Last Updated</th>
+              <th className="px-3 py-2 sm:px-4" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -95,52 +208,52 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                 key={prop.id}
                 className="border-b border-[#e2e8f0] transition-colors hover:bg-[#f8fafc]"
               >
-                <td className="px-4 py-3 sm:px-6">
+                <td className="px-3 py-2 sm:px-4">
                   <input
                     type="checkbox"
                     className="rounded border-[#e2e8f0]"
                     aria-label={`Select ${prop.name}`}
                   />
                 </td>
-                <td className="px-4 py-3 font-medium text-[#1e293b] sm:px-6">{prop.id}</td>
-                <td className="px-4 py-3 sm:px-6">
+                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.id}</td>
+                <td className="px-3 py-2 sm:px-4">
                   <Link
                     to={`/dashboard/properties/${prop.id}`}
-                    className="flex items-center gap-3 hover:opacity-90"
+                    className="flex items-center gap-2 hover:opacity-90"
                   >
-                    <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-[#f1f5f9]">
+                    <div className="size-9 shrink-0 overflow-hidden rounded-md bg-[#f1f5f9]">
                       <img src={prop.image} alt="" className="size-full object-cover" />
                     </div>
                     <div>
                       <p className="font-medium text-[#1e293b] group-hover:text-[var(--logo)]">
                         {prop.name}
                       </p>
-                      <p className="max-w-[180px] truncate text-xs text-[#64748b]">
+                      <p className="max-w-[180px] truncate text-[10px] text-[#64748b]">
                         {prop.location}
                       </p>
                     </div>
                   </Link>
                 </td>
-                <td className="px-4 py-3 sm:px-6">
-                  <span className="inline-flex rounded-md bg-[var(--logo-muted)] px-2 py-0.5 text-xs font-medium text-[var(--logo)]">
+                <td className="px-3 py-2 sm:px-4">
+                  <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
                     {prop.type ?? "Rent"}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-medium text-[#1e293b] sm:px-6">{prop.price}</td>
-                <td className="px-4 py-3 sm:px-6">
-                  <span className="inline-flex rounded-md bg-[var(--logo-muted)] px-2 py-0.5 text-xs font-medium text-[var(--logo)]">
+                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.price}</td>
+                <td className="px-3 py-2 sm:px-4">
+                  <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
                     {prop.status ?? "Available"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-[#64748b] sm:px-6">{prop.views ?? "—"}</td>
-                <td className="px-4 py-3 text-[#64748b] sm:px-6">{prop.lastUpdated ?? "—"}</td>
-                <td className="px-4 py-3 sm:px-6">
+                <td className="px-3 py-2 text-[#64748b] sm:px-4">{prop.views ?? "—"}</td>
+                <td className="px-3 py-2 text-[#64748b] sm:px-4">{prop.lastUpdated ?? "—"}</td>
+                <td className="px-3 py-2 sm:px-4">
                   <button
                     type="button"
-                    className="flex size-8 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                    className="flex size-7 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
                     aria-label="More options"
                   >
-                    <MoreHorizontal className="size-4" />
+                    <MoreHorizontal className="size-3.5" />
                   </button>
                 </td>
               </tr>
@@ -149,7 +262,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
         </table>
       </div>
       <Pagination
-        totalItems={filtered.length}
+        totalItems={sorted.length}
         pageSize={PAGE_SIZE}
         currentPage={safePage}
         onPageChange={setPage}

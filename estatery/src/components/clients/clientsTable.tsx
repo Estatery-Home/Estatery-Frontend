@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter as FilterIcon, ArrowUpDown } from "lucide-react";
+import { Search, Filter as FilterIcon, ArrowUpDown, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { clientsTableData, type ClientStatus } from "@/lib/clients";
+import { clientsTableData, type ClientRow, type ClientStatus } from "@/lib/clients";
 
 type SortField = "name" | "amount" | "nextPayment";
 
@@ -22,10 +23,14 @@ export function ClientsTable() {
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [page, setPage] = React.useState(1);
+  const [clientsData, setClientsData] = React.useState<ClientRow[]>(() =>
+    clientsTableData.map((c) => ({ ...c }))
+  );
+  const [selectedClient, setSelectedClient] = React.useState<ClientRow | null>(null);
 
   const filteredAndSorted = React.useMemo(() => {
     const term = search.trim().toLowerCase();
-    let rows = clientsTableData.slice();
+    let rows = clientsData.slice();
 
     if (term) {
       rows = rows.filter(
@@ -54,7 +59,7 @@ export function ClientsTable() {
     });
 
     return rows;
-  }, [search, statusFilter, sortField, sortDirection]);
+  }, [search, statusFilter, sortField, sortDirection, clientsData]);
 
   const pageCount = Math.max(1, Math.ceil(filteredAndSorted.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -105,6 +110,28 @@ export function ClientsTable() {
       setSortField(value as SortField);
       setSortDirection("asc");
     }
+  };
+
+  const handleConfirmStatusChange = () => {
+    if (!selectedClient) return;
+    setClientsData((prev) =>
+      prev.map((c) =>
+        c.id === selectedClient.id
+          ? {
+              ...c,
+              status:
+                c.status === "On Going"
+                  ? ("Completed" as ClientStatus)
+                  : c.status === "Completed"
+                    ? ("On Going" as ClientStatus)
+                    : c.status === "Overdue"
+                      ? ("Completed" as ClientStatus)
+                      : c.status,
+            }
+          : c
+      )
+    );
+    setSelectedClient(null);
   };
 
   return (
@@ -252,8 +279,15 @@ export function ClientsTable() {
                       {client.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 align-middle text-right text-lg text-[#94a3b8]">
-                    ···
+                  <td className="px-4 py-3 align-middle text-right">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedClient(client)}
+                      className="inline-flex size-9 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                      aria-label={`More options for ${client.name}`}
+                    >
+                      <MoreVertical className="size-5" />
+                    </button>
                   </td>
                 </tr>
               );
@@ -278,6 +312,119 @@ export function ClientsTable() {
           itemLabel="clients"
         />
       </div>
+
+      {/* Client info card (modal) */}
+      {selectedClient && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => setSelectedClient(null)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="client-info-dialog-title"
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-xl"
+          >
+            <div className="p-6">
+              <h2
+                id="client-info-dialog-title"
+                className="mb-4 text-lg font-bold text-[#1e293b]"
+              >
+                Client Details
+              </h2>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Client ID</span>
+                  <span className="font-medium text-[#1e293b]">{selectedClient.clientId}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Name</span>
+                  <span className="font-medium text-[#1e293b]">{selectedClient.name}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Property</span>
+                  <span className="text-right font-medium text-[#1e293b]">
+                    {selectedClient.propertyName}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Address</span>
+                  <span className="max-w-[200px] truncate text-right text-[#1e293b]">
+                    {selectedClient.propertyAddress}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Type</span>
+                  <span className="font-medium text-[#1e293b]">{selectedClient.type}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Amount</span>
+                  <span className="font-medium text-[#1e293b]">
+                    {selectedClient.amount.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "GHS",
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Next Payment</span>
+                  <span className="font-medium text-[#1e293b]">
+                    {new Date(selectedClient.nextPayment).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-[#64748b]">Status</span>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
+                      selectedClient.status === "On Going" &&
+                        "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]",
+                      selectedClient.status === "Completed" &&
+                        "border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]",
+                      selectedClient.status === "Overdue" &&
+                        "border-[#fecaca] bg-[#fef2f2] text-[#dc2626]"
+                    )}
+                  >
+                    {selectedClient.status}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-4 text-xs text-[#64748b]">
+                {selectedClient.status === "On Going" || selectedClient.status === "Overdue"
+                  ? "Confirm to change status to Completed."
+                  : "Confirm to change status to On Going."}
+              </p>
+              <div className="mt-6 flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedClient(null)}
+                  className={cn(
+                    "flex-1 rounded-lg border-[#DFE1E7] bg-white text-[#1e293b]",
+                    "hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                  )}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmStatusChange}
+                  className="flex-1 rounded-lg bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

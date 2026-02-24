@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   Calendar,
   RefreshCw,
-  ChevronDown,
   Download,
   Upload,
   CheckCircle2,
@@ -146,6 +145,11 @@ function SelectAllCheckbox({
   );
 }
 
+const PADDING_LEFT = 38;
+const PADDING_TOP = 14;
+const PADDING_BOTTOM = 24;
+const PADDING_RIGHT = 6;
+
 function RevenueChart({
   period,
   onPeriodChange,
@@ -155,6 +159,7 @@ function RevenueChart({
   onPeriodChange: (v: string) => void;
   onRefresh: () => void;
 }) {
+  const svgRef = React.useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
   const [animating, setAnimating] = React.useState(false);
 
@@ -163,22 +168,26 @@ function RevenueChart({
   const { labels, fullDateLabels, thisPeriod, lastPeriod, totalRevenue, changePercent } = data;
 
   const allValues = [...thisPeriod, ...lastPeriod];
-  const maxY = Math.ceil((Math.max(...allValues) * 1.15) / 5) * 5 || 25;
-  const minY = Math.max(0, Math.floor((Math.min(...allValues) * 0.85) / 5) * 5);
+  const maxY = Math.ceil((Math.max(...allValues) * 1.12) / 5) * 5 || 25;
+  const minY = Math.max(0, Math.floor((Math.min(...allValues) * 0.88) / 5) * 5);
 
-  const chartHeight = 180;
-  const chartWidth = 400;
-  const chartTopPad = 16;
-  const chartBottomPad = 28;
+  const chartHeight = 160;
+  const chartWidth = 520;
+  const plotWidth = chartWidth - PADDING_LEFT - PADDING_RIGHT;
+  const plotHeight = chartHeight - PADDING_TOP - PADDING_BOTTOM;
 
-  const plotHeight = chartHeight - chartTopPad - chartBottomPad;
   const toY = (val: number) =>
-    chartTopPad + (plotHeight - ((val - minY) / (maxY - minY || 1)) * plotHeight);
-  const toX = (i: number) => (labels.length > 1 ? (i / (labels.length - 1)) * chartWidth : chartWidth / 2);
+    PADDING_TOP + (plotHeight - ((val - minY) / (maxY - minY || 1)) * plotHeight);
+  const toX = (i: number) =>
+    PADDING_LEFT + (labels.length > 1 ? (i / (labels.length - 1)) * plotWidth : plotWidth / 2);
 
-  const thisPath = thisPeriod.map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`).join(" ");
-  const lastPath = lastPeriod.map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`).join(" ");
-  const baselineY = chartHeight - chartBottomPad;
+  const thisPath = thisPeriod
+    .map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`)
+    .join(" ");
+  const lastPath = lastPeriod
+    .map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`)
+    .join(" ");
+  const baselineY = chartHeight - PADDING_BOTTOM;
   const thisAreaPath = `${thisPath} L ${toX(thisPeriod.length - 1)} ${baselineY} L ${toX(0)} ${baselineY} Z`;
   const lastAreaPath = `${lastPath} L ${toX(lastPeriod.length - 1)} ${baselineY} L ${toX(0)} ${baselineY} Z`;
 
@@ -188,128 +197,168 @@ function RevenueChart({
     setTimeout(() => setAnimating(false), 400);
   };
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((e.clientX - rect.left) / rect.width) * chartWidth - PADDING_LEFT;
+    if (x < 0 || x > plotWidth) {
+      setHoverIndex(null);
+      return;
+    }
+    const idx =
+      labels.length > 1
+        ? Math.round((x / plotWidth) * (labels.length - 1))
+        : 0;
+    setHoverIndex(Math.max(0, Math.min(labels.length - 1, idx)));
+  };
+
+  const formatVal = (v: number) =>
+    v >= 1000 ? `₵${(v / 1000).toFixed(1)}M` : `₵${v.toFixed(1)}K`;
+
   return (
-    <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-bold text-[#1e293b]">Revenue Statistics</h3>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={onPeriodChange}>
-            <SelectTrigger className="rounded-full border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-sm">
-              <span>
-                {period === "weekly"
-                  ? "Weekly"
-                  : period === "yearly"
-                    ? "Yearly"
-                    : "Monthly"}
+    <div className="animate-fade-in-up overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl shadow-slate-200/50 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-300/40">
+      <div className="border-b border-[#e2e8f0] bg-white px-4 py-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <h3 className="text-sm font-bold text-[#1e293b]">Revenue Statistics</h3>
+          <div className="flex items-center gap-2">
+            <Select value={period} onValueChange={onPeriodChange}>
+              <SelectTrigger className="h-8 min-w-[100px] rounded-lg border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs">
+                <span>
+                  {period === "weekly"
+                    ? "Weekly"
+                    : period === "yearly"
+                      ? "Yearly"
+                      : "Monthly"}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="flex size-8 items-center justify-center rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+              aria-label="Refresh chart"
+            >
+              <RefreshCw className={cn("size-3.5", animating && "animate-spin")} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xl font-bold text-[#1e293b]">{totalRevenue}</p>
+            <p className="flex items-center gap-1 text-xs text-[#64748b]">
+              <span className="flex items-center gap-1 font-medium text-[#1976d2]">
+                <TrendingUp className="size-3" />
+                ↑ {changePercent.replace(",", ".")}%
               </span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="flex size-9 items-center justify-center rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-            aria-label="Refresh chart"
-          >
-            <RefreshCw className={cn("size-4", animating && "animate-spin")} />
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <p className="text-2xl font-bold text-[#1e293b]">{totalRevenue}</p>
-          <p className="flex items-center gap-1 text-sm">
-            <span className="font-medium text-[#0891b2]">
-              <TrendingUp className="inline size-4" /> {changePercent}%
-            </span>
-            <span className="text-[#94a3b8]">from last period</span>
-          </p>
-        </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-1.5">
-            <span className="size-3 rounded-sm bg-[#1976d2]" />
-            <span className="text-sm text-[#64748b]">This period</span>
+              from last period
+            </p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="size-3 rounded-sm bg-[#84cc16]" />
-            <span className="text-sm text-[#64748b]">Last period</span>
+          <div className="flex gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-sm bg-[#1976d2]" />
+              <span className="text-xs text-[#64748b]">This period</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-sm bg-[#84cc16]" />
+              <span className="text-xs text-[#64748b]">Last period</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="relative min-h-[200px]">
+      <div className="relative px-3 pb-3 pt-1">
         <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight + chartBottomPad}`}
-          className="w-full max-w-full"
+          ref={svgRef}
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="min-h-[180px] w-full"
           preserveAspectRatio="xMidYMid meet"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoverIndex(null)}
         >
-          {/* Y-axis labels */}
+          <defs>
+            <linearGradient id="thisGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1976d2" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#1976d2" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="lastGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#84cc16" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#84cc16" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+
           {Array.from({ length: 5 }, (_, i) => minY + ((maxY - minY) * i) / 4).map((val) => (
-            <text key={val} x={8} y={toY(val) + 4} textAnchor="start" className="fill-[#64748b] text-xs">
-              ${val >= 1000 ? `${(val / 1000).toFixed(0)}M` : `${Math.round(val)}K`}
+            <text
+              key={val}
+              x={PADDING_LEFT - 6}
+              y={toY(val) + 3}
+              textAnchor="end"
+              fill="#94a3b8"
+              style={{ fontSize: 9, fontWeight: 500 }}
+            >
+              ₵{val >= 1000 ? `${(val / 1000).toFixed(0)}M` : `${Math.round(val)}K`}
             </text>
           ))}
-          {/* X-axis labels */}
+
           <text
-            x={0}
-            y={chartHeight + chartBottomPad - 10}
+            x={PADDING_LEFT}
+            y={chartHeight - 6}
             textAnchor="start"
-            className="fill-[#64748b] text-xs"
+            fill="#94a3b8"
+            style={{ fontSize: 9, fontWeight: 500 }}
           >
             {fullDateLabels[0]}
           </text>
           <text
-            x={chartWidth}
-            y={chartHeight + chartBottomPad - 10}
+            x={chartWidth - PADDING_RIGHT}
+            y={chartHeight - 6}
             textAnchor="end"
-            className="fill-[#64748b] text-xs"
+            fill="#94a3b8"
+            style={{ fontSize: 9, fontWeight: 500 }}
           >
             {fullDateLabels[1]}
           </text>
-          {/* Horizontal grid lines */}
+
           {Array.from({ length: 5 }, (_, i) => minY + ((maxY - minY) * i) / 4).map((val) => (
             <line
-              key={val}
-              x1={0}
+              key={`h-${val}`}
+              x1={PADDING_LEFT}
               y1={toY(val)}
-              x2={chartWidth}
+              x2={chartWidth - PADDING_RIGHT}
               y2={toY(val)}
               stroke="#e2e8f0"
-              strokeDasharray="4 2"
+              strokeDasharray="4 4"
               strokeWidth={1}
             />
           ))}
-          {/* Vertical grid lines */}
           {labels.map((_, i) => (
             <line
               key={`v-${i}`}
               x1={toX(i)}
-              y1={chartTopPad}
+              y1={PADDING_TOP}
               x2={toX(i)}
-              y2={chartHeight - chartBottomPad}
+              y2={chartHeight - PADDING_BOTTOM}
               stroke="#e2e8f0"
-              strokeDasharray="4 2"
+              strokeDasharray="4 4"
               strokeWidth={1}
             />
           ))}
-          {/* Area fills - render under lines */}
-          <path d={lastAreaPath} fill="#f0fdf4" stroke="none" opacity={0.3} />
-          <path d={thisAreaPath} fill="#dbeafe" stroke="none" opacity={0.5} />
-          {/* This period line - thick dark blue */}
+
+          <path d={lastAreaPath} fill="url(#lastGrad)" stroke="none" />
+          <path d={thisAreaPath} fill="url(#thisGrad)" stroke="none" />
           <path
             d={thisPath}
             fill="none"
             stroke="#1976d2"
-            strokeWidth={2.5}
+            strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Last period line - thinner lime green */}
           <path
             d={lastPath}
             fill="none"
@@ -318,78 +367,79 @@ function RevenueChart({
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          {/* Hover dots and vertical line */}
+
           {hoverIndex !== null && (
             <>
               <line
                 x1={toX(hoverIndex)}
-                y1={chartTopPad}
+                y1={PADDING_TOP}
                 x2={toX(hoverIndex)}
-                y2={chartHeight - chartBottomPad}
-              stroke="#334155"
-              strokeDasharray="4 2"
-              strokeWidth={1}
-            />
+                y2={chartHeight - PADDING_BOTTOM}
+                stroke="#94a3b8"
+                strokeDasharray="4 4"
+                strokeWidth={1}
+              />
               <circle
                 cx={toX(hoverIndex)}
                 cy={toY(thisPeriod[hoverIndex] ?? 0)}
                 r={4}
                 fill="#1976d2"
+                stroke="white"
+                strokeWidth={1.5}
               />
               <circle
                 cx={toX(hoverIndex)}
                 cy={toY(lastPeriod[hoverIndex] ?? 0)}
-                r={3}
+                r={4}
                 fill={LAST_PERIOD_COLOR}
+                stroke="white"
+                strokeWidth={1.5}
               />
             </>
           )}
-          {/* Invisible hover targets */}
-          {labels.map((_, i) => (
-            <rect
-              key={i}
-              x={toX(i) - 15}
-              y={chartTopPad}
-              width={30}
-              height={plotHeight}
-              fill="transparent"
-              onMouseEnter={() => setHoverIndex(i)}
-              onMouseLeave={() => setHoverIndex(null)}
-            />
-          ))}
+
+          <rect
+            x={PADDING_LEFT}
+            y={PADDING_TOP}
+            width={plotWidth}
+            height={plotHeight}
+            fill="transparent"
+          />
         </svg>
 
-        {/* Tooltip */}
         {hoverIndex !== null && (
           <div
-            className="absolute rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-xl"
+            className="pointer-events-none absolute z-10 w-fit max-w-[180px] rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-xl"
             style={{
-              left: `calc(${labels.length > 1 ? (hoverIndex / (labels.length - 1)) * 100 : 50}% - 70px)`,
-              top: 8,
+              left: `${12 + (hoverIndex / Math.max(1, labels.length - 1)) * 68}%`,
+              top: 12,
+              transform: "translateX(-50%)",
             }}
           >
-            <p className="text-xs font-bold text-[#1e293b]">Total Revenue</p>
-            <div className="my-1.5 border-t border-[#e2e8f0]" />
-            <div className="flex items-center justify-between gap-4 text-xs">
-              <span className="text-[#64748b]">
-                {labels[hoverIndex] ?? ""} {period === "yearly" ? "2025" : ", 2025"}
-              </span>
-              <span className="font-semibold text-[#1976d2]">
-                ${(thisPeriod[hoverIndex] ?? 0) >= 1000
-                  ? `${((thisPeriod[hoverIndex] ?? 0) / 1000).toFixed(1)}M`
-                  : `${(thisPeriod[hoverIndex] ?? 0).toFixed(1)}K`}
-              </span>
-            </div>
-            <div className="my-1.5 border-t border-[#e2e8f0]" />
-            <div className="flex items-center justify-between gap-4 text-xs">
-              <span className="text-[#64748b]">
-                {labels[hoverIndex] ?? ""} {period === "yearly" ? "2024" : ", 2024"}
-              </span>
-              <span className="font-semibold text-[#84cc16]">
-                ${(lastPeriod[hoverIndex] ?? 0) >= 1000
-                  ? `${((lastPeriod[hoverIndex] ?? 0) / 1000).toFixed(1)}M`
-                  : `${(lastPeriod[hoverIndex] ?? 0).toFixed(1)}K`}
-              </span>
+            <p className="mb-1.5 text-[10px] font-bold text-[#1e293b]">Total Revenue</p>
+            <div className="space-y-1 text-[10px]">
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-[#64748b]">
+                  {labels[hoverIndex] ?? ""}
+                  {period === "monthly" && ", 2025"}
+                  {period === "yearly" && " 2025"}
+                  {period === "weekly" && ", 2025"}
+                </span>
+                <span className="font-semibold text-[#1976d2]">
+                  {formatVal(thisPeriod[hoverIndex] ?? 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-[#64748b]">
+                  {labels[hoverIndex] ?? ""}
+                  {period === "monthly" && ", 2024"}
+                  {period === "yearly" && " 2024"}
+                  {period === "weekly" && ", 2024"}
+                </span>
+                <span className="font-semibold text-[#84cc16]">
+                  {formatVal(lastPeriod[hoverIndex] ?? 0)}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -402,7 +452,6 @@ export default function Transactions() {
   const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
   const [headerRefreshing, setHeaderRefreshing] = React.useState(false);
   const [period, setPeriod] = React.useState("monthly");
-  const [importExportOpen, setImportExportOpen] = React.useState(false);
   const [payments, setPayments] = React.useState<Payment[]>(PAYMENTS);
   const [search, setSearch] = React.useState("");
   const [sortAsc, setSortAsc] = React.useState(true);
@@ -421,16 +470,61 @@ export default function Transactions() {
     setTimeout(() => setHeaderRefreshing(false), 600);
   };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const handleImport = () => {
-    setImportExportOpen(false);
-    // Simulate import - in real app would open file picker
-    alert("Import: Would open file picker to select CSV file.");
+    fileInputRef.current?.click();
   };
 
   const handleExport = () => {
-    setImportExportOpen(false);
-    // Simulate export - in real app would download CSV
-    alert("Export: Would download transactions as CSV.");
+    const headers = ["ID", "Date", "Property", "Address", "Customer", "Type", "Amount", "Status"];
+    const rows = filteredPayments.map((p) =>
+      [p.id, p.date, p.property, p.address, p.customer, p.type, p.amount, p.status]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) return;
+      const parsed: Payment[] = [];
+      const header = lines[0].toLowerCase();
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].match(/("(?:[^"]|"")*"|[^,]*)/g)?.map((v) => v.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) ?? [];
+        if (vals.length >= 8) {
+          parsed.push({
+            id: vals[0] || `imp-${i}`,
+            date: vals[1] || "",
+            property: vals[2] || "",
+            address: vals[3] || "",
+            customer: vals[4] || "",
+            customerInitial: (vals[4]?.[0] ?? "?").toUpperCase(),
+            type: (vals[5] === "Sale" ? "Sale" : "Rent") as PaymentType,
+            amount: vals[6] || "",
+            status: (vals[7] === "Success" || vals[7] === "Failed" ? vals[7] : "Pending") as PaymentStatus,
+          });
+        }
+      }
+      if (parsed.length > 0) {
+        setPayments((prev) => [...parsed, ...prev]);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   const filteredPayments = React.useMemo(() => {
@@ -486,7 +580,6 @@ export default function Transactions() {
   React.useEffect(() => {
     const handler = () => {
       setRowMenuOpen(null);
-      setImportExportOpen(false);
       setFilterOpen(false);
     };
     document.addEventListener("click", handler);
@@ -501,7 +594,7 @@ export default function Transactions() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-7xl space-y-4">
+      <div className="mx-auto max-w-[1400px] space-y-4">
         {/* Page header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -523,38 +616,31 @@ export default function Transactions() {
                 aria-hidden
               />
             </button>
-            <div className="relative">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleFileChange}
+              aria-hidden
+            />
+            <div className="flex items-center gap-1 overflow-hidden rounded-lg border border-[#e2e8f0] bg-white shadow-sm">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setImportExportOpen((v) => !v);
-                }}
-                className="flex items-center gap-1.5 rounded-md border border-[#f1f5f9] bg-white px-3 py-2 shadow-sm transition-colors hover:bg-[#f8fafc]"
+                onClick={handleImport}
+                className="flex shrink-0 items-center gap-1.5 border-r border-[#e2e8f0] px-3 py-2 text-xs font-medium text-[#475569] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
               >
-                Import/Export
-                <ChevronDown className="size-4" />
+                <Upload className="size-3.5 shrink-0" />
+                <span className="whitespace-nowrap">Import</span>
               </button>
-              {importExportOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={handleImport}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                  >
-                    <Upload className="size-4" />
-                    Import CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExport}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                  >
-                    <Download className="size-4" />
-                    Export CSV
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={handleExport}
+                className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#475569] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
+              >
+                <Download className="size-3.5 shrink-0" />
+                <span className="whitespace-nowrap">Export</span>
+              </button>
             </div>
           </div>
         </div>
@@ -568,32 +654,41 @@ export default function Transactions() {
 
         {/* Summary cards */}
         <div className="grid gap-2 md:grid-cols-3">
-          <div className="flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm">
-            <div className="flex size-8 items-center justify-center rounded-full bg-[#dbeafe]">
+          <div
+            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
+            style={{ animationDelay: "0.05s" }}
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
               <CheckCircle2 className="size-4 text-[#1976d2]" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-[#64748b]">Completed Transactions</p>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-[#64748b]">Completed Transactions</p>
               <p className="mt-0.5 text-lg font-bold text-[#1e293b]">134</p>
               <p className="mt-0.5 text-xs font-medium text-[#16a34a]">+15% from last month</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm">
-            <div className="flex size-8 items-center justify-center rounded-full bg-[#dbeafe]">
+          <div
+            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
+            style={{ animationDelay: "0.1s" }}
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
               <Clock className="size-4 text-[#1976d2]" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-[#64748b]">On Progress Transactions</p>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-[#64748b]">On Progress Transactions</p>
               <p className="mt-0.5 text-lg font-bold text-[#1e293b]">59</p>
               <p className="mt-0.5 text-xs font-medium text-[#ef4444]">-8.5% from last month</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm">
-            <div className="flex size-8 items-center justify-center rounded-full bg-[#dbeafe]">
+          <div
+            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
+            style={{ animationDelay: "0.15s" }}
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
               <XCircle className="size-4 text-[#1976d2]" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-[#64748b]">Cancelled Transactions</p>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-[#64748b]">Cancelled Transactions</p>
               <p className="mt-0.5 text-lg font-bold text-[#1e293b]">27</p>
               <p className="mt-0.5 text-xs text-[#64748b]">from last month</p>
             </div>
@@ -601,7 +696,7 @@ export default function Transactions() {
         </div>
 
         {/* Recent Payments */}
-        <div className="overflow-hidden rounded-lg border border-[#f1f5f9] bg-white shadow-sm">
+        <div className="animate-fade-in-up overflow-hidden rounded-lg border border-[#f1f5f9] bg-white shadow-sm transition-all duration-200 ease-out hover:border-[#e2e8f0] hover:shadow-md">
           <div className="border-b border-[#f1f5f9] px-3 py-2">
             <h3 className="mb-2 text-base font-semibold text-[#1e293b]">Recent Payments</h3>
             <div className="flex flex-wrap items-center gap-2">

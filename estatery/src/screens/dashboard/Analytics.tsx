@@ -40,7 +40,7 @@ export default function Analytics() {
 
   const viewsSeries = trafficData[range];
   const maxViews = Math.max(...viewsSeries, 1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 8;
   const pageCount = Math.max(1, Math.ceil(properties.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const startIdx = (safePage - 1) * PAGE_SIZE;
