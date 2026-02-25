@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * General settings – company name, industry, currency, address.
+ * Uses SettingsContext.general / setGeneral; parent handles Save.
+ */
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {

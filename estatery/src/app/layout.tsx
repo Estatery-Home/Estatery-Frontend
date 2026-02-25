@@ -1,3 +1,7 @@
+/**
+ * Next.js root layout – wraps all pages.
+ * Defines metadata (SEO, OG), viewport, and global styles.
+ */
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 

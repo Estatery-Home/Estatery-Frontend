@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Properties list – charts + table of properties.
+ * Uses PropertiesContext; Add Property modal adds to list via addProperty.
+ */
 import * as React from "react";
 import { DashboardLayout } from "@/components/dashboard";
 import { AddPropertyModal } from "@/components/dashboard/AddPropertyModal";
@@ -16,12 +20,14 @@ export default function PropertiesList() {
   const [addModalOpen, setAddModalOpen] = React.useState(false);
   const { properties, addProperty } = useProperties();
 
+  /* Prefer properties with views/lastUpdated for table; fallback to first 5+ */
   const tableProperties = properties.filter(
     (p) => p.views != null && p.lastUpdated
   ) as Property[];
   const displayProperties: Property[] =
     tableProperties.length > 0 ? tableProperties : (properties.slice(0, Math.max(5, properties.length)) as Property[]);
 
+  /* Add new property to context; modal assigns ID */
   const handlePropertyAdded = React.useCallback(
     (property: Omit<Property, "id">) => {
       addProperty(property);

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * OTP Verification – 5-digit code input with auto-focus and paste support.
+ * Resend countdown; on submit navigates to forgotPassword.
+ */
 import * as React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail } from "lucide-react";
@@ -18,12 +22,14 @@ export default function VerifyOTP() {
   const [resendSeconds, setResendSeconds] = React.useState(37);
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
+  /* Countdown timer for resend button */
   React.useEffect(() => {
     if (resendSeconds <= 0) return;
     const t = setInterval(() => setResendSeconds((s) => s - 1), 1000);
     return () => clearInterval(t);
   }, [resendSeconds]);
 
+  /* Handle single digit or paste; auto-focus next input */
   const handleChange = (index: number, value: string) => {
     if (value.length > 1) {
       const digits = value.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
@@ -43,12 +49,14 @@ export default function VerifyOTP() {
     if (digit && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
   };
 
+  /* On Backspace at empty input, focus previous */
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
+  /* Verify OTP length, then navigate to forgotPassword */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
@@ -56,6 +64,7 @@ export default function VerifyOTP() {
     navigate("/auth/forgotPassword", { state: { email } });
   };
 
+  /* Reset countdown; in prod would trigger API to resend code */
   const resend = () => {
     if (resendSeconds > 0) return;
     setResendSeconds(37);

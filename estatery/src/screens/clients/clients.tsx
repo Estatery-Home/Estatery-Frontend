@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Clients – cards overview, table with export/refresh.
+ * Uses lib/clients mock data; lastUpdated in localStorage.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
@@ -29,6 +33,7 @@ export default function Clients() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  /* Update lastUpdated, persist to localStorage, show loading briefly */
   const handleRefresh = () => {
     setRefreshing(true);
     const now = new Date();
@@ -48,6 +53,7 @@ export default function Clients() {
     }, 800);
   };
 
+  /* Build CSV from clients, trigger download */
   const handleExport = () => {
     const header = [
       "Client ID",

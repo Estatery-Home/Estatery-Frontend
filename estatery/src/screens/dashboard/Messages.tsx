@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Messages – chat with clients; sidebar list, message thread.
+ * URL ?clientId= selects client; mock messages per client.
+ */
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {

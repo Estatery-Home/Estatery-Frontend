@@ -1,3 +1,6 @@
+/**
+ * Auth layout pieces – card header (logo link) and footer (privacy, terms, help).
+ */
 import Image from "next/image";
 import { Link } from "react-router-dom";
 import { Lock, FileText, HelpCircle } from "lucide-react";

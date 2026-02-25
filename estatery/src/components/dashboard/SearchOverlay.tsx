@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Quick search overlay – search agents, sections, properties; keyboard nav.
+ * Uses searchData.searchAll; navigates on select.
+ */
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";

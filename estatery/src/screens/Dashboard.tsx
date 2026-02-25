@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Main Dashboard – overview cards, listings chart, my properties, recent payments.
+ * Refresh and export actions; uses PropertiesContext for property count.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
@@ -27,12 +31,14 @@ export default function Dashboard() {
   const { properties } = useProperties();
   const navigate = useNavigate();
 
+  /* Simulate refresh: show loading, update lastUpdated, clear after 800ms */
   const handleRefresh = () => {
     setRefreshing(true);
     setLastUpdated(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }));
     setTimeout(() => setRefreshing(false), 800);
   };
 
+  /* Build CSV from overview, payments, properties; trigger download */
   const handleExport = () => {
     const overview = [
       ["Metric", "Value", "Trend"],
@@ -76,6 +82,7 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
+  /* Log out, close dialog, redirect to login */
   const handleLogoutConfirm = () => {
     logout();
     setLogoutDialogOpen(false);

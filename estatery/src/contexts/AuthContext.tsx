@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * AuthContext – Authentication state and actions.
+ *
+ * Manages login/logout and password change. Uses localStorage for demo;
+ * replace with API calls in production.
+ */
 import * as React from "react";
 
 type AuthContextValue = {
@@ -30,11 +36,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  /* On mount: read auth state from localStorage */
   React.useEffect(() => {
     setIsAuthenticated(getStoredAuth());
     setIsLoading(false);
   }, []);
 
+  /* Mark user as logged in and persist to storage */
   const login = React.useCallback(() => {
     setIsAuthenticated(true);
     try {
@@ -42,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  /* Clear auth and password from state and storage */
   const logout = React.useCallback(() => {
     setIsAuthenticated(false);
     try {
@@ -50,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
+  /* Save new password to storage (replace with API in production) */
   const changePassword = React.useCallback(
     async (currentPassword: string, newPassword: string) => {
       //  API call when backend is ready, e.g.:

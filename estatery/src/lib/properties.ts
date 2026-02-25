@@ -1,3 +1,7 @@
+/**
+ * Property types and seed data for the app.
+ * PropertiesContext loads from here when localStorage is empty.
+ */
 export type PropertyType = "Rent" | "Sale";
 export type PropertyStatus = "Available" | "Rented" | "Sold";
 

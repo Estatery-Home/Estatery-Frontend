@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Tax & Duties – full name, treaty country, residence, mailing.
+ * Uses SettingsContext.tax / setTax; tax table for reference.
+ */
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

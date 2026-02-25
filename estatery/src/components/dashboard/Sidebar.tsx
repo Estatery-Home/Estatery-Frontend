@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Main navigation sidebar – collapsible, responsive.
+ * Links: Dashboard, Agents, Clients, Analytics, Calendar, Messages, etc.
+ * Uses NavLink for active state; supports onLogoutClick for confirmation.
+ */
 import * as React from "react";
 import { NavLink } from "react-router-dom";
 import {

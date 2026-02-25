@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * My Account – name, role, email, phone, avatar.
+ * Works in Settings (draft) or standalone (updates profile directly).
+ */
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -16,6 +20,7 @@ export function MyAccount({ draft: draftProp, onUpdateDraft }: MyAccountProps) {
   const draft = draftProp ?? profile;
   const update = onUpdateDraft ?? updateProfile;
 
+  /* Read file as data URL, call update with avatar base64 */
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;

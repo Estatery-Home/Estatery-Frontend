@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Link Account – Instagram, Facebook, Twitter, YouTube.
+ * Uses SettingsContext.links / setLinks.
+ */
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useSettings } from "@/contexts/SettingsContext";

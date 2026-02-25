@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * My Properties – scrollable list from PropertiesContext.
+ * Links to property detail; refresh button (demo).
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";

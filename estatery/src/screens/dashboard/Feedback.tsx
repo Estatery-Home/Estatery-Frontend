@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Feedback – rating, type (bug/feature/general/other), message.
+ * On submit shows thank-you state; demo, no API.
+ */
 import * as React from "react";
 import { Star, Send, Bug, Lightbulb, MessageSquare, HelpCircle, Sparkles } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard";
@@ -19,6 +23,7 @@ export default function Feedback() {
   const [message, setMessage] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
 
+  /* Validate message, set submitted (shows thank-you) */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;

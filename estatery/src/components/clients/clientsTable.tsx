@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Clients table – search, status filter, sort, pagination, row actions.
+ * Uses lib/clients; navigate to client detail on row click.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter as FilterIcon, ArrowUpDown, MoreVertical } from "lucide-react";

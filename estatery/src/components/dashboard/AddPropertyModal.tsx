@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Multi-step Add Property modal (5 steps).
+ * Collects: basic info, location, details, media, contact.
+ * Calls onPropertyAdded when complete; ID is assigned by PropertiesContext.
+ */
 import * as React from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,12 +61,14 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [sqft, setSqft] = React.useState<string | undefined>();
   const [imageUrl, setImageUrl] = React.useState<string>("/images/property-1.webp");
 
+  /* Track description length for step 1 (max 200 chars) */
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setDescription(v);
     setDescLength(Math.min(v.length, 200));
   };
 
+  /* Update contact field (name, phone, email, agent) in step 5 */
   const handleContactChange = (
     field: "contactName" | "phone" | "email" | "agent",
     value: string
@@ -72,6 +79,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     if (field === "agent") setAgent(value);
   };
 
+  /* Build property object from form state, call onPropertyAdded, reset modal */
   const handleSave = () => {
     setIsSaving(true);
 

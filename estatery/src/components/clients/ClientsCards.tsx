@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Clients overview cards – total, ongoing, completed.
+ */
 import * as React from "react";
 import { PieChart, Clock, CheckCircle,  } from "lucide-react";
 import { cn } from "@/lib/utils";

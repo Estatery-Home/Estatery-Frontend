@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Help Center – category cards, FAQ accordion, search.
+ * Links to Settings, Properties, etc.
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import {

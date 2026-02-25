@@ -1,3 +1,7 @@
+/**
+ * Search – agents, sections, and property results for quick search overlay.
+ * searchAll merges and filters by query; returns up to 12.
+ */
 export type SearchResultType = "query" | "agent" | "property" | "section";
 
 export type SearchResult = {

@@ -1,3 +1,6 @@
+/**
+ * Login page hero – decorative image panel (hidden on mobile).
+ */
 import Image from "next/image";
 
 export function LoginHero() {

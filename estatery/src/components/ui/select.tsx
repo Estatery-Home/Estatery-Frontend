@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Select – dropdown with SelectTrigger, SelectContent, SelectItem.
+ * Custom implementation with portal; value/onValueChange.
+ */
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";

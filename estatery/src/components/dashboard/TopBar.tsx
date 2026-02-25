@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Top bar – search trigger, notifications, profile avatar.
+ * Search and notifications open overlay/panel components.
+ */
 import * as React from "react";
 import { Search, LayoutGrid, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";

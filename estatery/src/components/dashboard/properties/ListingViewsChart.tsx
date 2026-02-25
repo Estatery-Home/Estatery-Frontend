@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Listing views chart – views vs properties over time.
+ * Range: Daily/Weekly/Monthly/Yearly; mock data.
+ */
 import * as React from "react";
 import { RefreshCw, ChevronDown } from "lucide-react";
 import { addDays, format } from "date-fns";

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Time & Language – time zone, language.
+ * Uses SettingsContext.timeLang / setTimeLang.
+ */
 import { Label } from "@/components/ui/label";
 import {
   Select,

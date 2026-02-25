@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Notifications list – links to detail; unread styling.
+ * Uses mock data from lib/notifications.
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { Users, BarChart3, AlertTriangle } from "lucide-react";

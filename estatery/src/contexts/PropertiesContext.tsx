@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * PropertiesContext – Global property list state.
+ *
+ * Loads/saves properties from localStorage. Provides addProperty,
+ * getPropertyById, getOtherProperties for use across the app.
+ */
 import * as React from "react";
 import { properties as initialProperties } from "@/lib/properties";
 import type { Property } from "@/lib/properties";
@@ -43,14 +49,17 @@ function generateId(): string {
 export function PropertiesProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = React.useState<Property[]>(initialProperties);
 
+  /* Load from localStorage on mount */
   React.useEffect(() => {
     setProperties(loadProperties());
   }, []);
 
+  /* Persist to localStorage whenever properties change */
   React.useEffect(() => {
     saveProperties(properties);
   }, [properties]);
 
+  /* Add new property with auto-generated ID, prepend to list */
   const addProperty = React.useCallback((property: Omit<Property, "id">) => {
     const id = generateId();
     const newProperty: Property = {

@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Forgot Password – enter email, navigate to create-new-password.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
@@ -12,6 +15,7 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
 
+  /* Validate email, then navigate to create-new-password with email in state */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;

@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Dashboard overview cards – revenue, properties sale/rent with trends.
+ */
 import * as React from "react";
 import { CircleDollarSign, Building2, HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";

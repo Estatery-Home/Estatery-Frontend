@@ -1,3 +1,6 @@
+/**
+ * Client types and mock data for the clients list and detail views.
+ */
 export type ClientStatus = "On Going" | "Completed" | "Overdue";
 
 export type ClientRow = {

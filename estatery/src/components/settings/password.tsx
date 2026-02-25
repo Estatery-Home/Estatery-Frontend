@@ -18,6 +18,7 @@ type PasswordProps = {
 };
 
 export function Password({ draft, onUpdateDraft }: PasswordProps) {
+  /* Toggle visibility for current, new, and confirm password fields */
   const [showCurrent, setShowCurrent] = React.useState(false);
   const [showNew, setShowNew] = React.useState(false);
   const [showConfirm, setShowConfirm] = React.useState(false);

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Settings page – tabbed sections (General, My Account, Tax, Links, Time/Lang, Password, Notifications).
+ * Uses ?section= query param. Saves per section; shows confirmation modal on save.
+ */
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
@@ -57,6 +61,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const prevSectionRef = useRef(activeSection);
 
+  /* Reset draft when switching to My Account or Password so we load fresh data */
   useEffect(() => {
     if (activeSection === "my-account" && prevSectionRef.current !== "my-account") {
       setDraft(copyProfile(profile));
@@ -68,6 +73,7 @@ export default function Settings() {
     prevSectionRef.current = activeSection;
   }, [activeSection, profile]);
 
+  /* Merge partial into My Account draft */
   const handleUpdateDraft = (partial: Partial<UserProfile>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
   };
@@ -76,6 +82,7 @@ export default function Settings() {
     setPasswordDraft((prev) => ({ ...prev, ...partial }));
   };
 
+  /* Return validation hint or success message for password section */
   const getPasswordValidationMessage = () => {
     if (!passwordDraft.currentPassword) return "Please enter your current password.";
     if (passwordDraft.newPassword.length < 8) return "New password must be at least 8 characters.";
@@ -83,6 +90,7 @@ export default function Settings() {
     return "Your changes will be saved.";
   };
 
+  /* Persist current section to storage/context; show success toast and close modal */
   const handleSaveConfirm = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Property detail – single property by ID; image, info, similar listings.
+ * Uses PropertiesContext.getPropertyById, getOtherProperties.
+ */
 import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Bed, Bath, Square } from "lucide-react";

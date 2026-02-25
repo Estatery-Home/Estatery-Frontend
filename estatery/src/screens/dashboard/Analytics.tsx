@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Analytics – traffic charts, stats (properties, clients, occupancy).
+ * Date range (7d/30d/90d); paginated property list.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, PieChart, TrendingUp, Users, Home, Activity } from "lucide-react";

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Add Property step 3 – Property details (beds, baths, sqft, land area, etc.).
+ * Calls onBedsChange, onBathsChange, onSqftChange when provided.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

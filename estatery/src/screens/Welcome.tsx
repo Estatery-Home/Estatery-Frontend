@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Landing page – hero, rent/buy/sell tabs, location + move-in search.
+ * Browse Properties goes to login.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Image from "next/image";
@@ -14,6 +18,7 @@ export default function Welcome() {
   const [location, setLocation] = React.useState("");
   const [moveInDate, setMoveInDate] = React.useState("");
 
+  /* Demo: navigate to login; in prod could go to property search */
   const handleBrowseProperties = () => {
     navigate("/auth/login");
   };
@@ -155,7 +160,7 @@ export default function Welcome() {
             </div>
             <p className="mt-3 text-xs text-[var(--logo)]">Moved with {BRAND}</p>
             <p className="mt-2 flex items-start gap-1 text-sm italic text-[#475569]">
-              <span className="text-[var(--logo)]">"</span>
+              <span className="text-[var(--logo)]"></span>
               I loved how smooth the move was, and finally got the house we wanted.
             </p>
             <div className="mt-4 flex gap-4 text-xs font-medium">

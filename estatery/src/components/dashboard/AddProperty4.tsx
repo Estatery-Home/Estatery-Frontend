@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Add Property step 4 – Media upload; reads file as data URL.
+ * Calls onImageChange with base64 when image selected.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 
@@ -20,6 +24,7 @@ export function AddPropertyMediaStep({
     fileInputRef.current?.click();
   };
 
+  /* Read first image file as data URL, pass to parent */
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) {

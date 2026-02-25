@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Transactions – payment list with search, filter, pagination.
+ * Status: Success, Pending, Failed; type: Rent, Sale.
+ */
 import * as React from "react";
 import {
   Calendar,

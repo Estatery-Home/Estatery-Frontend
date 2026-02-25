@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Layout wrapper for Settings and other dashboard-style pages.
+ * Sidebar + TopBar + main content area, with logout confirmation.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

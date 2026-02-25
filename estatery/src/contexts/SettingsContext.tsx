@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * SettingsContext – User and app settings persisted in localStorage.
+ *
+ * Sections: notifications, general, links, time/lang, payment, tax.
+ * Each section has state, setter, save, and (where applicable) revert.
+ */
 import * as React from "react";
 
 export type NotificationSettings = {
@@ -147,12 +153,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = React.useState<NotificationSettings>(loadNotifications);
   const savedRef = React.useRef<NotificationSettings>(loadNotifications());
 
+  /* Initialize each section from localStorage or defaults */
   const [general, setGeneral] = React.useState<GeneralSettings>(() => load("general", DEFAULT_GENERAL));
   const [links, setLinks] = React.useState<LinksSettings>(() => load("links", DEFAULT_LINKS));
   const [timeLang, setTimeLang] = React.useState<TimeLangSettings>(() => load("timeLang", DEFAULT_TIME_LANG));
   const [payment, setPayment] = React.useState<PaymentSettings>(() => load("payment", DEFAULT_PAYMENT));
   const [tax, setTax] = React.useState<TaxSettings>(() => load("tax", DEFAULT_TAX));
 
+  /* Save each section to localStorage when user clicks Save */
   const saveNotificationsToStorage = React.useCallback(() => {
     setNotifications((prev) => {
       saveNotifications(prev);
@@ -161,6 +169,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /* Reload notifications from storage, discarding unsaved changes */
   const revertNotifications = React.useCallback(() => {
     const saved = loadNotifications();
     savedRef.current = saved;

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Recent payments table – filter by status, sort, pagination.
+ * Status change with confirmation modal; mock data.
+ */
 import * as React from "react";
 import { Search, Filter, ArrowUpDown, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";

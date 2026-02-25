@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Leads screen – pipeline (New → Contacted → Tour → Negotiation → Closed).
+ * Search, filter by stage, pagination; uses PropertiesContext for property names.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import {

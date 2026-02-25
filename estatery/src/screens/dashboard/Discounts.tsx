@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Discounts – promo codes (Active/Scheduled/Expired).
+ * Add modal, toggle status, pagination.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Tag, Percent, Clock, CheckCircle2 } from "lucide-react";
@@ -86,6 +90,7 @@ export default function Discounts() {
   const startIdx = (safePage - 1) * PAGE_SIZE;
   const pageDiscounts = discounts.slice(startIdx, startIdx + PAGE_SIZE);
 
+  /* Toggle Active ↔ Expired for a discount */
   const handleToggleStatus = (id: string) => {
     setDiscounts((prev) =>
       prev.map((d) => {

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * UserProfileContext – Current user profile (name, role, email, phone, avatar).
+ *
+ * Persists to localStorage. Used by settings, top bar, etc.
+ */
 import * as React from "react";
 
 export type UserProfile = {

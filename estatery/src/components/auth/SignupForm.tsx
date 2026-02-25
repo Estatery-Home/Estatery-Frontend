@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Signup form – name, email, password with validation.
+ * On success navigates to verify OTP or dashboard (flow depends on app).
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -38,6 +42,7 @@ export function SignupForm() {
 
   const hasTyped = name.length > 0 || email.length > 0 || password.length > 0;
 
+  /* Validate name, email, password; show errors or submit */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -70,6 +75,7 @@ export function SignupForm() {
     alert("Signup submitted! (Demo – wire to your auth API.)");
   };
 
+  /* Clear name error when user types */
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
     if (nameError) setNameError(null);
@@ -85,6 +91,7 @@ export function SignupForm() {
     if (emailError) setEmailError(null);
   };
 
+  /* Validate email on blur; show error only if field has content */
   const handleEmailBlur = () => {
     if (email.trim() === "") {
       setEmailError(null);

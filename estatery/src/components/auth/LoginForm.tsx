@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Login form – email, password, keep logged in, validation.
+ * Uses useAuth().login() on success; navigates to dashboard.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -28,6 +32,7 @@ function isWrongEmail(email: string): boolean {
 export function LoginForm() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  /* Form state */
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [keepLoggedIn, setKeepLoggedIn] = React.useState(false);
@@ -37,6 +42,7 @@ export function LoginForm() {
 
   const hasTyped = email.length > 0 || password.length > 0;
 
+  /* Submit: validate email, then login and go to dashboard */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
@@ -51,11 +57,13 @@ export function LoginForm() {
     navigate("/dashboard");
   };
 
+  /* Clear error when user types in email field */
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     if (emailError) setEmailError(null);
   };
 
+  /* Validate email on blur; show error only if field has content */
   const handleEmailBlur = () => {
     if (email.trim() === "") {
       setEmailError(null);

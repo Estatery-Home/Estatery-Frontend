@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Property status donut – Available / Rented / Sold.
+ * Uses PropertiesContext; refresh changes seed.
+ */
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { useProperties } from "@/contexts/PropertiesContext";

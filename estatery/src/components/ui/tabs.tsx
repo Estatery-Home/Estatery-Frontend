@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Tabs – TabsList, TabsTrigger, TabsPanel; horizontal or vertical.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

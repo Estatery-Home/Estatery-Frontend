@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Property listing table – search, sort, filter, pagination.
+ * Links to property detail; receives properties from parent.
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, MoreHorizontal } from "lucide-react";

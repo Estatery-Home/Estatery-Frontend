@@ -1,3 +1,9 @@
+/**
+ * Estatery App – Main application root
+ *
+ * Sets up providers (auth, settings, properties), routing, and lazy-loaded screens.
+ * Public routes (welcome, login, signup) vs protected routes (dashboard, etc.).
+ */
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -6,7 +12,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import { PropertiesProvider } from "@/contexts/PropertiesContext";
 import { PublicRoute, ProtectedRoute } from "@/components";
 
-// Lazy-load all screens – only the current route loads, cutting initial JS and TBT
+// Lazy-load screens – only the current route loads, reducing initial bundle size
 const Login = lazy(() => import("@/screens/auth/Login"));
 const Signup = lazy(() => import("@/screens/auth/Signup"));
 const ForgotPassword = lazy(() => import("@/screens/auth/forgotPassword"));
@@ -33,12 +39,14 @@ const Feedback = lazy(() => import("@/screens/dashboard/Feedback"));
 const Welcome = lazy(() => import("@/screens/Welcome"));
 const NotFound = lazy(() => import("@/screens/NotFound"));
 
+/** Re-mount Settings when section changes (e.g. ?section=general) */
 function SettingsWithSection() {
   const [searchParams] = useSearchParams();
   const section = searchParams.get("section") ?? "default";
   return <Settings key={section} />;
 }
 
+/** Spinner shown while a lazy-loaded route is loading */
 function PageFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-white" aria-hidden>

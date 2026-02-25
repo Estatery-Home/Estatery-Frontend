@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Agents screen – Manage sales team, track performance, approve new agents.
+ *
+ * Features: stat cards, search/filter, card/table views, add agent form,
+ * agent detail drawer, status actions (approve, deactivate, set active).
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +14,6 @@ import {
   Mail,
   Search,
   Users,
-  UserCheck,
   Clock,
   Building2,
   TrendingUp,
@@ -27,121 +32,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
-
-type AgentStatus = "Active" | "Pending" | "Inactive";
-
-type Agent = {
-  id: string;
-  name: string;
-  initials: string;
-  email: string;
-  phone: string;
-  properties: number;
-  dealsClosed: number;
-  rating: number;
-  status: AgentStatus;
-};
-
-const mockAgents: Agent[] = [
-  {
-    id: "A-1021",
-    name: "Sarah Lee",
-    initials: "SL",
-    email: "sarah.lee@example.com",
-    phone: "+1 (555) 011-2345",
-    properties: 24,
-    dealsClosed: 18,
-    rating: 4.9,
-    status: "Active",
-  },
-  {
-    id: "A-1022",
-    name: "Jonathan Cruz",
-    initials: "JC",
-    email: "jonathan.cruz@example.com",
-    phone: "+1 (555) 016-7890",
-    properties: 15,
-    dealsClosed: 9,
-    rating: 4.6,
-    status: "Pending",
-  },
-  {
-    id: "A-1023",
-    name: "Amanda Lee",
-    initials: "AL",
-    email: "amanda.lee@example.com",
-    phone: "+1 (555) 018-9876",
-    properties: 12,
-    dealsClosed: 7,
-    rating: 4.4,
-    status: "Active",
-  },
-  {
-    id: "A-1024",
-    name: "Robert Brown",
-    initials: "RB",
-    email: "robert.brown@example.com",
-    phone: "+1 (555) 017-4456",
-    properties: 4,
-    dealsClosed: 2,
-    rating: 4.1,
-    status: "Inactive",
-  },
-];
-
-const AVATAR_GRADIENTS = [
-  "from-[#6366f1] to-[#8b5cf6]",
-  "from-[#0ea5e9] to-[#06b6d4]",
-  "from-[#f59e0b] to-[#f97316]",
-  "from-[#10b981] to-[#14b8a6]",
-];
-
-const statCards = [
-  {
-    title: "Total Agents",
-    valueKey: "total" as const,
-    icon: Users,
-    gradient: "from-[#6366f1] to-[#8b5cf6]",
-    bgMuted: "bg-indigo-50",
-  },
-  {
-    title: "Active",
-    valueKey: "active" as const,
-    icon: UserCheck,
-    gradient: "from-[#10b981] to-[#14b8a6]",
-    bgMuted: "bg-emerald-50",
-  },
-  {
-    title: "Pending approvals",
-    valueKey: "pending" as const,
-    icon: Clock,
-    gradient: "from-[#f59e0b] to-[#f97316]",
-    bgMuted: "bg-amber-50",
-  },
-];
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function nextAgentId(agents: Agent[]): string {
-  const nums = agents
-    .map((a) => parseInt(a.id.replace(/\D/g, ""), 10))
-    .filter((n) => !Number.isNaN(n));
-  const max = nums.length ? Math.max(...nums) : 1024;
-  return `A-${max + 1}`;
-}
+import {
+  type Agent,
+  type AgentStatus,
+  mockAgents,
+  AVATAR_GRADIENTS,
+  statCards,
+  getInitials,
+  nextAgentId,
+} from "./agents-data";
 
 export default function Agents() {
+  // --- Auth & layout
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
+
+  // --- Agents list state
   const [statusFilter, setStatusFilter] = React.useState<AgentStatus | "All">("All");
   const [search, setSearch] = React.useState("");
   const [agents, setAgents] = React.useState<Agent[]>(mockAgents);
@@ -150,6 +58,7 @@ export default function Agents() {
   const [addAgentOpen, setAddAgentOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<"cards" | "table">("cards");
 
+  // --- Logout flow
   const handleLogoutConfirm = () => {
     logout();
     setLogoutDialogOpen(false);
@@ -162,6 +71,7 @@ export default function Agents() {
 
   const statValues = { total: totalAgents, active: activeAgents, pending: pendingAgents };
 
+  /* Filter by status + search; paginate; reset to page 1 when filter/search changes */
   const filteredAgents = agents.filter((a) => {
     if (statusFilter !== "All" && a.status !== statusFilter) return false;
     const term = search.trim().toLowerCase();
@@ -180,6 +90,7 @@ export default function Agents() {
   const pageAgents = filteredAgents.slice(startIdx, startIdx + PAGE_SIZE);
   React.useEffect(() => setPage(1), [statusFilter, search]);
 
+  /* Change agent status: Pending → Active, Active → Inactive, Inactive → Active */
   const handleApprove = (id: string) => {
     setAgents((prev) =>
       prev.map((a) => (a.id === id && a.status === "Pending" ? { ...a, status: "Active" } : a))
@@ -219,6 +130,7 @@ export default function Agents() {
     dealsClosed: 0,
   });
 
+  /* Add new agent: validate name/email, create with nextAgentId, reset form, close modal */
   const handleAddAgent = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newAgent.name.trim();

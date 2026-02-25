@@ -1,3 +1,6 @@
+/**
+ * 404 page – shown for unknown routes; link to login.
+ */
 import { Link } from "react-router-dom";
 
 export default function NotFound() {

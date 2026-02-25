@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Client detail – profile, transactions table, edit modal.
+ * Loads from getClientDetail(clientId), getClientTransactions; filter, pagination.
+ */
 import * as React from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Calendar, Edit3, FileText, Mail, Phone, MessageCircle, ArrowLeft, Search } from "lucide-react";

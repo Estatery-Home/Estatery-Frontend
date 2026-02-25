@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Add Property step 2 – Location (full address, city/region/zip, map).
+ * Calls onLocationChange with combined string.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

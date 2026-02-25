@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Properties page header – title + Add New Property button.
+ */
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
