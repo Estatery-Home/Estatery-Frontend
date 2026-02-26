@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Notifications slide-out panel – list from lib/notifications, mark all read.
+ * Renders via portal when TopBar opens it.
+ */
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";

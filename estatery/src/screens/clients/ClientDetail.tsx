@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Client detail – profile, transactions table, edit modal.
+ * Loads from getClientDetail(clientId), getClientTransactions; filter, pagination.
+ */
 import * as React from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Calendar, Edit3, FileText, Mail, Phone, MessageCircle, ArrowLeft, Search } from "lucide-react";
@@ -7,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import {
   getClientDetail,
@@ -26,7 +31,7 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
 
@@ -55,7 +60,7 @@ export default function ClientDetail() {
       <div className="min-h-screen bg-[#f1f5f9]">
         <Sidebar
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggle={onToggle}
           onLogoutClick={() => setLogoutDialogOpen(true)}
         />
         <div
@@ -164,7 +169,7 @@ export default function ClientDetail() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -263,7 +268,7 @@ export default function ClientDetail() {
                   <div>
                     <dt className="text-[#64748b]">Property Type</dt>
                     <dd className="mt-1">
-                      <span className="inline-flex rounded-full bg-[#eff6ff] px-3 py-0.5 text-xs font-medium text-[#1d4ed8]">
+                      <span className="inline-flex rounded-full bg-[var(--logo-muted)] px-3 py-0.5 text-xs font-medium text-[var(--logo)]">
                         {detail.propertyType}
                       </span>
                     </dd>
@@ -271,7 +276,7 @@ export default function ClientDetail() {
                   <div>
                     <dt className="text-[#64748b]">Transaction Date</dt>
                     <dd className="mt-1 inline-flex items-center gap-2 text-xs">
-                      <span className="inline-flex items-center rounded-full bg-[#eff6ff] px-3 py-0.5 font-medium text-[#1d4ed8]">
+                      <span className="inline-flex items-center rounded-full bg-[var(--logo-muted)] px-3 py-0.5 font-medium text-[var(--logo)]">
                         <Calendar className="mr-1 size-3" />
                         {detail.transactionDate}
                       </span>
@@ -288,7 +293,7 @@ export default function ClientDetail() {
                   <div>
                     <dt className="text-[#64748b]">Rent Duration</dt>
                     <dd className="mt-1">
-                      <span className="inline-flex rounded-full bg-[#eff6ff] px-3 py-0.5 text-xs font-medium text-[#1d4ed8]">
+                      <span className="inline-flex rounded-full bg-[var(--logo-muted)] px-3 py-0.5 text-xs font-medium text-[var(--logo)]">
                         {detail.rentDuration}
                       </span>
                     </dd>

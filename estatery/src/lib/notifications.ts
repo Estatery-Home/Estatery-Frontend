@@ -1,3 +1,6 @@
+/**
+ * Notification types and mock data for the notifications panel/detail.
+ */
 export type NotificationType = "agent" | "property_alert" | "expired";
 
 export type Notification = {

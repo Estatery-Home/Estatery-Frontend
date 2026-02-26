@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Notification preferences – transaction/payment toggles.
+ * Uses SettingsContext.notifications; Revert in parent.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";

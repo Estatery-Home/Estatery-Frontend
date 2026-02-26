@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Login form – username, password (API-aligned).
+ * Uses useAuth().login() on success; navigates to dashboard.
+ * API: POST /api/auth/login/ with username, password.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -10,61 +15,52 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
-const EMAIL_ERROR_MESSAGE = "The email address you entered is wrong!";
-
-function validateEmail(email: string): boolean {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
-}
-
-function isWrongEmail(email: string): boolean {
-  return (
-    !email.trim() ||
-    !validateEmail(email) ||
-    email.toLowerCase().includes("exampple")
-  );
-}
+const USERNAME_ERROR_MESSAGE = "Username is required!";
 
 export function LoginForm() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = React.useState("");
+  /* Form state */
+  const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [keepLoggedIn, setKeepLoggedIn] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
-  const [emailError, setEmailError] = React.useState<string | null>(null);
+  const [usernameError, setUsernameError] = React.useState<string | null>(null);
   const [touched, setTouched] = React.useState(false);
 
-  const hasTyped = email.length > 0 || password.length > 0;
+  const hasTyped = username.length > 0 || password.length > 0;
 
+  /* Submit: validate username, then login and go to dashboard */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
 
-    if (isWrongEmail(email)) {
-      setEmailError(EMAIL_ERROR_MESSAGE);
+    if (!username.trim()) {
+      setUsernameError(USERNAME_ERROR_MESSAGE);
       return;
     }
 
-    setEmailError(null);
+    setUsernameError(null);
     login();
     navigate("/dashboard");
   };
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    if (emailError) setEmailError(null);
+  /* Clear error when user types in username field */
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    if (usernameError) setUsernameError(null);
   };
 
-  const handleEmailBlur = () => {
-    if (email.trim() === "") {
-      setEmailError(null);
+  /* Validate username on blur */
+  const handleUsernameBlur = () => {
+    if (username.trim() === "") {
+      setUsernameError(null);
       return;
     }
-    if (isWrongEmail(email)) {
-      setEmailError(EMAIL_ERROR_MESSAGE);
+    if (!username.trim()) {
+      setUsernameError(USERNAME_ERROR_MESSAGE);
     } else {
-      setEmailError(null);
+      setUsernameError(null);
     }
   };
 
@@ -85,37 +81,37 @@ export function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-black">
-              Email Address <span className="text-red-500">*</span>
+            <Label htmlFor="username" className="text-black">
+              Username <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={handleEmailChange}
-              onBlur={handleEmailBlur}
-              error={!!emailError}
+              id="username"
+              name="username"
+              type="text"
+              placeholder="Enter your username"
+              value={username}
+              onChange={handleUsernameChange}
+              onBlur={handleUsernameBlur}
+              error={!!usernameError}
               className={cn(
                 "w-full rounded-lg placeholder:text-[#9ca3af]",
-                !emailError && "border-[#d1d5db]",
-                emailError && "border-red-500 bg-[#FFE8E8]"
+                !usernameError && "border-[#d1d5db]",
+                usernameError && "border-red-500 bg-[#FFE8E8]"
               )}
-              autoComplete="email"
-              aria-invalid={!!emailError}
-              aria-describedby={emailError ? "email-error" : undefined}
+              autoComplete="username"
+              aria-invalid={!!usernameError}
+              aria-describedby={usernameError ? "username-error" : undefined}
             />
-            {emailError && (
+            {usernameError && (
               <p
-                id="email-error"
+                id="username-error"
                 role="alert"
                 className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-red-600"
               >
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-red-500" aria-hidden>
                   <AlertCircle className="size-3 stroke-[2.5] text-white [stroke:white]" />
                 </span>
-                {emailError}
+                {usernameError}
               </p>
             )}
           </div>
@@ -171,7 +167,7 @@ export function LoginForm() {
             </label>
             <Link
               to="/auth/forgot-password"
-              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[#2563eb] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-[var(--logo)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
             >
               Forgot Password?
             </Link>
@@ -181,8 +177,8 @@ export function LoginForm() {
             type="submit"
             className={cn(
               "w-full rounded-lg text-white",
-              emailError
-                ? "bg-[#1d4ed8] hover:bg-[#1e40af]"
+              usernameError
+                ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 : hasTyped
                   ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                   : "bg-[#97ADDE] hover:bg-[#7d9ad4]"

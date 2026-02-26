@@ -1,3 +1,7 @@
+/**
+ * Search – agents, sections, and property results for quick search overlay.
+ * searchAll merges and filters by query; returns up to 12.
+ */
 export type SearchResultType = "query" | "agent" | "property" | "section";
 
 export type SearchResult = {
@@ -26,25 +30,30 @@ export const sections: SearchResult[] = [
   { id: "s6", type: "section", label: "Recent Payments", href: "/dashboard" },
 ];
 
-function getPropertyResults(properties: { id: string; name: string; location: string }[]): SearchResult[] {
+function getPropertyResults(
+  properties: { id: string | number; title: string; address: string; city: string; country: string }[]
+): SearchResult[] {
   return properties.map((p) => ({
-    id: p.id,
+    id: String(p.id),
     type: "property" as const,
-    label: p.name,
-    subtitle: p.location,
+    label: p.title,
+    subtitle: [p.address, p.city, p.country].filter(Boolean).join(", "),
     href: `/dashboard/properties/${p.id}`,
   }));
 }
 
-export function searchAll(query: string, propertyNames: { id: string; name: string; location: string }[]): SearchResult[] {
+export function searchAll(
+  query: string,
+  propertyList: { id: string | number; title: string; address: string; city: string; country: string }[]
+): SearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
-  const propertyResults = getPropertyResults(propertyNames);
+  const propertyResults = getPropertyResults(propertyList);
   const all: SearchResult[] = [
     ...agents.filter((a) => a.label.toLowerCase().includes(q) || a.subtitle?.toLowerCase().includes(q)),
     ...sections.filter((s) => s.label.toLowerCase().includes(q)),
-    ...propertyResults.filter((p) => p.label.toLowerCase().includes(q) || p.subtitle?.toLowerCase().includes(q)),
+    ...propertyResults.filter((p) => p.label.toLowerCase().includes(q) || (p.subtitle && p.subtitle.toLowerCase().includes(q))),
   ];
 
   return all.slice(0, 12);

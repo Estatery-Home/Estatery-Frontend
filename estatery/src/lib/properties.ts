@@ -1,170 +1,282 @@
-export type PropertyType = "Rent" | "Sale";
-export type PropertyStatus = "Available" | "Rented" | "Sold";
+/**
+ * Property types – aligned with API Property object.
+ * API: title, address, city, country, bedrooms, bathrooms, area, property_type, status, monthly_price.
+ */
+import type { PropertyTypeApi, PropertyStatusApi } from "./api-types";
 
+/** Local property shape matching API – id can be number (from API) or string (local before sync) */
 export type Property = {
-  id: string;
-  name: string;
-  location: string;
-  price: string;
-  period: string;
-  image: string;
-  description?: string;
-  beds?: number;
-  baths?: number;
-  sqft?: string;
-  type?: PropertyType;
-  status?: PropertyStatus;
-  views?: number;
-  lastUpdated?: string;
+  id: number | string;
+  title: string;
+  address: string;
+  city: string;
+  state?: string;
+  country: string;
+  zip_code?: string;
+  description: string;
+  daily_price: string;
+  monthly_price: string;
+  currency: string;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  property_type: PropertyTypeApi;
+  status: PropertyStatusApi;
+  has_wifi?: boolean;
+  has_parking?: boolean;
+  has_pool?: boolean;
+  has_gym?: boolean;
+  is_furnished?: boolean;
+  has_kitchen?: boolean;
+  min_stay_months?: number;
+  max_stay_months?: number;
+  monthly_cycle_start?: number;
+  security_deposit_months?: string;
+  images?: { id?: number; image: string; is_primary?: boolean }[];
+  primary_image?: { image: string } | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
+/** Display helper: full location string from address, city, country */
+export function getPropertyLocation(p: Property): string {
+  const parts = [p.address, p.city, p.country].filter(Boolean);
+  return parts.join(", ") || "Address TBD";
+}
+
+/** Display helper: primary image URL */
+export function getPropertyImage(p: Property): string {
+  return p.primary_image?.image ?? p.images?.[0]?.image ?? "/images/property-1.webp";
+}
+
+/** Display helper: price with period (e.g. monthly) */
+export function getPropertyPriceDisplay(p: Property): string {
+  const prefix = p.currency === "ghs" ? "₵" : p.currency === "usd" ? "$" : "";
+  return `${prefix}${p.monthly_price} / month`;
+}
+
+/** Display helper: human-readable status */
+export function getPropertyStatusDisplay(status: PropertyStatusApi): string {
+  const map: Record<PropertyStatusApi, string> = {
+    available: "Available",
+    rented: "Rented",
+    maintenance: "Maintenance",
+  };
+  return map[status] ?? status;
+}
+
+/** Map min/max stay months to rental period label */
+export function getRentalPeriodLabel(p: Property): string {
+  const min = p.min_stay_months ?? 12;
+  const max = p.max_stay_months;
+  if (max && max !== min) return `${min}–${max} months`;
+  if (min === 6) return "6 months";
+  if (min === 12) return "1 year";
+  if (min === 24) return "2 years";
+  return `${min} months`;
+}
+
+export const PROPERTY_TYPES: PropertyTypeApi[] = ["apartment", "house", "condo", "villa", "studio"];
+export const PROPERTY_STATUSES: PropertyStatusApi[] = ["available", "rented", "maintenance"];
+
+/** Seed data – API-aligned shape for demo (API not ready yet) */
 export const properties: Property[] = [
   {
     id: "03483",
-    name: "Seaside Retreat",
-    location: "258 Coastline Dr, Springfield, USA",
-    price: "₵575.00",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=500&fit=crop",
+    title: "Seaside Retreat",
+    address: "258 Coastline Dr",
+    city: "Springfield",
+    country: "USA",
     description: "Stunning lakefront estate with panoramic views.",
-    beds: 5,
-    baths: 4,
-    sqft: "4,200",
-    type: "Rent",
-    status: "Available",
-    views: 804,
-    lastUpdated: "July 08, 2025",
+    daily_price: "19.17",
+    monthly_price: "575.00",
+    currency: "ghs",
+    bedrooms: 5,
+    bathrooms: 4,
+    area: 4200,
+    property_type: "house",
+    status: "available",
+    primary_image: { image: "/images/property-1.webp" },
+    min_stay_months: 12,
+    created_at: "2025-07-08T00:00:00Z",
+    updated_at: "2025-07-08T00:00:00Z",
   },
   {
     id: "03484",
-    name: "Mountain Escape",
-    location: "123 Summit Ave, Denver, USA",
-    price: "₵1,200.00",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=500&fit=crop",
+    title: "Mountain Escape",
+    address: "123 Summit Ave",
+    city: "Denver",
+    country: "USA",
     description: "Architectural masterpiece on the coast.",
-    beds: 6,
-    baths: 5,
-    sqft: "6,500",
-    type: "Rent",
-    status: "Available",
-    views: 605,
-    lastUpdated: "August 15, 2025",
+    daily_price: "40.00",
+    monthly_price: "1200.00",
+    currency: "ghs",
+    bedrooms: 6,
+    bathrooms: 5,
+    area: 6500,
+    property_type: "villa",
+    status: "available",
+    primary_image: { image: "/images/property-2.webp" },
+    min_stay_months: 6,
+    created_at: "2025-08-15T00:00:00Z",
+    updated_at: "2025-08-15T00:00:00Z",
   },
   {
     id: "03485",
-    name: "Urban Loft",
-    location: "456 City Center, New York, USA",
-    price: "₵2,500.00",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=500&fit=crop",
+    title: "Urban Loft",
+    address: "456 City Center",
+    city: "New York",
+    country: "USA",
     description: "Luxury penthouse in the heart of the city.",
-    beds: 4,
-    baths: 3,
-    sqft: "3,800",
-    type: "Rent",
-    status: "Available",
-    views: 302,
-    lastUpdated: "September 01, 2025",
+    daily_price: "83.33",
+    monthly_price: "2500.00",
+    currency: "ghs",
+    bedrooms: 4,
+    bathrooms: 3,
+    area: 3800,
+    property_type: "apartment",
+    status: "available",
+    primary_image: { image: "/images/property-3.webp" },
+    min_stay_months: 24,
+    created_at: "2025-09-01T00:00:00Z",
+    updated_at: "2025-09-01T00:00:00Z",
   },
   {
     id: "03486",
-    name: "Countryside Villa",
-    location: "789 Farm Rd, Austin, USA",
-    price: "₵850.00",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&h=500&fit=crop",
+    title: "Countryside Villa",
+    address: "789 Farm Rd",
+    city: "Austin",
+    country: "USA",
     description: "Industrial-chic loft with exposed brick.",
-    beds: 2,
-    baths: 2,
-    sqft: "2,100",
-    type: "Rent",
-    status: "Available",
-    views: 201,
-    lastUpdated: "July 20, 2025",
+    daily_price: "28.33",
+    monthly_price: "850.00",
+    currency: "ghs",
+    bedrooms: 2,
+    bathrooms: 2,
+    area: 2100,
+    property_type: "studio",
+    status: "available",
+    primary_image: { image: "/images/property-4.webp" },
+    min_stay_months: 12,
+    created_at: "2025-07-20T00:00:00Z",
+    updated_at: "2025-07-20T00:00:00Z",
   },
   {
     id: "03487",
-    name: "Cozy Cabin",
-    location: "321 Woodland Way, Seattle, USA",
-    price: "₵650.00",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800&h=500&fit=crop",
+    title: "Cozy Cabin",
+    address: "321 Woodland Way",
+    city: "Seattle",
+    country: "USA",
     description: "Desert oasis with red rock views.",
-    beds: 4,
-    baths: 4,
-    sqft: "3,600",
-    type: "Rent",
-    status: "Available",
-    views: 450,
-    lastUpdated: "June 30, 2025",
+    daily_price: "21.67",
+    monthly_price: "650.00",
+    currency: "ghs",
+    bedrooms: 4,
+    bathrooms: 4,
+    area: 3600,
+    property_type: "house",
+    status: "available",
+    primary_image: { image: "/images/property-5.webp" },
+    min_stay_months: 6,
+    created_at: "2025-06-30T00:00:00Z",
+    updated_at: "2025-06-30T00:00:00Z",
   },
   {
     id: "6",
-    name: "Oceanfront Paradise",
-    location: "Miami Beach, Florida, USA",
-    price: "₵1,450,000",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800&h=500&fit=crop",
-    description: "Direct oceanfront with private dock. Resort-style pool and outdoor kitchen.",
-    beds: 7,
-    baths: 6,
-    sqft: "8,200",
+    title: "Oceanfront Paradise",
+    address: "Miami Beach",
+    city: "Florida",
+    country: "USA",
+    description: "Direct oceanfront with private dock.",
+    daily_price: "4833.33",
+    monthly_price: "145000.00",
+    currency: "ghs",
+    bedrooms: 7,
+    bathrooms: 6,
+    area: 8200,
+    property_type: "villa",
+    status: "available",
+    primary_image: { image: "/images/property-6.webp" },
+    min_stay_months: 12,
   },
   {
     id: "7",
-    name: "Mountain View Lodge",
-    location: "Aspen, Colorado, USA",
-    price: "₵920,000",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&h=500&fit=crop",
-    description: "Ski-in/ski-out luxury lodge. Stone fireplaces, hot tub, and mountain views.",
-    beds: 5,
-    baths: 5,
-    sqft: "5,400",
+    title: "Mountain View Lodge",
+    address: "Aspen",
+    city: "Colorado",
+    country: "USA",
+    description: "Ski-in/ski-out luxury lodge.",
+    daily_price: "30666.67",
+    monthly_price: "920000.00",
+    currency: "ghs",
+    bedrooms: 5,
+    bathrooms: 5,
+    area: 5400,
+    property_type: "house",
+    status: "available",
+    primary_image: { image: "/images/property-7.webp" },
+    min_stay_months: 24,
   },
   {
     id: "8",
-    name: "Garden District Home",
-    location: "New Orleans, LA, USA",
-    price: "₵565,000",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&h=500&fit=crop",
-    description: "Historic charm with modern updates. Wraparound porch and lush gardens.",
-    beds: 4,
-    baths: 3,
-    sqft: "3,200",
+    title: "Garden District Home",
+    address: "New Orleans",
+    city: "LA",
+    country: "USA",
+    description: "Historic charm with modern updates.",
+    daily_price: "18833.33",
+    monthly_price: "565000.00",
+    currency: "ghs",
+    bedrooms: 4,
+    bathrooms: 3,
+    area: 3200,
+    property_type: "house",
+    status: "available",
+    primary_image: { image: "/images/property-8.webp" },
+    min_stay_months: 12,
   },
   {
     id: "9",
-    name: "Desert Oasis Estate",
-    location: "Scottsdale, Arizona, USA",
-    price: "₵1,100,000",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?w=800&h=500&fit=crop",
-    description: "Contemporary desert estate with courtyard pool and mountain views.",
-    beds: 5,
-    baths: 4,
-    sqft: "4,800",
+    title: "Desert Oasis Estate",
+    address: "Scottsdale",
+    city: "Arizona",
+    country: "USA",
+    description: "Contemporary desert estate.",
+    daily_price: "36666.67",
+    monthly_price: "1100000.00",
+    currency: "ghs",
+    bedrooms: 5,
+    bathrooms: 4,
+    area: 4800,
+    property_type: "villa",
+    status: "available",
+    primary_image: { image: "/images/property-9.webp" },
+    min_stay_months: 24,
   },
   {
     id: "10",
-    name: "Historic Brownstone",
-    location: "Brooklyn, New York, USA",
-    price: "₵735,000",
-    period: "/month",
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=500&fit=crop",
-    description: "Restored brownstone with original details. Garden and roof deck.",
-    beds: 3,
-    baths: 3,
-    sqft: "2,800",
+    title: "Historic Brownstone",
+    address: "Brooklyn",
+    city: "New York",
+    country: "USA",
+    description: "Restored brownstone with original details.",
+    daily_price: "24500.00",
+    monthly_price: "735000.00",
+    currency: "ghs",
+    bedrooms: 3,
+    bathrooms: 3,
+    area: 2800,
+    property_type: "condo",
+    status: "available",
+    primary_image: { image: "/images/property-10.webp" },
+    min_stay_months: 12,
   },
 ];
 
-export function getPropertyById(id: string): Property | undefined {
-  return properties.find((p) => p.id === id);
+export function getPropertyById(id: string | number): Property | undefined {
+  return properties.find((p) => String(p.id) === String(id));
 }
 
-export function getOtherProperties(excludeId: string, limit = 6): Property[] {
-  return properties.filter((p) => p.id !== excludeId).slice(0, limit);
+export function getOtherProperties(excludeId: string | number, limit = 6): Property[] {
+  return properties.filter((p) => String(p.id) !== String(excludeId)).slice(0, limit);
 }

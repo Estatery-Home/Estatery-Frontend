@@ -1,11 +1,16 @@
 "use client";
 
+/**
+ * Clients – cards overview, table with export/refresh.
+ * Uses lib/clients mock data; lastUpdated in localStorage.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { ClientsCards } from "@/components/clients/ClientsCards";
 import { ClientsTable } from "@/components/clients/clientsTable";
@@ -15,7 +20,7 @@ export default function Clients() {
   const STORAGE_KEY = "clients-last-updated";
   const defaultLastUpdated = "July 08, 2025";
 
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState(() => {
     if (typeof window !== "undefined") {
@@ -28,6 +33,7 @@ export default function Clients() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  /* Update lastUpdated, persist to localStorage, show loading briefly */
   const handleRefresh = () => {
     setRefreshing(true);
     const now = new Date();
@@ -47,6 +53,7 @@ export default function Clients() {
     }, 800);
   };
 
+  /* Build CSV from clients, trigger download */
   const handleExport = () => {
     const header = [
       "Client ID",
@@ -96,7 +103,7 @@ export default function Clients() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div

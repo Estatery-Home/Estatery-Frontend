@@ -1,20 +1,58 @@
 "use client";
 
+/**
+ * Add Property step 2 – Location (full address, city/region/zip, map).
+ * Calls onLocationChange with combined string.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+/** API-aligned: address, city, country */
+export type LocationData = {
+  address: string;
+  city: string;
+  country: string;
+};
 
-export function AddPropertyLocationStep() {
-  const [fullAddress, setFullAddress] = React.useState("");
-  const [addressLength, setAddressLength] = React.useState(0);
-  const [cityRegionZip, setCityRegionZip] = React.useState("");
-  const [mapLocation, setMapLocation] = React.useState("");
+type AddPropertyLocationStepProps = {
+  address?: string;
+  city?: string;
+  country?: string;
+  onLocationChange?: (data: LocationData) => void;
+};
+
+export function AddPropertyLocationStep({
+  address: addressProp = "",
+  city: cityProp = "",
+  country: countryProp = "USA",
+  onLocationChange,
+}: AddPropertyLocationStepProps) {
+  const [fullAddress, setFullAddress] = React.useState(addressProp);
+  const [addressLength, setAddressLength] = React.useState(addressProp.length);
+  const [city, setCity] = React.useState(cityProp);
+  const [country, setCountry] = React.useState(countryProp);
+
+  const notify = (a: string, c: string, co: string) =>
+    onLocationChange?.({ address: a, city: c, country: co });
 
   const handleFullAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
     setFullAddress(v);
     setAddressLength(Math.min(v.length, 200));
+    notify(v, city, country);
+  };
+
+  const handleCityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setCity(v);
+    notify(fullAddress, v, country);
+  };
+
+  const handleCountryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setCountry(v);
+    notify(fullAddress, city, v);
   };
 
   return (
@@ -38,27 +76,27 @@ export function AddPropertyLocationStep() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="city-region-zip" className="text-[#1e293b]">
-          City / Region / Zip Code
+        <Label htmlFor="city" className="text-[#1e293b]">
+          City
         </Label>
         <Input
-          id="city-region-zip"
-          value={cityRegionZip}
-          onChange={(e) => setCityRegionZip(e.target.value)}
-          placeholder="Placeholder"
+          id="city"
+          value={city}
+          onChange={handleCityChange}
+          placeholder="e.g. Accra, New York"
           className="border-[#e2e8f0] bg-white text-[#1e293b]"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="map-location" className="text-[#1e293b]">
-          Map Location
+        <Label htmlFor="country" className="text-[#1e293b]">
+          Country
         </Label>
         <Input
-          id="map-location"
-          value={mapLocation}
-          onChange={(e) => setMapLocation(e.target.value)}
-          placeholder="Placeholder"
+          id="country"
+          value={country}
+          onChange={handleCountryChange}
+          placeholder="e.g. Ghana, USA"
           className="border-[#e2e8f0] bg-white text-[#1e293b]"
         />
       </div>

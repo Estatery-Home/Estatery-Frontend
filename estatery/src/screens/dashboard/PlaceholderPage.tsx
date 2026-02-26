@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Placeholder for unimplemented dashboard pages – title, description.
+ */
 import * as React from "react";
 import { DashboardLayout } from "@/components/dashboard";
 

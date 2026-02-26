@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Add Property step 5 – Contact (name, phone, email, agent).
+ * Calls onChange(field, value) for each input.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

@@ -1,13 +1,20 @@
 "use client";
 
+/**
+ * UserProfileContext – Current user profile (API-aligned).
+ * API User: id, username, email, phone, avatar, user_type.
+ * Persists to localStorage. Used by settings, top bar, etc.
+ */
 import * as React from "react";
+import type { UserType } from "@/lib/api-types";
 
 export type UserProfile = {
-  name: string;
-  role: string;
+  id?: number;
+  username: string;
   email: string;
   phone: string;
   avatar?: string | null;
+  user_type: UserType;
 };
 
 type UserProfileContextValue = {
@@ -20,43 +27,30 @@ const UserProfileContext = React.createContext<UserProfileContextValue | null>(n
 const STORAGE_KEY = "estatery-user-profile";
 
 function getInitialProfile(): UserProfile {
-  if (typeof window === "undefined") {
-    return {
-      name: "Sarah Lee",
-      role: "Agent",
-      email: "sarah.lee@example.com",
-      phone: "+1 (555) 123-4567",
-      avatar: null,
-    };
-  }
+  const defaultProfile: UserProfile = {
+    username: "sarah_lee",
+    email: "sarah.lee@example.com",
+    phone: "+1 (555) 123-4567",
+    avatar: null,
+    user_type: "owner",
+  };
+
+  if (typeof window === "undefined") return defaultProfile;
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return {
-        name: "Sarah Lee",
-        role: "Agent",
-        email: "sarah.lee@example.com",
-        phone: "+1 (555) 123-4567",
-        avatar: null,
-      };
-    }
+    if (!raw) return defaultProfile;
     const parsed = JSON.parse(raw) as UserProfile;
     return {
-      name: parsed.name || "Sarah Lee",
-      role: parsed.role || "Agent",
+      id: parsed.id,
+      username: parsed.username || "sarah_lee",
       email: parsed.email || "sarah.lee@example.com",
       phone: parsed.phone || "+1 (555) 123-4567",
       avatar: parsed.avatar ?? null,
+      user_type: parsed.user_type || "owner",
     };
   } catch {
-    return {
-      name: "Sarah Lee",
-      role: "Agent",
-      email: "sarah.lee@example.com",
-      phone: "+1 (555) 123-4567",
-      avatar: null,
-    };
+    return defaultProfile;
   }
 }
 

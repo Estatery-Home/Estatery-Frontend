@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Agents screen – Manage sales team, track performance, approve new agents.
+ *
+ * Features: stat cards, search/filter, card/table views, add agent form,
+ * agent detail drawer, status actions (approve, deactivate, set active).
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +14,6 @@ import {
   Mail,
   Search,
   Users,
-  UserCheck,
   Clock,
   Building2,
   TrendingUp,
@@ -21,126 +26,30 @@ import {
 } from "lucide-react";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
-
-type AgentStatus = "Active" | "Pending" | "Inactive";
-
-type Agent = {
-  id: string;
-  name: string;
-  initials: string;
-  email: string;
-  phone: string;
-  properties: number;
-  dealsClosed: number;
-  rating: number;
-  status: AgentStatus;
-};
-
-const mockAgents: Agent[] = [
-  {
-    id: "A-1021",
-    name: "Sarah Lee",
-    initials: "SL",
-    email: "sarah.lee@example.com",
-    phone: "+1 (555) 011-2345",
-    properties: 24,
-    dealsClosed: 18,
-    rating: 4.9,
-    status: "Active",
-  },
-  {
-    id: "A-1022",
-    name: "Jonathan Cruz",
-    initials: "JC",
-    email: "jonathan.cruz@example.com",
-    phone: "+1 (555) 016-7890",
-    properties: 15,
-    dealsClosed: 9,
-    rating: 4.6,
-    status: "Pending",
-  },
-  {
-    id: "A-1023",
-    name: "Amanda Lee",
-    initials: "AL",
-    email: "amanda.lee@example.com",
-    phone: "+1 (555) 018-9876",
-    properties: 12,
-    dealsClosed: 7,
-    rating: 4.4,
-    status: "Active",
-  },
-  {
-    id: "A-1024",
-    name: "Robert Brown",
-    initials: "RB",
-    email: "robert.brown@example.com",
-    phone: "+1 (555) 017-4456",
-    properties: 4,
-    dealsClosed: 2,
-    rating: 4.1,
-    status: "Inactive",
-  },
-];
-
-const AVATAR_GRADIENTS = [
-  "from-[#6366f1] to-[#8b5cf6]",
-  "from-[#0ea5e9] to-[#06b6d4]",
-  "from-[#f59e0b] to-[#f97316]",
-  "from-[#10b981] to-[#14b8a6]",
-];
-
-const statCards = [
-  {
-    title: "Total Agents",
-    valueKey: "total" as const,
-    icon: Users,
-    gradient: "from-[#6366f1] to-[#8b5cf6]",
-    bgMuted: "bg-indigo-50",
-  },
-  {
-    title: "Active",
-    valueKey: "active" as const,
-    icon: UserCheck,
-    gradient: "from-[#10b981] to-[#14b8a6]",
-    bgMuted: "bg-emerald-50",
-  },
-  {
-    title: "Pending approvals",
-    valueKey: "pending" as const,
-    icon: Clock,
-    gradient: "from-[#f59e0b] to-[#f97316]",
-    bgMuted: "bg-amber-50",
-  },
-];
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function nextAgentId(agents: Agent[]): string {
-  const nums = agents
-    .map((a) => parseInt(a.id.replace(/\D/g, ""), 10))
-    .filter((n) => !Number.isNaN(n));
-  const max = nums.length ? Math.max(...nums) : 1024;
-  return `A-${max + 1}`;
-}
+import {
+  type Agent,
+  type AgentStatus,
+  mockAgents,
+  AVATAR_GRADIENTS,
+  statCards,
+  getInitials,
+  nextAgentId,
+} from "./agents-data";
 
 export default function Agents() {
+  // --- Auth & layout
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
+
+  // --- Agents list state
   const [statusFilter, setStatusFilter] = React.useState<AgentStatus | "All">("All");
   const [search, setSearch] = React.useState("");
   const [agents, setAgents] = React.useState<Agent[]>(mockAgents);
@@ -149,6 +58,7 @@ export default function Agents() {
   const [addAgentOpen, setAddAgentOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<"cards" | "table">("cards");
 
+  // --- Logout flow
   const handleLogoutConfirm = () => {
     logout();
     setLogoutDialogOpen(false);
@@ -161,6 +71,7 @@ export default function Agents() {
 
   const statValues = { total: totalAgents, active: activeAgents, pending: pendingAgents };
 
+  /* Filter by status + search; paginate; reset to page 1 when filter/search changes */
   const filteredAgents = agents.filter((a) => {
     if (statusFilter !== "All" && a.status !== statusFilter) return false;
     const term = search.trim().toLowerCase();
@@ -179,6 +90,7 @@ export default function Agents() {
   const pageAgents = filteredAgents.slice(startIdx, startIdx + PAGE_SIZE);
   React.useEffect(() => setPage(1), [statusFilter, search]);
 
+  /* Change agent status: Pending → Active, Active → Inactive, Inactive → Active */
   const handleApprove = (id: string) => {
     setAgents((prev) =>
       prev.map((a) => (a.id === id && a.status === "Pending" ? { ...a, status: "Active" } : a))
@@ -218,6 +130,7 @@ export default function Agents() {
     dealsClosed: 0,
   });
 
+  /* Add new agent: validate name/email, create with nextAgentId, reset form, close modal */
   const handleAddAgent = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newAgent.name.trim();
@@ -247,7 +160,7 @@ export default function Agents() {
     <div className="min-h-screen bg-[#f8fafc]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -277,8 +190,8 @@ export default function Agents() {
               </div>
             </div>
 
-            {/* Stats cards */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* Stats cards + Performance tips + Approve queue */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {statCards.map((card) => (
                 <div
                   key={card.title}
@@ -303,6 +216,34 @@ export default function Agents() {
                   </div>
                 </div>
               ))}
+              <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <div className="relative flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
+                    <Sparkles className="size-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Performance tips</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                      Agents with quick response times close up to 3x more deals.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50">
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <div className="relative flex items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                    <Clock className="size-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Approval queue</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                      New sign-ups appear here for review. Use Approve to activate.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Search, Filters, Actions */}
@@ -364,8 +305,8 @@ export default function Agents() {
               </Button>
             </div>
 
-            {/* Agent cards grid + Tips panel */}
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            {/* Agent cards grid */}
+            <div>
               <section>
                 <h2 className="mb-4 text-lg font-semibold text-slate-800">Agent Directory</h2>
 
@@ -623,36 +564,6 @@ export default function Agents() {
                 </>
                 )}
               </section>
-
-              {/* Tips sidebar */}
-              <aside className="space-y-4 lg:max-w-[320px]">
-                <div className="sticky top-6 space-y-4">
-                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-100">
-                        <Sparkles className="size-4 text-indigo-600" />
-                      </div>
-                      <h3 className="font-semibold text-slate-800">Performance tips</h3>
-                    </div>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      Agents with quick response times and consistent follow-ups close up to 3x more
-                      deals. Assign hot leads to your highest rated agents to increase conversion.
-                    </p>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100">
-                        <Clock className="size-4 text-amber-600" />
-                      </div>
-                      <h3 className="font-semibold text-slate-800">Approval queue</h3>
-                    </div>
-                    <p className="text-sm leading-relaxed text-slate-600">
-                      New agent sign-ups from the Notifications page will appear here for review.
-                      Use the Approve button to activate their account.
-                    </p>
-                  </div>
-                </div>
-              </aside>
             </div>
           </div>
         </main>

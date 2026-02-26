@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Properties list – charts + table of properties.
+ * Uses PropertiesContext; Add Property modal adds to list via addProperty.
+ */
 import * as React from "react";
 import { DashboardLayout } from "@/components/dashboard";
 import { AddPropertyModal } from "@/components/dashboard/AddPropertyModal";
@@ -9,17 +13,25 @@ import {
   PropertyListedDonut,
   PropertyListingTable,
 } from "@/components/dashboard/properties";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 import type { Property } from "@/lib/properties";
-
-const TABLE_PROPERTIES = properties.filter(
-  (p) => p.views != null && p.lastUpdated
-) as Property[];
-const DEFAULT_TABLE: Property[] =
-  TABLE_PROPERTIES.length > 0 ? TABLE_PROPERTIES : (properties.slice(0, 5) as Property[]);
 
 export default function PropertiesList() {
   const [addModalOpen, setAddModalOpen] = React.useState(false);
+  const { properties, addProperty } = useProperties();
+
+  /* Prefer properties with updated_at for table; fallback to first 5+ */
+  const tableProperties = properties.filter((p) => p.updated_at != null);
+  const displayProperties: Property[] =
+    tableProperties.length > 0 ? tableProperties : properties.slice(0, Math.max(5, properties.length));
+
+  /* Add new property to context; ID assigned when API/create responds */
+  const handlePropertyAdded = React.useCallback(
+    (property: Omit<Property, "id">) => {
+      addProperty(property);
+    },
+    [addProperty]
+  );
 
   return (
     <DashboardLayout>
@@ -31,9 +43,13 @@ export default function PropertiesList() {
           <PropertyListedDonut />
         </div>
 
-        <PropertyListingTable properties={DEFAULT_TABLE} />
+        <PropertyListingTable properties={displayProperties} />
       </div>
-      <AddPropertyModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />
+      <AddPropertyModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onPropertyAdded={handlePropertyAdded}
+      />
     </DashboardLayout>
   );
 }

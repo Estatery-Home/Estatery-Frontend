@@ -1,8 +1,13 @@
 "use client";
 
+/**
+ * Calendar – month/week/day view, events by date, add event modal.
+ * Uses date-fns for date math; events stored in local state.
+ */
 import * as React from "react";
 import { addDays, addMonths, addWeeks, endOfMonth, format, getDate, getDay, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -24,7 +29,7 @@ function toKeyDate(d: Date) {
 
 export default function Calendar() {
   const { logout } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
 
   const [view, setView] = React.useState<ViewMode>("month");
@@ -50,12 +55,14 @@ export default function Calendar() {
     setLogoutDialogOpen(false);
   };
 
+  /* Navigate to previous month/week/day depending on view */
   const handlePrev = () => {
     if (view === "month") setCurrentDate((d) => addMonths(d, -1));
     else if (view === "week") setCurrentDate((d) => addWeeks(d, -1));
     else setCurrentDate((d) => addDays(d, -1));
   };
 
+  /* Navigate to next period */
   const handleNext = () => {
     if (view === "month") setCurrentDate((d) => addMonths(d, 1));
     else if (view === "week") setCurrentDate((d) => addWeeks(d, 1));
@@ -64,6 +71,7 @@ export default function Calendar() {
 
   const monthLabel = format(currentDate, "MMMM yyyy");
 
+  /* Map events to date key for quick lookup in calendar grid */
   const eventsByDate = React.useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const ev of events) {
@@ -74,6 +82,7 @@ export default function Calendar() {
     return map;
   }, [events]);
 
+  /* Open add-event modal with date pre-filled */
   const openAddModalFor = (date: Date) => {
     setDraftDate(toKeyDate(date));
     setModalOpen(true);
@@ -293,7 +302,7 @@ export default function Calendar() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div

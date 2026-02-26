@@ -1,3 +1,6 @@
+/**
+ * Card – container with CardHeader, CardTitle, CardDescription, CardContent, CardFooter.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

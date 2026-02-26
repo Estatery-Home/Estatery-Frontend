@@ -1,0 +1,8 @@
+{
+  "name": "estatery-frontend",
+  "private": true,
+  "scripts": {
+    "dev:admin": "cd estatery && npm run dev",
+    "dev:website": "cd Estatery-website && npm run dev -- -p 3001"
+  }
+}

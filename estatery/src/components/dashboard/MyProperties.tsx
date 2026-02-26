@@ -1,13 +1,24 @@
 "use client";
 
+/**
+ * My Properties – scrollable list from PropertiesContext.
+ * Links to property detail; refresh button (demo).
+ */
 import * as React from "react";
+import {
+  getPropertyLocation,
+  getPropertyImage,
+  getPropertyPriceDisplay,
+  getRentalPeriodLabel,
+} from "@/lib/properties";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 export function MyProperties() {
   const [refreshing, setRefreshing] = React.useState(false);
+  const { properties } = useProperties();
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -39,20 +50,20 @@ export function MyProperties() {
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
             <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-[#f1f5f9]">
               <img
-                src={prop.image}
+                src={getPropertyImage(prop)}
                 alt=""
                 className="size-full object-cover transition-transform duration-200 group-hover:scale-105"
               />
             </div>
             <div className="relative min-w-0 flex-1">
               <p className="truncate font-medium text-[#1e293b] group-hover:text-[var(--logo)]">
-                {prop.name}
+                {prop.title}
               </p>
-              <p className="truncate text-sm text-[#64748b]">{prop.location}</p>
+              <p className="truncate text-sm text-[#64748b]">{getPropertyLocation(prop)}</p>
               <p className="mt-0.5 text-sm font-medium text-[#1e293b]">
-                {prop.price}
-                <span className="text-xs font-normal text-[#64748b]"> per month</span>
+                {getPropertyPriceDisplay(prop)}
               </p>
+              <p className="text-xs text-[#64748b]">{getRentalPeriodLabel(prop)}</p>
             </div>
           </Link>
         ))}

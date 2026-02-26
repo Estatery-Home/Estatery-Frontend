@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Create New Password – set new + confirm; validate match and min length.
+ * On success redirect to login.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock, Eye, EyeOff } from "lucide-react";
@@ -17,6 +21,7 @@ export default function CreateNewPassword() {
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  /* Validate non-empty, match, min 6 chars; then go to login */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -120,7 +125,7 @@ export default function CreateNewPassword() {
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-[#64748b]">
-            <Link to="/auth/login" className="font-medium text-[#2563eb] underline hover:no-underline">
+            <Link to="/auth/login" className="font-medium text-[var(--logo)] underline hover:no-underline">
               Back to Login
             </Link>
           </p>

@@ -1,10 +1,22 @@
 "use client";
 
+/**
+ * Property listing table – search, sort, filter, pagination.
+ * Links to property detail; receives properties from parent.
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { Search, Filter, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Property, PropertyType, PropertyStatus } from "@/lib/properties";
+import type { Property } from "@/lib/properties";
+import type { PropertyTypeApi, PropertyStatusApi } from "@/lib/api-types";
+import {
+  getPropertyLocation,
+  getPropertyImage,
+  getPropertyPriceDisplay,
+  getRentalPeriodLabel,
+  getPropertyStatusDisplay,
+} from "@/lib/properties";
 import { Pagination } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +41,8 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [page, setPage] = React.useState(1);
   const [filterOpen, setFilterOpen] = React.useState(false);
-  const [filterType, setFilterType] = React.useState<"all" | PropertyType>("all");
-  const [filterStatus, setFilterStatus] = React.useState<"all" | PropertyStatus>("all");
+  const [filterType, setFilterType] = React.useState<"all" | PropertyTypeApi>("all");
+  const [filterStatus, setFilterStatus] = React.useState<"all" | PropertyStatusApi>("all");
 
   const filtered = React.useMemo(() => {
     let result = properties;
@@ -38,13 +50,13 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
       const q = search.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.location.toLowerCase().includes(q) ||
-          p.id.includes(q)
+          p.title.toLowerCase().includes(q) ||
+          getPropertyLocation(p).toLowerCase().includes(q) ||
+          String(p.id).includes(q)
       );
     }
     if (filterType !== "all") {
-      result = result.filter((p) => p.type === filterType);
+      result = result.filter((p) => p.property_type === filterType);
     }
     if (filterStatus !== "all") {
       result = result.filter((p) => p.status === filterStatus);
@@ -57,13 +69,10 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
     const mult = sortDir === "asc" ? 1 : -1;
     arr.sort((a, b) => {
       if (sortBy === "Last Updated") {
-        return mult * (parseLastUpdated(a.lastUpdated) - parseLastUpdated(b.lastUpdated));
+        return mult * (parseLastUpdated(a.updated_at) - parseLastUpdated(b.updated_at));
       }
       if (sortBy === "Price") {
-        return mult * (parsePrice(a.price) - parsePrice(b.price));
-      }
-      if (sortBy === "Views") {
-        return mult * ((a.views ?? 0) - (b.views ?? 0));
+        return mult * (parsePrice(a.monthly_price) - parsePrice(b.monthly_price));
       }
       return 0;
     });
@@ -129,8 +138,8 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
                     Type
                   </p>
-                  <div className="flex gap-2">
-                    {(["all", "Rent", "Sale"] as const).map((opt) => (
+                  <div className="flex flex-wrap gap-2">
+                    {(["all", "apartment", "house", "condo", "villa", "studio"] as const).map((opt) => (
                       <button
                         key={opt}
                         type="button"
@@ -142,7 +151,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                             : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
                         )}
                       >
-                        {opt === "all" ? "All" : opt}
+                        {opt === "all" ? "All" : opt.charAt(0).toUpperCase() + opt.slice(1)}
                       </button>
                     ))}
                   </div>
@@ -150,7 +159,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                     Status
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {(["all", "Available", "Rented", "Sold"] as const).map((opt) => (
+                    {(["all", "available", "rented", "maintenance"] as const).map((opt) => (
                       <button
                         key={opt}
                         type="button"
@@ -162,7 +171,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                             : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
                         )}
                       >
-                        {opt === "all" ? "All" : opt}
+                        {opt === "all" ? "All" : getPropertyStatusDisplay(opt)}
                       </button>
                     ))}
                   </div>
@@ -177,7 +186,6 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
           >
             <option value="Last Updated">Sort by: Last Updated</option>
             <option value="Price">Sort by: Price</option>
-            <option value="Views">Sort by: Views</option>
           </select>
         </div>
       </div>
@@ -196,8 +204,8 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Property Info</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Type</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Price</th>
+              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Rental Period</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Status</th>
-              <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Views</th>
               <th className="px-3 py-2 font-medium text-[#64748b] sm:px-4">Last Updated</th>
               <th className="px-3 py-2 sm:px-4" aria-label="Actions" />
             </tr>
@@ -212,7 +220,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                   <input
                     type="checkbox"
                     className="rounded border-[#e2e8f0]"
-                    aria-label={`Select ${prop.name}`}
+                    aria-label={`Select ${prop.title}`}
                   />
                 </td>
                 <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.id}</td>
@@ -222,31 +230,33 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                     className="flex items-center gap-2 hover:opacity-90"
                   >
                     <div className="size-9 shrink-0 overflow-hidden rounded-md bg-[#f1f5f9]">
-                      <img src={prop.image} alt="" className="size-full object-cover" />
+                      <img src={getPropertyImage(prop)} alt="" className="size-full object-cover" />
                     </div>
                     <div>
                       <p className="font-medium text-[#1e293b] group-hover:text-[var(--logo)]">
-                        {prop.name}
+                        {prop.title}
                       </p>
                       <p className="max-w-[180px] truncate text-[10px] text-[#64748b]">
-                        {prop.location}
+                        {getPropertyLocation(prop)}
                       </p>
                     </div>
                   </Link>
                 </td>
                 <td className="px-3 py-2 sm:px-4">
-                  <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
-                    {prop.type ?? "Rent"}
+                  <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)] capitalize">
+                    {prop.property_type}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{prop.price}</td>
+                <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{getPropertyPriceDisplay(prop)}</td>
+                <td className="px-3 py-2 text-[#64748b] sm:px-4">{getRentalPeriodLabel(prop)}</td>
                 <td className="px-3 py-2 sm:px-4">
                   <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
-                    {prop.status ?? "Available"}
+                    {getPropertyStatusDisplay(prop.status)}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-[#64748b] sm:px-4">{prop.views ?? "—"}</td>
-                <td className="px-3 py-2 text-[#64748b] sm:px-4">{prop.lastUpdated ?? "—"}</td>
+                <td className="px-3 py-2 text-[#64748b] sm:px-4">
+                  {prop.updated_at ? new Date(prop.updated_at).toLocaleDateString("en-US") : "—"}
+                </td>
                 <td className="px-3 py-2 sm:px-4">
                   <button
                     type="button"

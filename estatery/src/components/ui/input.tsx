@@ -1,3 +1,6 @@
+/**
+ * Input – standard text input; error prop for validation styling.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

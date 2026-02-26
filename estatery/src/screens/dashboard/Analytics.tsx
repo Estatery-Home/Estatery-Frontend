@@ -1,15 +1,21 @@
 "use client";
 
+/**
+ * Analytics – traffic charts, stats (properties, clients, occupancy).
+ * Date range (7d/30d/90d); paginated property list.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, PieChart, TrendingUp, Users, Home, Activity } from "lucide-react";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 import { clientsTableData } from "@/lib/clients";
+import { getPropertyLocation } from "@/lib/properties";
 
 type Range = "7d" | "30d" | "90d";
 
@@ -22,7 +28,8 @@ const trafficData: Record<Range, number[]> = {
 export default function Analytics() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { properties } = useProperties();
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [range, setRange] = React.useState<Range>("30d");
   const [page, setPage] = React.useState(1);
@@ -50,7 +57,7 @@ export default function Analytics() {
     <div className="min-h-screen bg-[#f1f5f9]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -107,7 +114,7 @@ export default function Analytics() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--logo-muted)] text-[var(--logo)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Home className="size-4" />
                 </div>
                 <div className="relative min-w-0">
@@ -137,7 +144,7 @@ export default function Analytics() {
               </div>
               <div className="group relative flex overflow-hidden items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-[#cbd5e1] hover:shadow-xl active:scale-[1.01]">
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <div className="relative flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--logo-muted)] text-[var(--logo)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <TrendingUp className="size-4" />
                 </div>
                 <div className="relative min-w-0">
@@ -152,7 +159,7 @@ export default function Analytics() {
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
                 <div className="relative mb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--logo-muted)] text-[var(--logo)]">
                       <LineChart className="size-4" />
                     </div>
                     <div>
@@ -211,7 +218,7 @@ export default function Analytics() {
                 <div className="relative flex items-center gap-4">
                   <div className="relative flex h-32 w-32 items-center justify-center">
                     <div className="size-28 rounded-full bg-[#e5e7eb]" />
-                    <div className="absolute size-24 rounded-full border-[10px] border-t-[#1d4ed8] border-r-[#22c55e] border-b-[#f97316] border-l-[#e5e7eb] bg-white" />
+                    <div className="absolute size-24 rounded-full border-[10px] border-t-[var(--logo)] border-r-[#22c55e] border-b-[#f97316] border-l-[#e5e7eb] bg-white" />
                     <div className="absolute text-center">
                       <p className="text-xs text-[#94a3b8]">Total</p>
                       <p className="text-lg font-semibold text-[#0f172a]">{totalProperties}</p>
@@ -219,7 +226,7 @@ export default function Analytics() {
                   </div>
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="size-2 rounded-full bg-[#1d4ed8]" />
+                      <span className="size-2 rounded-full bg-[var(--logo)]" />
                       <span className="text-[#0f172a]">Rent</span>
                       <span className="ml-auto text-[#94a3b8]">68%</span>
                     </div>
@@ -242,7 +249,7 @@ export default function Analytics() {
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-600 ease-out group-hover:translate-x-full" />
               <div className="relative mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-[#eff6ff] text-[#1d4ed8]">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--logo-muted)] text-[var(--logo)]">
                     <Users className="size-4" />
                   </div>
                   <div>
@@ -268,19 +275,15 @@ export default function Analytics() {
                     {pageProperties.map((p) => (
                       <tr key={p.id} className="border-t border-[#e2e8f0] hover:bg-[#f8fafc]">
                         <td className="px-4 py-2 align-middle text-sm text-[#0f172a]">
-                          {p.name}
+                          {p.title}
                         </td>
                         <td className="px-4 py-2 align-middle text-xs text-[#64748b]">
-                          {p.location}
+                          {getPropertyLocation(p)}
                         </td>
-                        <td className="px-4 py-2 align-middle text-xs text-[#0f172a]">
-                          {p.views ?? 0}
-                        </td>
-                        <td className="px-4 py-2 align-middle text-xs text-[#0f172a]">
-                          {Math.round((p.views ?? 0) * 0.12)}
-                        </td>
+                        <td className="px-4 py-2 align-middle text-xs text-[#0f172a]">—</td>
+                        <td className="px-4 py-2 align-middle text-xs text-[#0f172a]">—</td>
                         <td className="px-4 py-2 align-middle text-xs text-[#94a3b8]">
-                          {p.lastUpdated}
+                          {p.updated_at ?? "—"}
                         </td>
                       </tr>
                     ))}

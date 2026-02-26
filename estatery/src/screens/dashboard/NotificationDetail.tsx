@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Notification detail – full body, action link.
+ * Loads from getNotificationById by route param.
+ */
 import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, BarChart3, AlertTriangle } from "lucide-react";

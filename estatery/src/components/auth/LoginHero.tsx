@@ -1,3 +1,6 @@
+/**
+ * Login page hero – decorative image panel (hidden on mobile).
+ */
 import Image from "next/image";
 
 export function LoginHero() {
@@ -9,7 +12,7 @@ export function LoginHero() {
     >
       <div className="relative h-[calc(100vh-3rem)] w-full overflow-hidden rounded-2xl shadow-[-8px_0_32px_rgba(0,0,0,0.06)]">
         <Image
-          src="/login_home.png"
+          src="/images/login_home.webp"
           alt="Modern minimalist living room interior"
           fill
           className="object-cover"

@@ -1,3 +1,6 @@
+/**
+ * Next.js sitemap – home, login, signup URLs for SEO.
+ */
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 

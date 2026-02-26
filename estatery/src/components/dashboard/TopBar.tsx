@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Top bar – search trigger, notifications, profile avatar.
+ * Search and notifications open overlay/panel components.
+ */
 import * as React from "react";
 import { Search, LayoutGrid, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +31,7 @@ export function TopBar() {
     reader.readAsDataURL(file);
   };
 
-  const initial = profile.name?.slice(0, 1) || "U";
+  const initial = profile.username?.slice(0, 1)?.toUpperCase() || "U";
 
   return (
     <>
@@ -73,8 +77,8 @@ export function TopBar() {
               )}
             </div>
             <div className="hidden min-w-0 sm:block text-left">
-              <p className="truncate text-xs font-medium text-[#1e293b]">{profile.name}</p>
-              <p className="truncate text-[10px] text-[#64748b]">{profile.role}</p>
+              <p className="truncate text-xs font-medium text-[#1e293b]">{profile.username}</p>
+              <p className="truncate text-[10px] text-[#64748b] capitalize">{profile.user_type}</p>
             </div>
           </button>
         </div>

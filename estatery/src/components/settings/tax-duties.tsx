@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * Tax & Duties – full name, treaty country, residence, mailing.
+ * Uses SettingsContext.tax / setTax; tax table for reference.
+ */
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import * as React from "react";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   Select,
   SelectContent,
@@ -19,13 +24,8 @@ const TAX_ROWS = [
 ];
 
 export function TaxDuties() {
-  const [fullName, setFullName] = useState("Robert Johnson");
-  const [treatyCountry, setTreatyCountry] = useState("us");
-  const [permanentResidence, setPermanentResidence] = useState(
-    "123 Elm Street, Springfield, IL 62704"
-  );
-  const [mailingAddress, setMailingAddress] = useState("456 Maple Avenue, Rivertown, TX 75001");
-  const [page, setPage] = useState(1);
+  const { tax, setTax } = useSettings();
+  const [page, setPage] = React.useState(1);
   const PAGE_SIZE = 10;
   const pageCount = Math.max(1, Math.ceil(TAX_ROWS.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -94,8 +94,8 @@ export function TaxDuties() {
             </Label>
             <Input
               id="tax-full-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={tax.fullName}
+              onChange={(e) => setTax((p) => ({ ...p, fullName: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
@@ -103,7 +103,7 @@ export function TaxDuties() {
             <Label htmlFor="treaty-country" className="text-[#1e293b]">
               Treaty Country <span className="text-red-500">*</span>
             </Label>
-            <Select value={treatyCountry} onValueChange={setTreatyCountry}>
+            <Select value={tax.treatyCountry} onValueChange={(v) => setTax((p) => ({ ...p, treatyCountry: v }))}>
               <SelectTrigger id="treaty-country" className="border-[#e2e8f0] bg-white text-[#1e293b]">
                 <SelectValue />
               </SelectTrigger>
@@ -122,8 +122,8 @@ export function TaxDuties() {
             </Label>
             <Input
               id="permanent-residence"
-              value={permanentResidence}
-              onChange={(e) => setPermanentResidence(e.target.value)}
+              value={tax.permanentResidence}
+              onChange={(e) => setTax((p) => ({ ...p, permanentResidence: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
@@ -133,8 +133,8 @@ export function TaxDuties() {
             </Label>
             <Input
               id="mailing-address"
-              value={mailingAddress}
-              onChange={(e) => setMailingAddress(e.target.value)}
+              value={tax.mailingAddress}
+              onChange={(e) => setTax((p) => ({ ...p, mailingAddress: e.target.value }))}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>

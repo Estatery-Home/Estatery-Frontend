@@ -1,10 +1,14 @@
+/**
+ * Next.js root layout – wraps all pages.
+ * Defines metadata (SEO, OG), viewport, and global styles.
+ */
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#90caf9",
+  themeColor: "#2563eb",
 };
 
 const baseUrl =
@@ -16,7 +20,7 @@ export const metadata: Metadata = {
   title: "Estatery | Buy, Rent & Sell Properties",
   description:
     "Estatery is a modern real estate platform for buying, renting, and selling properties.",
-  icons: { icon: "/Logo.png" },
+  icons: { icon: "/images/HomeLogo.webp" },
   openGraph: {
     title: "Estatery | Buy, Rent & Sell Properties",
     description: "Estatery is a modern real estate platform for buying, renting, and selling properties.",

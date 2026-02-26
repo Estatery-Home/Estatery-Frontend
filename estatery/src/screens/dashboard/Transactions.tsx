@@ -1,9 +1,14 @@
 "use client";
 
+/**
+ * Transactions – payment list with search, filter, pagination.
+ * Status: Success, Pending, Failed; type: Rent, Sale.
+ */
 import * as React from "react";
 import {
   Calendar,
   RefreshCw,
+  ChevronDown,
   Download,
   Upload,
   CheckCircle2,
@@ -11,7 +16,6 @@ import {
   XCircle,
   Search,
   Filter,
-  ArrowUpDown,
   MoreVertical,
   TrendingUp,
 } from "lucide-react";
@@ -19,66 +23,45 @@ import { DashboardLayout } from "@/components/dashboard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
+import type { PaymentTypeApi, PaymentStatusApi } from "@/lib/api-types";
 
-type PaymentStatus = "Success" | "Pending" | "Failed";
-type PaymentType = "Rent" | "Sale";
-
-type Payment = {
-  id: string;
-  date: string;
-  property: string;
-  address: string;
-  customer: string;
-  customerInitial: string;
-  type: PaymentType;
+/** API BookingPayment + display fields from booking */
+type PaymentDisplay = {
+  id: number;
+  booking: number;
+  payment_type: PaymentTypeApi;
+  month_number: number;
   amount: string;
-  status: PaymentStatus;
+  due_date: string;
+  status: PaymentStatusApi;
+  paid_date?: string | null;
+  property_title?: string;
+  customer?: string;
 };
 
-const PAYMENTS: Payment[] = [
-  {
-    id: "23487",
-    date: "July 08, 2025",
-    property: "Oak Grove Estates",
-    address: "159 Elm St, Springfield, USA",
-    customer: "David Martinez",
-    customerInitial: "D",
-    type: "Rent",
-    amount: "₵293.00",
-    status: "Success",
-  },
-  {
-    id: "23488",
-    date: "July 09, 2025",
-    property: "Maple Heights",
-    address: "78 Maple Ave, Springfield, USA",
-    customer: "Sarah Johnson",
-    customerInitial: "S",
-    type: "Rent",
-    amount: "₵320.00",
-    status: "Success",
-  },
-  {
-    id: "23489",
-    date: "July 10, 2025",
-    property: "Riverbend Apartments",
-    address: "42 River Rd, Springfield, USA",
-    customer: "Michael Smith",
-    customerInitial: "M",
-    type: "Rent",
-    amount: "₵275.00",
-    status: "Pending",
-  },
-  { id: "23490", date: "July 11, 2025", property: "Sunset Terrace", address: "321 Sunset Blvd", customer: "Emma Wilson", customerInitial: "E", type: "Rent", amount: "₵450.00", status: "Success" },
-  { id: "23491", date: "July 12, 2025", property: "Lakeside Villa", address: "555 Lake Dr", customer: "James Brown", customerInitial: "J", type: "Sale", amount: "₵8,500.00", status: "Success" },
-  { id: "23492", date: "July 13, 2025", property: "Urban Heights", address: "100 Main St", customer: "Anna Davis", customerInitial: "A", type: "Rent", amount: "₵380.00", status: "Pending" },
-  { id: "23493", date: "July 14, 2025", property: "Green Valley", address: "200 Valley Rd", customer: "Chris Lee", customerInitial: "C", type: "Rent", amount: "₵520.00", status: "Success" },
-  { id: "23494", date: "July 15, 2025", property: "Harbor View", address: "77 Harbor St", customer: "Maria Garcia", customerInitial: "M", type: "Sale", amount: "₵12,000.00", status: "Failed" },
-  { id: "23495", date: "July 16, 2025", property: "Park Place", address: "88 Park Ave", customer: "Tom Anderson", customerInitial: "T", type: "Rent", amount: "₵610.00", status: "Pending" },
-  { id: "23496", date: "July 17, 2025", property: "Riverside", address: "33 River Ln", customer: "Lisa Moore", customerInitial: "L", type: "Rent", amount: "₵295.00", status: "Success" },
-  { id: "23497", date: "July 18, 2025", property: "Hilltop Manor", address: "99 Hill Rd", customer: "Paul Clark", customerInitial: "P", type: "Sale", amount: "₵9,200.00", status: "Pending" },
-  { id: "23498", date: "July 19, 2025", property: "Downtown Loft", address: "44 Center St", customer: "Rachel Green", customerInitial: "R", type: "Rent", amount: "₵720.00", status: "Success" },
-  { id: "23499", date: "July 20, 2025", property: "Garden View", address: "12 Garden St", customer: "Steve Adams", customerInitial: "S", type: "Rent", amount: "₵410.00", status: "Success" },
+const PAYMENT_TYPE_LABEL: Record<PaymentTypeApi, string> = {
+  deposit: "Deposit",
+  rent: "Rent",
+  late_fee: "Late Fee",
+  utility: "Utility",
+  damage: "Damage",
+  refund: "Refund",
+};
+
+const PAYMENTS: PaymentDisplay[] = [
+  { id: 23487, booking: 101, payment_type: "rent", month_number: 1, amount: "293.00", due_date: "2025-07-08", status: "paid", property_title: "Oak Grove Estates", customer: "David Martinez" },
+  { id: 23488, booking: 102, payment_type: "rent", month_number: 2, amount: "320.00", due_date: "2025-07-09", status: "paid", property_title: "Maple Heights", customer: "Sarah Johnson" },
+  { id: 23489, booking: 103, payment_type: "rent", month_number: 1, amount: "275.00", due_date: "2025-07-10", status: "pending", property_title: "Riverbend Apartments", customer: "Michael Smith" },
+  { id: 23490, booking: 104, payment_type: "rent", month_number: 1, amount: "450.00", due_date: "2025-07-11", status: "paid", property_title: "Sunset Terrace", customer: "Emma Wilson" },
+  { id: 23491, booking: 105, payment_type: "deposit", month_number: 0, amount: "8500.00", due_date: "2025-07-12", status: "paid", property_title: "Lakeside Villa", customer: "James Brown" },
+  { id: 23492, booking: 106, payment_type: "rent", month_number: 3, amount: "380.00", due_date: "2025-07-13", status: "pending", property_title: "Urban Heights", customer: "Anna Davis" },
+  { id: 23493, booking: 107, payment_type: "rent", month_number: 2, amount: "520.00", due_date: "2025-07-14", status: "paid", property_title: "Green Valley", customer: "Chris Lee" },
+  { id: 23494, booking: 108, payment_type: "deposit", month_number: 0, amount: "12000.00", due_date: "2025-07-15", status: "cancelled", property_title: "Harbor View", customer: "Maria Garcia" },
+  { id: 23495, booking: 109, payment_type: "rent", month_number: 1, amount: "610.00", due_date: "2025-07-16", status: "pending", property_title: "Park Place", customer: "Tom Anderson" },
+  { id: 23496, booking: 110, payment_type: "rent", month_number: 4, amount: "295.00", due_date: "2025-07-17", status: "paid", property_title: "Riverside", customer: "Lisa Moore" },
+  { id: 23497, booking: 111, payment_type: "deposit", month_number: 0, amount: "9200.00", due_date: "2025-07-18", status: "pending", property_title: "Hilltop Manor", customer: "Paul Clark" },
+  { id: 23498, booking: 112, payment_type: "rent", month_number: 2, amount: "720.00", due_date: "2025-07-19", status: "paid", property_title: "Downtown Loft", customer: "Rachel Green" },
+  { id: 23499, booking: 113, payment_type: "rent", month_number: 1, amount: "410.00", due_date: "2025-07-20", status: "paid", property_title: "Garden View", customer: "Steve Adams" },
 ];
 
 // Revenue chart data by period
@@ -252,7 +235,7 @@ function RevenueChart({
           <div className="flex flex-col gap-0.5">
             <p className="text-xl font-bold text-[#1e293b]">{totalRevenue}</p>
             <p className="flex items-center gap-1 text-xs text-[#64748b]">
-              <span className="flex items-center gap-1 font-medium text-[#1976d2]">
+              <span className="flex items-center gap-1 font-medium text-[var(--logo)]">
                 <TrendingUp className="size-3" />
                 ↑ {changePercent.replace(",", ".")}%
               </span>
@@ -261,7 +244,7 @@ function RevenueChart({
           </div>
           <div className="flex gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[#1976d2]" />
+              <span className="size-2.5 rounded-sm bg-[var(--logo)]" />
               <span className="text-xs text-[#64748b]">This period</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -283,8 +266,8 @@ function RevenueChart({
         >
           <defs>
             <linearGradient id="thisGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1976d2" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="#1976d2" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="var(--logo)" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="var(--logo)" stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="lastGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#84cc16" stopOpacity={0.3} />
@@ -354,7 +337,7 @@ function RevenueChart({
           <path
             d={thisPath}
             fill="none"
-            stroke="#1976d2"
+            stroke="var(--logo)"
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -383,7 +366,7 @@ function RevenueChart({
                 cx={toX(hoverIndex)}
                 cy={toY(thisPeriod[hoverIndex] ?? 0)}
                 r={4}
-                fill="#1976d2"
+                fill="var(--logo)"
                 stroke="white"
                 strokeWidth={1.5}
               />
@@ -425,7 +408,7 @@ function RevenueChart({
                   {period === "yearly" && " 2025"}
                   {period === "weekly" && ", 2025"}
                 </span>
-                <span className="font-semibold text-[#1976d2]">
+                <span className="font-semibold text-[var(--logo)]">
                   {formatVal(thisPeriod[hoverIndex] ?? 0)}
                 </span>
               </div>
@@ -452,13 +435,19 @@ export default function Transactions() {
   const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
   const [headerRefreshing, setHeaderRefreshing] = React.useState(false);
   const [period, setPeriod] = React.useState("monthly");
-  const [payments, setPayments] = React.useState<Payment[]>(PAYMENTS);
+  const [payments, setPayments] = React.useState<PaymentDisplay[]>(PAYMENTS);
   const [search, setSearch] = React.useState("");
-  const [sortAsc, setSortAsc] = React.useState(true);
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [rowMenuOpen, setRowMenuOpen] = React.useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
+  const [rowMenuOpen, setRowMenuOpen] = React.useState<number | null>(null);
+  const [statusChangeModal, setStatusChangeModal] = React.useState<{
+    paymentId: number;
+    newStatus: PaymentStatusApi;
+  } | null>(null);
   const [filterOpen, setFilterOpen] = React.useState(false);
-  const [statusFilter, setStatusFilter] = React.useState<PaymentStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = React.useState<PaymentStatusApi | "all">("all");
+  const filterContainerRef = React.useRef<HTMLDivElement>(null);
+  const rowMenuRef = React.useRef<HTMLTableCellElement | null>(null);
+  const [typeFilter, setTypeFilter] = React.useState<PaymentTypeApi | "all">("all");
   const [page, setPage] = React.useState(1);
 
   const handleRefresh = () => {
@@ -476,10 +465,13 @@ export default function Transactions() {
     fileInputRef.current?.click();
   };
 
+  const formatAmount = (a: string) => `₵${Number(a).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
   const handleExport = () => {
-    const headers = ["ID", "Date", "Property", "Address", "Customer", "Type", "Amount", "Status"];
+    const headers = ["ID", "Due Date", "Property", "Customer", "Type", "Amount", "Status"];
     const rows = filteredPayments.map((p) =>
-      [p.id, p.date, p.property, p.address, p.customer, p.type, p.amount, p.status]
+      [p.id, p.due_date, p.property_title ?? "", p.customer ?? "", PAYMENT_TYPE_LABEL[p.payment_type], formatAmount(p.amount), p.status]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(",")
     );
@@ -501,21 +493,25 @@ export default function Transactions() {
       const text = reader.result as string;
       const lines = text.trim().split(/\r?\n/);
       if (lines.length < 2) return;
-      const parsed: Payment[] = [];
-      const header = lines[0].toLowerCase();
+      const parsed: PaymentDisplay[] = [];
+      const typeMap: Record<string, PaymentTypeApi> = { Rent: "rent", Deposit: "deposit", Sale: "deposit", "Late Fee": "late_fee" };
+      const statusMap: Record<string, PaymentStatusApi> = { Success: "paid", Completed: "paid", paid: "paid", Pending: "pending", pending: "pending", Failed: "cancelled", cancelled: "cancelled" };
       for (let i = 1; i < lines.length; i++) {
         const vals = lines[i].match(/("(?:[^"]|"")*"|[^,]*)/g)?.map((v) => v.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) ?? [];
-        if (vals.length >= 8) {
+        if (vals.length >= 7) {
+          const typeVal = vals[5] ?? vals[4] ?? "Rent";
+          const amountVal = vals[6] ?? vals[5] ?? "0";
+          const statusVal = vals[7] ?? vals[6] ?? "pending";
           parsed.push({
-            id: vals[0] || `imp-${i}`,
-            date: vals[1] || "",
-            property: vals[2] || "",
-            address: vals[3] || "",
-            customer: vals[4] || "",
-            customerInitial: (vals[4]?.[0] ?? "?").toUpperCase(),
-            type: (vals[5] === "Sale" ? "Sale" : "Rent") as PaymentType,
-            amount: vals[6] || "",
-            status: (vals[7] === "Success" || vals[7] === "Failed" ? vals[7] : "Pending") as PaymentStatus,
+            id: 90000 + i,
+            booking: 90000 + i,
+            payment_type: typeMap[typeVal] ?? "rent",
+            month_number: 1,
+            amount: String(amountVal).replace(/[^\d.]/g, "") || "0",
+            due_date: vals[1] || new Date().toISOString().slice(0, 10),
+            status: statusMap[statusVal] ?? "pending",
+            property_title: vals[2],
+            customer: vals[3] ?? vals[4],
           });
         }
       }
@@ -527,35 +523,34 @@ export default function Transactions() {
     e.target.value = "";
   };
 
+  const parseDate = (d: string) => new Date(d).getTime() || 0;
+
   const filteredPayments = React.useMemo(() => {
     let list = payments;
     const s = search.toLowerCase();
     if (s) {
       list = list.filter(
         (p) =>
-          p.id.includes(s) ||
-          p.customer.toLowerCase().includes(s) ||
-          p.property.toLowerCase().includes(s) ||
-          p.address.toLowerCase().includes(s)
+          String(p.id).includes(s) ||
+          (p.customer && p.customer.toLowerCase().includes(s)) ||
+          (p.property_title && p.property_title.toLowerCase().includes(s))
       );
     }
     if (statusFilter !== "all") {
       list = list.filter((p) => p.status === statusFilter);
     }
-    if (sortAsc) {
-      list = [...list].sort((a, b) => a.date.localeCompare(b.date));
-    } else {
-      list = [...list].sort((a, b) => b.date.localeCompare(a.date));
+    if (typeFilter !== "all") {
+      list = list.filter((p) => p.payment_type === typeFilter);
     }
-    return list;
-  }, [payments, search, statusFilter, sortAsc]);
+    return [...list].sort((a, b) => parseDate(b.due_date) - parseDate(a.due_date));
+  }, [payments, search, statusFilter, typeFilter]);
 
   const PAGE_SIZE = 10;
   const pageCount = Math.max(1, Math.ceil(filteredPayments.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const startIdx = (safePage - 1) * PAGE_SIZE;
   const pagePayments = filteredPayments.slice(startIdx, startIdx + PAGE_SIZE);
-  React.useEffect(() => setPage(1), [search, statusFilter, sortAsc]);
+  React.useEffect(() => setPage(1), [search, statusFilter, typeFilter]);
 
   const allSelected = filteredPayments.length > 0 && filteredPayments.every((p) => selectedIds.has(p.id));
   const someSelected = filteredPayments.some((p) => selectedIds.has(p.id));
@@ -568,7 +563,7 @@ export default function Transactions() {
     }
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -578,18 +573,34 @@ export default function Transactions() {
   };
 
   React.useEffect(() => {
-    const handler = () => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (filterContainerRef.current?.contains(target)) return;
+      if (rowMenuRef.current?.contains(target)) return;
       setRowMenuOpen(null);
       setFilterOpen(false);
     };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const statusClass: Record<PaymentStatus, string> = {
-    Success: "bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0]",
-    Pending: "bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd]",
-    Failed: "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]",
+  const handleConfirmStatusChange = (paymentId: number, newStatus: PaymentStatusApi) => {
+    setPayments((prev) =>
+      prev.map((p) => (p.id === paymentId ? { ...p, status: newStatus } : p))
+    );
+    if (statusFilter !== "all" && statusFilter !== newStatus) {
+      setStatusFilter("all");
+    }
+    setStatusChangeModal(null);
+    setRowMenuOpen(null);
+  };
+
+  const statusClass: Record<PaymentStatusApi, string> = {
+    paid: "bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0]",
+    pending: "bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd]",
+    overdue: "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]",
+    refunded: "bg-[#e0e7ff] text-[#4f46e5] border border-[#c7d2fe]",
+    cancelled: "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]",
   };
 
   return (
@@ -658,8 +669,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.05s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <CheckCircle2 className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <CheckCircle2 className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">Completed Transactions</p>
@@ -671,8 +682,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.1s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <Clock className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <Clock className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">On Progress Transactions</p>
@@ -684,8 +695,8 @@ export default function Transactions() {
             className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
             style={{ animationDelay: "0.15s" }}
           >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <XCircle className="size-4 text-[#1976d2]" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
+              <XCircle className="size-4 text-[var(--logo)]" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-[#64748b]">Cancelled Transactions</p>
@@ -711,24 +722,32 @@ export default function Transactions() {
                   aria-label="Search payments"
                 />
               </div>
-              <div className="relative">
+              <div className="relative" ref={filterContainerRef}>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFilterOpen((v) => !v);
-                  }}
-                  className="flex items-center gap-1.5 rounded-md border border-[#f1f5f9] bg-white px-2.5 py-1.5 text-xs text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                  onClick={() => setFilterOpen((v) => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                    statusFilter !== "all"
+                      ? "border-[var(--logo)] bg-[var(--logo-muted)] font-medium text-[var(--logo)] hover:bg-[var(--logo-muted)]"
+                      : "border-[#f1f5f9] bg-white text-[#64748b] hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                  )}
                 >
                   <Filter className="size-3.5" />
                   Filter
+                  {statusFilter !== "all" && (
+                    <span className="size-1.5 rounded-full bg-[var(--logo)]" />
+                  )}
                 </button>
                 {filterOpen && (
                   <div
-                    className="absolute right-0 top-full z-20 mt-1 min-w-[140px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                    className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {(["all", "Success", "Pending", "Failed"] as const).map((opt) => (
+                    <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Status
+                    </p>
+                    {(["all", "paid", "pending", "cancelled", "overdue", "refunded"] as const).map((opt) => (
                       <button
                         key={opt}
                         type="button"
@@ -743,20 +762,25 @@ export default function Transactions() {
                             : "text-[#1e293b] hover:bg-[#f8fafc]"
                         )}
                       >
-                        {opt === "all" ? "All statuses" : opt}
+                        {opt === "all" ? "All statuses" : opt.charAt(0).toUpperCase() + opt.slice(1)}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setSortAsc((a) => !a)}
-                className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
-              >
-                <ArrowUpDown className="size-3.5" />
-                Sort by
-              </button>
+              <div className="relative flex items-center">
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as PaymentTypeApi | "all")}
+                  className="cursor-pointer appearance-none rounded-lg border border-[#e2e8f0] bg-white py-1.5 pl-2.5 pr-8 text-xs text-[#1e293b] transition-colors hover:border-[#cbd5e1] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+                >
+                  <option value="all">All</option>
+                  <option value="rent">Rent</option>
+                  <option value="deposit">Deposit</option>
+                  <option value="late_fee">Late Fee</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-[#64748b]" />
+              </div>
             </div>
           </div>
 
@@ -772,8 +796,8 @@ export default function Transactions() {
                     />
                   </th>
                   <th className="px-3 py-2 font-medium">Payment ID</th>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Property Info</th>
+                  <th className="px-3 py-2 font-medium">Due Date</th>
+                  <th className="px-3 py-2 font-medium">Property</th>
                   <th className="px-3 py-2 font-medium">Customer Name</th>
                   <th className="px-3 py-2 font-medium">Type</th>
                   <th className="px-3 py-2 font-medium">Amount</th>
@@ -797,36 +821,38 @@ export default function Transactions() {
                       />
                     </td>
                     <td className="px-3 py-2 font-medium text-[#1e293b]">{p.id}</td>
-                    <td className="px-3 py-2 text-[#64748b]">{p.date}</td>
+                    <td className="px-3 py-2 text-[#64748b]">{formatDate(p.due_date)}</td>
                     <td className="px-3 py-2">
-                      <p className="font-medium text-[#1e293b]">{p.property}</p>
-                      <p className="text-xs text-[#64748b]">{p.address}</p>
+                      <p className="font-medium text-[#1e293b]">{p.property_title ?? "—"}</p>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="flex size-7 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[10px] font-medium text-[var(--logo)]">
-                          {p.customerInitial}
+                          {(p.customer ?? "?").charAt(0).toUpperCase()}
                         </div>
-                        {p.customer}
+                        {p.customer ?? "—"}
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="rounded-full bg-[#dbeafe] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]">
-                        {p.type}
+                      <span className="rounded-full bg-[var(--logo-muted)] px-2.5 py-0.5 text-xs font-medium text-[var(--logo)]">
+                        {PAYMENT_TYPE_LABEL[p.payment_type]}
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-medium text-[#1e293b]">{p.amount}</td>
+                    <td className="px-3 py-2 font-medium text-[#1e293b]">{formatAmount(p.amount)}</td>
                     <td className="px-3 py-2">
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
                           statusClass[p.status]
                         )}
                       >
                         {p.status}
                       </span>
                     </td>
-                    <td className="relative px-3 py-2">
+                    <td
+                      className="relative px-3 py-2"
+                      ref={rowMenuOpen === p.id ? rowMenuRef : undefined}
+                    >
                       <button
                         type="button"
                         onClick={(e) => {
@@ -840,39 +866,31 @@ export default function Transactions() {
                       </button>
                       {rowMenuOpen === p.id && (
                         <div
-                          className="absolute right-4 top-full z-20 mt-1 min-w-[140px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                          className="absolute right-0 top-full z-[100] mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-xl"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              alert(`View payment ${p.id}`);
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                          >
-                            View details
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              alert(`Edit payment ${p.id}`);
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayments((prev) => prev.filter((x) => x.id !== p.id));
-                              setRowMenuOpen(null);
-                            }}
-                            className="flex w-full px-4 py-2 text-left text-sm text-[#ef4444] hover:bg-[#fef2f2]"
-                          >
-                            Delete
-                          </button>
+                          <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                            Change status
+                          </p>
+                          {(["paid", "pending", "cancelled"] as const).map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              onClick={() => {
+                                setStatusChangeModal({ paymentId: p.id, newStatus: status });
+                                setRowMenuOpen(null);
+                              }}
+                              disabled={p.status === status}
+                              className={cn(
+                                "flex w-full px-4 py-2 text-left text-sm",
+                                p.status === status
+                                  ? "cursor-not-allowed text-[#94a3b8]"
+                                  : "text-[#1e293b] hover:bg-[#f8fafc]"
+                              )}
+                            >
+                              Change to {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </td>
@@ -893,6 +911,47 @@ export default function Transactions() {
           )}
         </div>
       </div>
+
+      {/* Status change confirmation modal */}
+      {statusChangeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setStatusChangeModal(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-lg font-semibold text-[#1e293b]">Change status?</h3>
+            <p className="mb-6 text-sm text-[#64748b]">
+              Are you sure you want to change this payment&apos;s status to{" "}
+              <span className="font-medium text-[#1e293b]">{statusChangeModal.newStatus}</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setStatusChangeModal(null);
+                }}
+                className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-medium text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmStatusChange(statusChangeModal.paymentId, statusChangeModal.newStatus);
+                }}
+                className="rounded-lg bg-[var(--logo)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--logo-hover)]"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

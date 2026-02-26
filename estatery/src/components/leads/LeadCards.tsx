@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Leads summary cards – total, active pipeline, conversion rate.
+ */
 import * as React from "react";
 import { PersonStanding, Activity, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";

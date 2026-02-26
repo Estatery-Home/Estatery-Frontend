@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Main navigation sidebar – collapsible, responsive.
+ * Links: Dashboard, Agents, Clients, Analytics, Calendar, Messages, etc.
+ * Uses NavLink for active state; supports onLogoutClick for confirmation.
+ */
 import * as React from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -58,7 +63,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
     cn(
       "relative flex min-h-[36px] min-w-[36px] items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-all duration-200",
       isActive
-        ? "bg-[var(--logo-muted)] text-[#1976d2]"
+        ? "bg-[var(--logo-muted)] text-[var(--logo)]"
         : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#1e293b]",
       isActive && "border-l-2 border-l-[var(--logo)] rounded-l-none pl-[calc(0.625rem+2px)]"
     );
@@ -71,7 +76,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
       )}
     >
       <div className="flex h-11 items-center gap-2 border-b border-[#f1f5f9] px-2.5">
-        <Image src="/logo.png" alt="" width={28} height={28} className="shrink-0 rounded object-contain" />
+        <Image src="/images/HomeLogo.webp" alt="" width={28} height={28} className="shrink-0 rounded object-contain" />
         {!collapsed && <span className="truncate text-sm font-semibold text-[#1e293b]">{BRAND}</span>}
         <button
           type="button"

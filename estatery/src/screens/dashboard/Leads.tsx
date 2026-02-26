@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Leads screen – pipeline (New → Contacted → Tour → Negotiation → Closed).
+ * Search, filter by stage, pagination; uses PropertiesContext for property names.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,6 +15,7 @@ import {
   Users,
   ChevronRight,
 } from "lucide-react";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -24,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 import { LeadsSummaryCards } from "@/components/leads/LeadCards";
 
 type LeadStage = "New" | "Contacted" | "Tour Scheduled" | "Negotiation" | "Closed";
@@ -159,7 +164,7 @@ function SourceIcon({ source }: { source: Lead["source"] }) {
 }
 
 const STAGE_STYLES: Record<LeadStage, string> = {
-  New: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+  New: "bg-[var(--logo-muted)] text-[var(--logo)] border-[var(--logo-muted)]",
   Contacted: "bg-[#eef2ff] text-[#4f46e5] border-[#c7d2fe]",
   "Tour Scheduled": "bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]",
   Negotiation: "bg-[#fffbeb] text-[#b45309] border-[#fde68a]",
@@ -169,7 +174,8 @@ const STAGE_STYLES: Record<LeadStage, string> = {
 export default function Leads() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { properties } = useProperties();
+  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [stageFilter, setStageFilter] = React.useState<LeadStage | "All">("All");
   const [search, setSearch] = React.useState("");
@@ -222,7 +228,7 @@ export default function Leads() {
     <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0]">
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggle={onToggle}
         onLogoutClick={() => setLogoutDialogOpen(true)}
       />
       <div
@@ -342,7 +348,7 @@ export default function Leads() {
                                 }
                                 className="inline-flex max-w-full items-center gap-1 truncate text-[var(--logo)] transition-colors hover:text-[var(--logo-hover)]"
                               >
-                                <span className="truncate">{property.name}</span>
+                                <span className="truncate">{property.title}</span>
                                 <ArrowUpRight className="size-3 shrink-0" />
                               </button>
                             ) : (

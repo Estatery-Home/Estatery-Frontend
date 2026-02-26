@@ -1,9 +1,21 @@
 "use client";
 
+/**
+ * Add Property step 4 – Media upload; reads file as data URL.
+ * Calls onImageChange with base64 when image selected.
+ */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 
-export function AddPropertyMediaStep() {
+type AddPropertyMediaStepProps = {
+  imageUrl?: string;
+  onImageChange?: (url: string) => void;
+};
+
+export function AddPropertyMediaStep({
+  imageUrl,
+  onImageChange,
+}: AddPropertyMediaStepProps = {}) {
   const [mediaType, setMediaType] = React.useState("Placeholder");
   const [filesSummary, setFilesSummary] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -12,6 +24,7 @@ export function AddPropertyMediaStep() {
     fileInputRef.current?.click();
   };
 
+  /* Read first image file as data URL, pass to parent */
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) {
@@ -21,8 +34,26 @@ export function AddPropertyMediaStep() {
 
     if (files.length === 1) {
       setFilesSummary(files[0].name);
+      const file = files[0];
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          if (typeof result === "string") onImageChange?.(result);
+        };
+        reader.readAsDataURL(file);
+      }
     } else {
       setFilesSummary(`${files.length} files selected`);
+      const firstImage = Array.from(files).find((f) => f.type.startsWith("image/"));
+      if (firstImage) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          if (typeof result === "string") onImageChange?.(result);
+        };
+        reader.readAsDataURL(firstImage);
+      }
     }
   };
 

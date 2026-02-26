@@ -1,3 +1,7 @@
+/**
+ * Login page – form + hero layout.
+ * PublicRoute wraps; redirects to dashboard if already authenticated.
+ */
 import { LoginForm } from "@/components/auth";
 import { LoginHero } from "@/components/auth";
 

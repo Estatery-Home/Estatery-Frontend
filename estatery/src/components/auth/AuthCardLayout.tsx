@@ -1,3 +1,6 @@
+/**
+ * Auth layout pieces – card header (logo link) and footer (privacy, terms, help).
+ */
 import Image from "next/image";
 import { Link } from "react-router-dom";
 import { Lock, FileText, HelpCircle } from "lucide-react";
@@ -8,7 +11,7 @@ export function AuthCardHeader() {
   return (
     <header className="flex justify-center pt-8">
       <Link to="/" className="flex items-center gap-2">
-        <Image src="/logo.png" alt="" width={40} height={40} className="rounded-lg object-contain" />
+        <Image src="/images/HomeLogo.webp" alt="" width={40} height={40} className="rounded-lg object-contain" />
         <span className="text-xl font-bold text-[#1e293b]">{BRAND}</span>
       </Link>
     </header>

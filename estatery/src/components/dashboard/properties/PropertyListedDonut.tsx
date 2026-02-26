@@ -1,38 +1,43 @@
 "use client";
 
+/**
+ * Property status donut – Available / Rented / Sold.
+ * Uses PropertiesContext; refresh changes seed.
+ */
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
-function getDonutData(seed: number) {
+function getDonutData(properties: { status?: string }[], seed: number) {
   const rnd = (base: number, variance: number) =>
     Math.max(0, Math.floor(base + Math.sin(seed * 0.5) * variance));
-  const baseAvailable = properties.filter((p) => p.status === "Available").length || 47;
-  const baseRent = properties.filter((p) => p.status === "Rented").length || 23;
-  const baseSold = properties.filter((p) => p.status === "Sold").length || 12;
+  const baseAvailable = properties.filter((p) => p.status === "available").length || 47;
+  const baseRent = properties.filter((p) => p.status === "rented").length || 23;
+  const baseSold = properties.filter((p) => p.status === "maintenance").length || 12;
   return {
     available: Math.max(1, rnd(baseAvailable, 8)),
     rent: Math.max(1, rnd(baseRent, 5)),
-    sold: Math.max(1, rnd(baseSold, 4)),
+    maintenance: Math.max(1, rnd(baseSold, 4)),
   };
 }
 
 export function PropertyListedDonut() {
   const [refreshKey, setRefreshKey] = React.useState(0);
+  const { properties } = useProperties();
 
-  const { available, rent, sold } = React.useMemo(
-    () => getDonutData(refreshKey),
-    [refreshKey]
+  const { available, rent, maintenance } = React.useMemo(
+    () => getDonutData(properties, refreshKey),
+    [properties, refreshKey]
   );
-  const total = available + rent + sold;
-  const pct = Math.round((sold / total) * 100);
+  const total = available + rent + maintenance;
+  const pct = Math.round((maintenance / total) * 100);
 
   const r = 40;
   const circumference = 2 * Math.PI * r;
 
   const availLen = (available / total) * circumference;
   const rentLen = (rent / total) * circumference;
-  const soldLen = (sold / total) * circumference;
+  const maintLen = (maintenance / total) * circumference;
 
   return (
     <div className="flex flex-col rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm sm:p-5">
@@ -58,7 +63,7 @@ export function PropertyListedDonut() {
               cy="50"
               r={r}
               fill="none"
-              stroke="#1d4ed8"
+              stroke="var(--logo)"
               strokeWidth="16"
               strokeDasharray={`${availLen} ${circumference}`}
               strokeDashoffset="0"
@@ -80,7 +85,7 @@ export function PropertyListedDonut() {
               fill="none"
               stroke="#f97316"
               strokeWidth="16"
-              strokeDasharray={`${soldLen} ${circumference}`}
+              strokeDasharray={`${maintLen} ${circumference}`}
               strokeDashoffset={-(availLen + rentLen)}
             />
           </svg>
@@ -89,7 +94,7 @@ export function PropertyListedDonut() {
           </div>
         </div>
         <p className="mt-1 text-center text-xs text-[#94a3b8]">
-          of your property has sold
+          in maintenance
         </p>
       </div>
 
@@ -97,7 +102,7 @@ export function PropertyListedDonut() {
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full bg-[#1d4ed8]" />
+            <span className="size-3 shrink-0 rounded-full bg-[var(--logo)]" />
             <span className="text-sm font-medium text-[#0f172a]">Available Properties</span>
           </div>
           <span className="text-sm text-[#64748b]">{available}</span>
@@ -112,9 +117,9 @@ export function PropertyListedDonut() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="size-3 shrink-0 rounded-full bg-[#f97316]" />
-            <span className="text-sm font-medium text-[#0f172a]">Sold Properties</span>
+            <span className="text-sm font-medium text-[#0f172a]">Maintenance</span>
           </div>
-          <span className="text-sm text-[#64748b]">{sold}</span>
+          <span className="text-sm text-[#64748b]">{maintenance}</span>
         </div>
       </div>
     </div>

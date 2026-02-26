@@ -1,9 +1,20 @@
 "use client";
 
+/**
+ * My Account – username, user_type, email, phone, avatar (API-aligned).
+ * Works in Settings (draft) or standalone (updates profile directly).
+ */
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { UserProfile } from "@/contexts/UserProfileContext";
+import type { UserType } from "@/lib/api-types";
+
+const USER_TYPES: { value: UserType; label: string }[] = [
+  { value: "customer", label: "Customer" },
+  { value: "owner", label: "Property Owner" },
+  { value: "admin", label: "Admin" },
+];
 
 type MyAccountProps = {
   /** When provided, form works in "draft" mode for Settings save/cancel. */
@@ -16,6 +27,7 @@ export function MyAccount({ draft: draftProp, onUpdateDraft }: MyAccountProps) {
   const draft = draftProp ?? profile;
   const update = onUpdateDraft ?? updateProfile;
 
+  /* Read file as data URL, call update with avatar base64 */
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -45,11 +57,11 @@ export function MyAccount({ draft: draftProp, onUpdateDraft }: MyAccountProps) {
               {draft.avatar ? (
                 <img src={draft.avatar} alt="" className="size-full object-cover" />
               ) : (
-                <span>{draft.name?.slice(0, 1) ?? "U"}</span>
+                <span>{draft.username?.slice(0, 1)?.toUpperCase() ?? "U"}</span>
               )}
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-[#1e293b]">{draft.name}</p>
+              <p className="text-sm font-medium text-[#1e293b]">{draft.username}</p>
               <button
                 type="button"
                 className="rounded-full border border-[#e2e8f0] px-3 py-1 text-xs font-medium text-[var(--logo)] hover:bg-[var(--logo-muted)]"
@@ -68,15 +80,33 @@ export function MyAccount({ draft: draftProp, onUpdateDraft }: MyAccountProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="full-name" className="text-[#1e293b]">
-              Full Name <span className="text-[#dc2626]">*</span>
+            <Label htmlFor="username" className="text-[#1e293b]">
+              Username <span className="text-[#dc2626]">*</span>
             </Label>
             <Input
-              id="full-name"
-              value={draft.name}
-              onChange={(e) => update({ name: e.target.value })}
+              id="username"
+              value={draft.username}
+              onChange={(e) => update({ username: e.target.value })}
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="user_type" className="text-[#1e293b]">
+              Account Type <span className="text-[#dc2626]">*</span>
+            </Label>
+            <select
+              id="user_type"
+              value={draft.user_type}
+              onChange={(e) => update({ user_type: e.target.value as UserType })}
+              className="flex h-10 w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+            >
+              {USER_TYPES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">

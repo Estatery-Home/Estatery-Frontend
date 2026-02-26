@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Signup form – username, email, password, user_type, phone (API-aligned).
+ * API: POST /api/auth/register/ with username, email, password, user_type, optional phone.
+ */
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -8,10 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import type { UserType } from "@/lib/api-types";
 
 const EMAIL_ERROR_MESSAGE = "The email address you entered is wrong!";
-const NAME_REQUIRED_MESSAGE = "Name is required!";
+const USERNAME_REQUIRED_MESSAGE = "Username is required!";
 const PASSWORD_REQUIRED_MESSAGE = "Password is required!";
+const USER_TYPES: { value: UserType; label: string }[] = [
+  { value: "customer", label: "Customer" },
+  { value: "owner", label: "Property Owner" },
+  { value: "admin", label: "Admin" },
+];
 
 function validateEmail(email: string): boolean {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,27 +37,30 @@ function isWrongEmail(email: string): boolean {
 }
 
 export function SignupForm() {
-  const [name, setName] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [userType, setUserType] = React.useState<UserType>("customer");
   const [keepLoggedIn, setKeepLoggedIn] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [emailError, setEmailError] = React.useState<string | null>(null);
-  const [nameError, setNameError] = React.useState<string | null>(null);
+  const [usernameError, setUsernameError] = React.useState<string | null>(null);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
 
-  const hasTyped = name.length > 0 || email.length > 0 || password.length > 0;
+  const hasTyped = username.length > 0 || email.length > 0 || password.length > 0;
 
+  /* Validate username, email, password; show errors or submit */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     let hasError = false;
 
-    if (!name.trim()) {
-      setNameError(NAME_REQUIRED_MESSAGE);
+    if (!username.trim()) {
+      setUsernameError(USERNAME_REQUIRED_MESSAGE);
       hasError = true;
     } else {
-      setNameError(null);
+      setUsernameError(null);
     }
 
     if (isWrongEmail(email)) {
@@ -66,13 +79,14 @@ export function SignupForm() {
 
     if (hasError) return;
 
-    console.log("Signup attempt", { name, email, password, keepLoggedIn });
+    console.log("Signup attempt", { username, email, password, user_type: userType, phone, keepLoggedIn });
     alert("Signup submitted! (Demo – wire to your auth API.)");
   };
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value);
-    if (nameError) setNameError(null);
+  /* Clear username error when user types */
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    if (usernameError) setUsernameError(null);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +99,7 @@ export function SignupForm() {
     if (emailError) setEmailError(null);
   };
 
+  /* Validate email on blur; show error only if field has content */
   const handleEmailBlur = () => {
     if (email.trim() === "") {
       setEmailError(null);
@@ -114,36 +129,36 @@ export function SignupForm() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-black">
-              Full Name <span className="text-red-500">*</span>
+            <Label htmlFor="username" className="text-black">
+              Username <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="name"
-              name="name"
+              id="username"
+              name="username"
               type="text"
-              placeholder="Enter your name"
-              value={name}
-              onChange={handleNameChange}
-              error={!!nameError}
+              placeholder="Enter your username"
+              value={username}
+              onChange={handleUsernameChange}
+              error={!!usernameError}
               className={cn(
                 "w-full rounded-lg placeholder:text-[#9ca3af]",
-                !nameError && "border-[#d1d5db]",
-                nameError && "border-red-500 bg-[#FFE8E8]"
+                !usernameError && "border-[#d1d5db]",
+                usernameError && "border-red-500 bg-[#FFE8E8]"
               )}
-              autoComplete="name"
-              aria-invalid={!!nameError}
-              aria-describedby={nameError ? "name-error" : undefined}
+              autoComplete="username"
+              aria-invalid={!!usernameError}
+              aria-describedby={usernameError ? "username-error" : undefined}
             />
-            {nameError && (
+            {usernameError && (
               <p
-                id="name-error"
+                id="username-error"
                 role="alert"
                 className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-red-600"
               >
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-red-500" aria-hidden>
                   <AlertCircle className="size-3 stroke-[2.5] text-white [stroke:white]" />
                 </span>
-                {nameError}
+                {usernameError}
               </p>
             )}
           </div>
@@ -182,6 +197,41 @@ export function SignupForm() {
                 {emailError}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="user_type" className="text-black">
+              Account Type <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="user_type"
+              name="user_type"
+              value={userType}
+              onChange={(e) => setUserType(e.target.value as UserType)}
+              className="flex h-10 w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+            >
+              {USER_TYPES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-black">
+              Phone <span className="text-[#94a3b8]">(optional)</span>
+            </Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="Enter your phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-lg border-[#d1d5db] placeholder:text-[#9ca3af]"
+              autoComplete="tel"
+            />
           </div>
 
           <div className="space-y-2">
@@ -255,7 +305,7 @@ export function SignupForm() {
             </div>
             <Link
               to="/auth/login"
-              className="text-sm font-medium text-[#2563eb] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
+              className="text-sm font-medium text-[var(--logo)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
             >
               Already have an account?
             </Link>
@@ -265,15 +315,15 @@ export function SignupForm() {
             type="submit"
             className={cn(
               "w-full rounded-lg text-white",
-              (nameError || emailError || passwordError)
-                ? "bg-[#1d4ed8] hover:bg-[#1e40af]"
+              (usernameError || emailError || passwordError)
+                ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 : hasTyped
                   ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                   : "bg-[#97ADDE] hover:bg-[#7d9ad4]"
             )}
             size="lg"
           >
-        Register
+            Register
           </Button>
         </form>
       </div>

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Clients table – search, status filter, sort, pagination, row actions.
+ * Uses lib/clients; navigate to client detail on row click.
+ */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter as FilterIcon, ArrowUpDown, MoreVertical } from "lucide-react";
@@ -246,7 +250,7 @@ export function ClientsTable() {
                     </div>
                   </td>
                   <td className="px-4 py-3 align-middle">
-                    <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3 py-0.5 text-xs font-medium text-[#1d4ed8]">
+                    <span className="rounded-full border border-[var(--logo-muted)] bg-[var(--logo-muted)] px-3 py-0.5 text-xs font-medium text-[var(--logo)]">
                       {client.type}
                     </span>
                   </td>
@@ -269,7 +273,7 @@ export function ClientsTable() {
                       className={cn(
                         "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
                         client.status === "On Going" &&
-                          "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]",
+                          "border-[var(--logo-muted)] bg-[var(--logo-muted)] text-[var(--logo)]",
                         client.status === "Completed" &&
                           "border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]",
                         client.status === "Overdue" &&
@@ -385,7 +389,7 @@ export function ClientsTable() {
                     className={cn(
                       "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
                       selectedClient.status === "On Going" &&
-                        "border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]",
+                        "border-[var(--logo-muted)] bg-[var(--logo-muted)] text-[var(--logo)]",
                       selectedClient.status === "Completed" &&
                         "border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]",
                       selectedClient.status === "Overdue" &&

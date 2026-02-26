@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Landing page – hero, rent/buy/sell tabs, location + move-in search.
+ * Browse Properties goes to login.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Image from "next/image";
@@ -14,6 +18,7 @@ export default function Welcome() {
   const [location, setLocation] = React.useState("");
   const [moveInDate, setMoveInDate] = React.useState("");
 
+  /* Demo: navigate to login; in prod could go to property search */
   const handleBrowseProperties = () => {
     navigate("/auth/login");
   };
@@ -24,7 +29,7 @@ export default function Welcome() {
       <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
         <Link
           to="/auth/login"
-          className="rounded-xl border-2 border-[#90caf9] bg-white px-5 py-2.5 text-sm font-semibold text-[#1976d2] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#e3f2fd] hover:shadow-md"
+          className="rounded-xl border-2 border-[var(--logo)] bg-white px-5 py-2.5 text-sm font-semibold text-[var(--logo)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--logo-muted)] hover:shadow-md"
         >
           Login
         </Link>
@@ -41,14 +46,14 @@ export default function Welcome() {
         <div className="flex flex-1 flex-col justify-center px-6 py-20 lg:max-w-[55%] lg:px-16 lg:py-24">
           {/* Logo */}
           <div className="mb-10 flex items-center gap-2">
-            <Image src="/logo.png" alt="" width={48} height={48} className="rounded-xl object-contain" />
-            <span className="text-2xl font-bold text-[#1565c0]">{BRAND}</span>
+            <Image src="/images/HomeLogo.webp" alt="" width={48} height={48} className="rounded-xl object-contain" />
+            <span className="text-2xl font-bold text-[var(--logo)]">{BRAND}</span>
           </div>
 
-          <h1 className="text-4xl font-bold leading-tight text-[#1565c0] lg:text-5xl">
+          <h1 className="text-4xl font-bold leading-tight text-[var(--logo)] lg:text-5xl">
             Buy, rent, or sell your property easily.
           </h1>
-          <p className="mt-4 max-w-lg text-lg text-[#1976d2]">
+          <p className="mt-4 max-w-lg text-lg text-[var(--logo)]">
             A great platform to buy, sell, or even rent your properties without any commissions.
           </p>
 
@@ -108,21 +113,21 @@ export default function Welcome() {
           {/* Feature highlights */}
           <div className="mt-12 flex flex-wrap gap-10">
             <div className="flex items-start gap-4">
-              <div className="flex size-14 items-center justify-center rounded-full bg-[var(--logo)]/30 text-[#1565c0]">
+              <div className="flex size-14 items-center justify-center rounded-full bg-[var(--logo)]/30 text-[var(--logo)]">
                 <Users className="size-7" />
               </div>
               <div>
-                <p className="font-bold text-[#1565c0]">50k+ renters</p>
-                <p className="text-sm text-[#1976d2]">believe in our service</p>
+                <p className="font-bold text-[var(--logo)]">50k+ renters</p>
+                <p className="text-sm text-[var(--logo)]">believe in our service</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="flex size-14 items-center justify-center rounded-full bg-[var(--logo)]/30 text-[#1565c0]">
+              <div className="flex size-14 items-center justify-center rounded-full bg-[var(--logo)]/30 text-[var(--logo)]">
                 <Home className="size-7" />
               </div>
               <div>
-                <p className="font-bold text-[#1565c0]">10k+ properties</p>
-                <p className="text-sm text-[#1976d2]">and houses ready for occupancy</p>
+                <p className="font-bold text-[var(--logo)]">10k+ properties</p>
+                <p className="text-sm text-[var(--logo)]">and houses ready for occupancy</p>
               </div>
             </div>
           </div>
@@ -132,7 +137,7 @@ export default function Welcome() {
         <div className="relative hidden min-h-[50vh] flex-1 lg:block">
           <div className="absolute inset-0">
             <Image
-              src="/login_home.png"
+              src="/images/login_home.webp"
               alt="Modern property"
               fill
               className="object-cover"
@@ -145,7 +150,7 @@ export default function Welcome() {
           {/* Testimonial card */}
           <div className="absolute left-6 top-16 z-10 w-72 rounded-2xl border border-white/20 bg-white/95 p-5 shadow-xl backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center overflow-hidden rounded-full bg-[#e3f2fd] text-lg font-bold text-[var(--logo)]">
+              <div className="flex size-12 items-center justify-center overflow-hidden rounded-full bg-[var(--logo-muted)] text-lg font-bold text-[var(--logo)]">
                 MV
               </div>
               <div>
@@ -153,19 +158,19 @@ export default function Welcome() {
                 <p className="text-xs text-[#64748b]">Renter</p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-[#1976d2]">Moved with {BRAND}</p>
+            <p className="mt-3 text-xs text-[var(--logo)]">Moved with {BRAND}</p>
             <p className="mt-2 flex items-start gap-1 text-sm italic text-[#475569]">
-              <span className="text-[var(--logo)]">"</span>
+              <span className="text-[var(--logo)]"></span>
               I loved how smooth the move was, and finally got the house we wanted.
             </p>
             <div className="mt-4 flex gap-4 text-xs font-medium">
               <span className="text-[#2e7d32]">₵1,500 Saved up to</span>
-              <span className="text-[#1565c0]">-24 hrs Process time</span>
+              <span className="text-[var(--logo)]">-24 hrs Process time</span>
             </div>
           </div>
 
           {/* Review badge */}
-          <div className="absolute bottom-12 right-8 z-10 rounded-xl bg-[#1565c0] px-5 py-4 text-white shadow-xl">
+          <div className="absolute bottom-12 right-8 z-10 rounded-xl bg-[var(--logo)] px-5 py-4 text-white shadow-xl">
             <p className="font-bold">Excellent</p>
             <div className="mt-1 flex gap-0.5">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -180,13 +185,13 @@ export default function Welcome() {
       {/* Mobile: Show image below content */}
       <div className="relative block min-h-[320px] lg:hidden">
         <Image
-          src="/login_home.png"
+          src="/images/login_home.webp"
           alt="Modern property"
           fill
           className="object-cover"
           sizes="100vw"
         />
-        <div className="absolute bottom-6 left-6 right-6 rounded-xl bg-[#1565c0] px-4 py-3 text-white">
+        <div className="absolute bottom-6 left-6 right-6 rounded-xl bg-[var(--logo)] px-4 py-3 text-white">
           <p className="font-bold">Excellent</p>
           <div className="flex gap-0.5">
             {[1, 2, 3, 4, 5].map((i) => (

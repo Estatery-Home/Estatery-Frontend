@@ -10,7 +10,7 @@ const App = dynamic(() => import("@/App"), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-screen items-center justify-center bg-white" aria-label="Loading">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#90caf9] border-t-transparent" />
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--logo)] border-t-transparent" />
     </div>
   ),
 });

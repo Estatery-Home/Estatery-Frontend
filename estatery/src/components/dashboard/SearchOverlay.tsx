@@ -1,12 +1,16 @@
 "use client";
 
+/**
+ * Quick search overlay – search agents, sections, properties; keyboard nav.
+ * Uses searchData.searchAll; navigates on select.
+ */
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { searchAll, type SearchResult } from "@/lib/searchData";
-import { properties } from "@/lib/properties";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 type SearchOverlayProps = {
   open: boolean;
@@ -16,14 +20,15 @@ type SearchOverlayProps = {
 
 export function SearchOverlay({ open, onClose, initialQuery = "" }: SearchOverlayProps) {
   const navigate = useNavigate();
+  const { properties } = useProperties();
   const [query, setQuery] = React.useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
   const propertyList = React.useMemo(
-    () => properties.map((p) => ({ id: p.id, name: p.name, location: p.location })),
-    []
+    () => properties.map((p) => ({ id: p.id, title: p.title, address: p.address, city: p.city, country: p.country })),
+    [properties]
   );
   const results = React.useMemo(() => searchAll(query, propertyList), [query, propertyList]);
 

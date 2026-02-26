@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Forgot Password – enter email, navigate to create-new-password.
+ */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
@@ -12,6 +15,7 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
 
+  /* Validate email, then navigate to create-new-password with email in state */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -61,7 +65,7 @@ export default function ForgotPassword() {
           </form>
           <p className="mt-6 text-center text-sm text-[#64748b]">
             Don&apos;t have access anymore?{" "}
-            <Link to="/auth/login" className="font-medium text-[#2563eb] underline hover:no-underline">
+            <Link to="/auth/login" className="font-medium text-[var(--logo)] underline hover:no-underline">
               Try another method
             </Link>
           </p>

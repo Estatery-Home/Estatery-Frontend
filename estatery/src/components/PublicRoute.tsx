@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Public-only routes (login, signup, etc.).
+ * Redirects to dashboard if user is already authenticated.
+ */
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,12 +22,14 @@ export default function PublicRoute({ children, redirectTo = "/dashboard" }: Pub
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
+  /* Redirect to dashboard if already logged in */
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       navigate(redirectTo, { replace: true });
     }
   }, [isLoading, isAuthenticated, redirectTo, navigate]);
 
+  /* Hide public page until we know auth; if logged in, redirect runs above */
   if (isLoading || isAuthenticated) {
     return null;
   }

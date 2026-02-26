@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Modal to confirm logout – Cancel / Yes, Logout.
+ * Parent handles actual logout and navigation on confirm.
+ */
 import * as React from "react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
