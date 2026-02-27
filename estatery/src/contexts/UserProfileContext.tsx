@@ -2,10 +2,11 @@
 
 /**
  * UserProfileContext – Current user profile (API-aligned).
- * API User: id, username, email, phone, avatar, user_type.
- * Persists to localStorage. Used by settings, top bar, etc.
+ * Synced with AuthContext when user is logged in.
+ * Falls back to localStorage when no auth user.
  */
 import * as React from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import type { UserType } from "@/lib/api-types";
 
 export type UserProfile = {
@@ -26,13 +27,13 @@ const UserProfileContext = React.createContext<UserProfileContextValue | null>(n
 
 const STORAGE_KEY = "estatery-user-profile";
 
-function getInitialProfile(): UserProfile {
+function getStoredProfile(): UserProfile {
   const defaultProfile: UserProfile = {
-    username: "sarah_lee",
-    email: "sarah.lee@example.com",
-    phone: "+1 (555) 123-4567",
+    username: "",
+    email: "",
+    phone: "",
     avatar: null,
-    user_type: "owner",
+    user_type: "customer",
   };
 
   if (typeof window === "undefined") return defaultProfile;
@@ -43,22 +44,41 @@ function getInitialProfile(): UserProfile {
     const parsed = JSON.parse(raw) as UserProfile;
     return {
       id: parsed.id,
-      username: parsed.username || "sarah_lee",
-      email: parsed.email || "sarah.lee@example.com",
-      phone: parsed.phone || "+1 (555) 123-4567",
+      username: parsed.username || "",
+      email: parsed.email || "",
+      phone: parsed.phone || "",
       avatar: parsed.avatar ?? null,
-      user_type: parsed.user_type || "owner",
+      user_type: parsed.user_type || "customer",
     };
   } catch {
     return defaultProfile;
   }
 }
 
+function userToProfile(user: { id?: number; username: string; email: string; phone?: string; avatar?: string | null; user_type: string }): UserProfile {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    phone: user.phone ?? "",
+    avatar: user.avatar ?? null,
+    user_type: user.user_type as UserType,
+  };
+}
+
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = React.useState<UserProfile>(() => getInitialProfile());
+  const { user, isAuthenticated } = useAuth();
+  const [storedProfile, setStoredProfile] = React.useState<UserProfile>(getStoredProfile);
+
+  const profile: UserProfile = React.useMemo(() => {
+    if (isAuthenticated && user) {
+      return userToProfile(user);
+    }
+    return storedProfile;
+  }, [isAuthenticated, user, storedProfile]);
 
   const updateProfile = React.useCallback((partial: Partial<UserProfile>) => {
-    setProfile((prev) => {
+    setStoredProfile((prev) => {
       const next = { ...prev, ...partial };
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -87,4 +107,3 @@ export function useUserProfile(): UserProfileContextValue {
   }
   return ctx;
 }
-

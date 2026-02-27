@@ -30,10 +30,14 @@ export function LoginForm() {
 
   const hasTyped = username.length > 0 || password.length > 0;
 
-  /* Submit: validate username, then login and go to dashboard */
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  /* Submit: validate username, call API login, then go to dashboard */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
+    setSubmitError(null);
 
     if (!username.trim()) {
       setUsernameError(USERNAME_ERROR_MESSAGE);
@@ -41,8 +45,15 @@ export function LoginForm() {
     }
 
     setUsernameError(null);
-    login();
-    navigate("/dashboard");
+    setLoading(true);
+    const result = await login(username, password);
+    setLoading(false);
+    if (result.success) {
+      // Defer navigation so auth state is committed before ProtectedRoute checks it
+      setTimeout(() => navigate("/dashboard"), 0);
+    } else {
+      setSubmitError(result.error ?? "Login failed.");
+    }
   };
 
   /* Clear error when user types in username field */
@@ -80,6 +91,12 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {submitError && (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {submitError}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="username" className="text-black">
               Username <span className="text-red-500">*</span>
@@ -175,6 +192,7 @@ export function LoginForm() {
 
           <Button
             type="submit"
+            disabled={loading}
             className={cn(
               "w-full rounded-lg text-white",
               usernameError
@@ -185,8 +203,18 @@ export function LoginForm() {
             )}
             size="lg"
           >
-            Login
+            {loading ? "Logging in…" : "Login"}
           </Button>
+
+          <p className="text-center text-sm text-[#6b7280]">
+            Don&apos;t have an account?{" "}
+            <Link
+              to="/auth/Signup"
+              className="font-medium text-[var(--logo)] hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
         </form>
       </div>
     </div>

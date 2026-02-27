@@ -5,7 +5,8 @@
  * API: POST /api/auth/register/ with username, email, password, user_type, optional phone.
  */
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,8 @@ function isWrongEmail(email: string): boolean {
 }
 
 export function SignupForm() {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -47,12 +50,15 @@ export function SignupForm() {
   const [emailError, setEmailError] = React.useState<string | null>(null);
   const [usernameError, setUsernameError] = React.useState<string | null>(null);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
 
   const hasTyped = username.length > 0 || email.length > 0 || password.length > 0;
 
-  /* Validate username, email, password; show errors or submit */
-  const handleSubmit = (e: React.FormEvent) => {
+  /* Validate username, email, password; call API register */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     let hasError = false;
 
@@ -79,8 +85,21 @@ export function SignupForm() {
 
     if (hasError) return;
 
-    console.log("Signup attempt", { username, email, password, user_type: userType, phone, keepLoggedIn });
-    alert("Signup submitted! (Demo – wire to your auth API.)");
+    setLoading(true);
+    const result = await register({
+      username: username.trim(),
+      email: email.trim(),
+      password,
+      user_type: userType,
+      phone: phone.trim() || undefined,
+    });
+    setLoading(false);
+
+    if (result.success) {
+      navigate("/auth/login");
+    } else {
+      setSubmitError(result.error ?? "Registration failed.");
+    }
   };
 
   /* Clear username error when user types */
@@ -128,6 +147,12 @@ export function SignupForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {submitError && (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {submitError}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="username" className="text-black">
               Username <span className="text-red-500">*</span>
@@ -313,6 +338,7 @@ export function SignupForm() {
 
           <Button
             type="submit"
+            disabled={loading}
             className={cn(
               "w-full rounded-lg text-white",
               (usernameError || emailError || passwordError)
@@ -323,7 +349,7 @@ export function SignupForm() {
             )}
             size="lg"
           >
-            Register
+            {loading ? "Registering…" : "Register"}
           </Button>
         </form>
       </div>
