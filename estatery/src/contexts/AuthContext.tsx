@@ -1,83 +1,164 @@
 "use client";
 
 /**
- * AuthContext – Authentication state and actions.
- *
- * Manages login/logout and password change. Uses localStorage for demo;
- * replace with API calls in production.
+ * AuthContext – Authentication via backend API.
+ * Login/register call POST /api/auth/login/ and /api/auth/register/.
+ * Token stored in estatery-access (used by api-client), user in estatery-user.
  */
 import * as React from "react";
+import { api, apiHeaders } from "@/lib/api-client";
+import type { User, AuthResponse } from "@/lib/api-types";
 
 type AuthContextValue = {
+  user: User | null;
   isAuthenticated: boolean;
-  /** True until auth state has been read from storage (client-side). */
   isLoading: boolean;
-  login: () => void;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { username: string; email: string; password: string; user_type: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  /** Change password. In production, replace with API call. For demo, persists to storage. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-const AUTH_KEY = "estatery-auth";
-const PASSWORD_KEY = "estatery-password";
+const AUTH_KEY = "estatery-access";
+const USER_KEY = "estatery-user";
 
-function getStoredAuth(): boolean {
-  if (typeof window === "undefined") return false;
+function getStoredAuth(): { user: User; token: string } | null {
+  if (typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(AUTH_KEY) === "true";
+    const raw = localStorage.getItem(AUTH_KEY);
+    const userRaw = localStorage.getItem(USER_KEY);
+    if (!raw || !userRaw) return null;
+    const user = JSON.parse(userRaw) as User;
+    return { user, token: raw };
   } catch {
-    return false;
+    return null;
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  /* On mount: read auth state from localStorage */
   React.useEffect(() => {
-    setIsAuthenticated(getStoredAuth());
+    const stored = getStoredAuth();
+    if (stored) {
+      setUser(stored.user);
+    }
     setIsLoading(false);
   }, []);
 
-  /* Mark user as logged in and persist to storage */
-  const login = React.useCallback(() => {
-    setIsAuthenticated(true);
-    try {
-      localStorage.setItem(AUTH_KEY, "true");
-    } catch {}
-  }, []);
-
-  /* Clear auth and password from state and storage */
-  const logout = React.useCallback(() => {
-    setIsAuthenticated(false);
-    try {
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem(PASSWORD_KEY);
-    } catch {}
-  }, []);
-
-  /* Save new password to storage (replace with API in production) */
-  const changePassword = React.useCallback(
-    async (currentPassword: string, newPassword: string) => {
-      //  API call when backend is ready, e.g.:
-      // await fetch('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
+  const login = React.useCallback(
+    async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
       try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(PASSWORD_KEY, newPassword);
+        const res = await fetch(api.endpoints.login, {
+          method: "POST",
+          headers: apiHeaders(false),
+          body: JSON.stringify({ username, password }),
+        });
+        let data: Record<string, unknown>;
+        try {
+          data = (await res.json()) as Record<string, unknown>;
+        } catch {
+          return {
+            success: false,
+            error: `Backend error (${res.status}). Is the Django server running? Start it with: npm run dev:backend`,
+          };
         }
-      } catch {
-        // ignore
+        if (!res.ok) {
+          const msg =
+            (data.username as string[])?.[0] ??
+            (data.detail as string) ??
+            (data.message as string) ??
+            "Login failed";
+          return { success: false, error: msg };
+        }
+        const auth = data as AuthResponse;
+        setUser(auth.user);
+        localStorage.setItem(AUTH_KEY, auth.access);
+        localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
+        return { success: true };
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : "";
+        const hint = errMsg.includes("fetch") || errMsg.includes("Failed")
+          ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
+          : "Network error. Is the backend running at http://localhost:8000?";
+        return { success: false, error: hint };
       }
     },
     []
   );
 
+  const register = React.useCallback(
+    async (data: { username: string; email: string; password: string; user_type: string; phone?: string }): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await fetch(api.endpoints.register, {
+          method: "POST",
+          headers: apiHeaders(false),
+          body: JSON.stringify({ ...data, user_type: data.user_type || "customer" }),
+        });
+        let responseData: Record<string, unknown>;
+        try {
+          responseData = (await res.json()) as Record<string, unknown>;
+        } catch {
+          return {
+            success: false,
+            error: `Backend error (${res.status}). Is the Django server running? Start it with: npm run dev:backend`,
+          };
+        }
+        if (!res.ok) {
+          const fieldErrors = Object.entries(responseData)
+            .filter(([, v]) => Array.isArray(v) && (v as unknown[]).length > 0)
+            .map(([k, v]) => `${k}: ${(v as string[])[0]}`)
+            .join(" ");
+          return {
+            success: false,
+            error: fieldErrors || (responseData.detail as string) || "Registration failed",
+          };
+        }
+        // Signup success – do NOT log in; user must go to login page
+        return { success: true };
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : "";
+        const hint = errMsg.includes("fetch") || errMsg.includes("Failed")
+          ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
+          : "Network error. Is the backend running at http://localhost:8000?";
+        return { success: false, error: hint };
+      }
+    },
+    []
+  );
+
+  const logout = React.useCallback(() => {
+    setUser(null);
+    try {
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem("estatery-user-profile");
+    } catch {}
+  }, []);
+
+  const changePassword = React.useCallback(async (currentPassword: string, newPassword: string) => {
+    // TODO: wire to backend change-password when available
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("estatery-password", newPassword);
+      }
+    } catch {}
+  }, []);
+
   const value = React.useMemo<AuthContextValue>(
-    () => ({ isAuthenticated, isLoading, login, logout, changePassword }),
-    [isAuthenticated, isLoading, login, logout, changePassword]
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      login,
+      register,
+      logout,
+      changePassword,
+    }),
+    [user, isLoading, login, register, logout, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
