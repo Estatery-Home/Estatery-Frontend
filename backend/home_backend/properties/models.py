@@ -39,6 +39,11 @@ class Property(models.Model):
         ('villa', _("Villa")),
         ('studio', _("Studio")),
     )
+
+    LISTING_TYPE_CHOICES = (
+        ('rent', _("For Rent")),
+        ('sale', _("For Sale")),
+    )
     
     STATUS_CHOICES = (
         ('available', _("Available")),
@@ -57,6 +62,13 @@ class Property(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(_("Description"))
     property_type = models.CharField(max_length=20, choices=PROPERTY_TYPES)
+    listing_type = models.CharField(
+        max_length=10,
+        choices=LISTING_TYPE_CHOICES,
+        default='rent',
+        verbose_name=_("Listing type"),
+        help_text=_("Whether the property is for rent or for sale")
+    )
     objects = PropertyManager() # This will help with common queries 
     # PRICING
     daily_price = models.DecimalField(

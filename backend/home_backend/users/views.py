@@ -61,8 +61,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_object(self):
-        # Add already fetched data to optimize queries
         return CustomUser.objects.prefetch_related(
-            'booking_set', 
-            'property_set'
+            'bookings',
+            'properties',
         ).get(id=self.request.user.id)

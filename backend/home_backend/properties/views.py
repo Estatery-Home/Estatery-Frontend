@@ -23,7 +23,12 @@ class PropertyListView(generics.ListCreateAPIView):
     """List all available properties or create a new property"""
     serializer_class = PropertySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property_type', 'bedrooms', 'bathrooms', 'city', 'country', 'status']
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country', 'status']
     search_fields = ['title', 'description', 'address', 'city']
     ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms']
     ordering = ['-created_at']  # Default ordering

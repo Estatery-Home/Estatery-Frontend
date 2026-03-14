@@ -1,8 +1,8 @@
 @echo off
 echo Installing Estatery Frontend dependencies...
 echo.
-echo [1/2] Installing admin app (estatery)...
-cd estatery
+echo [1/2] Installing admin app (estatery/admin)...
+cd estatery\admin
 call npm install
 if %errorlevel% neq 0 (
   echo Installation failed.
@@ -10,8 +10,8 @@ if %errorlevel% neq 0 (
 )
 cd ..
 echo.
-echo [2/2] Installing website (Estatery-website)...
-cd Estatery-website
+echo [2/2] Installing website (estatery/customer)...
+cd customer
 call npm install
 if %errorlevel% neq 0 (
   echo Installation failed.

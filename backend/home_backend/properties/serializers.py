@@ -50,7 +50,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'id', 'title', 'address', 'city', 'state', 'country', 'zip_code',
             'description', 'daily_price', 'monthly_price', 'currency', 
             'bedrooms', 'bathrooms', 'area',  
-            'property_type', 'status',  
+            'property_type', 'listing_type', 'status',  
             'has_wifi', 'has_parking', 'has_pool', 'has_gym', 'is_furnished', 'has_kitchen',
             'min_stay_months', 'max_stay_months', 'monthly_cycle_start', 'security_deposit_months',
             'latitude', 'longitude',
