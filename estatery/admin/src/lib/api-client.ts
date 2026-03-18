@@ -24,6 +24,7 @@ export const api = {
     checkAvailability: (id: number) => `${API_BASE}/properties/${id}/check-availability/`,
     propertyCalendar: (id: number) => `${API_BASE}/properties/${id}/calendar/`,
     propertyReviews: (id: number) => `${API_BASE}/properties/${id}/reviews/`,
+    currencies: `${API_BASE}/currencies/`,
     /** Bookings */
     bookings: `${API_BASE}/bookings/`,
     myBookings: `${API_BASE}/bookings/my/`,

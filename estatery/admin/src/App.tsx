@@ -75,7 +75,7 @@ export default function App() {
                 path="/"
                 element={
                   <PublicRoute redirectTo="/dashboard">
-                    <Welcome />
+                    <Login/>
                   </PublicRoute>
                 }
               />

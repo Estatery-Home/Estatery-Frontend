@@ -144,9 +144,9 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
 );
 SelectTrigger.displayName = "SelectTrigger";
 
-const SelectValue = () => {
+const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const { value, displayLabel } = useSelectContext();
-  return <span>{displayLabel || value || "Select..."}</span>;
+  return <span>{displayLabel || value || placeholder || "Select..."}</span>;
 };
 
 type SelectContentProps = React.HTMLAttributes<HTMLDivElement>;
@@ -219,10 +219,11 @@ SelectContent.displayName = "SelectContent";
 
 type SelectItemProps = React.HTMLAttributes<HTMLDivElement> & {
   value: string;
+  disabled?: boolean;
 };
 
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
-  ({ className, value, children, ...props }, ref) => {
+  ({ className, value, disabled, children, ...props }, ref) => {
     const { value: selectedValue, onValueChange, registerLabel } =
       useSelectContext();
     const isSelected = selectedValue === value;
@@ -236,13 +237,18 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
         ref={ref}
         role="option"
         aria-selected={isSelected}
+        aria-disabled={disabled}
         className={cn(
           "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-8 text-sm outline-none hover:bg-[#f1f5f9] focus:bg-[#f1f5f9]",
           isSelected && "bg-[var(--logo-muted)] text-[var(--logo)]",
+          disabled && "pointer-events-none opacity-50",
           className
         )}
-        onClick={() => onValueChange(value, label)}
+        onClick={() => {
+          if (!disabled) onValueChange(value, label);
+        }}
         onKeyDown={(e) => {
+          if (disabled) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             onValueChange(value, label);

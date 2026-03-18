@@ -77,9 +77,7 @@ export function LoginForm() {
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-white px-6 py-10 sm:px-8 lg:min-w-0 lg:flex-1 lg:px-14">
       <div className="w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[#E8F4FC]">
-            <User className="size-7 text-[var(--logo)]" strokeWidth={2} />
-          </div>
+          <img src="/images/HomeLogo.webp" alt="Home Logo" className="mb-4 size-40 object-contain" />
           <h1 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">
             Welcome Back
           </h1>
@@ -109,7 +107,7 @@ export function LoginForm() {
               onBlur={handleUsernameBlur}
               error={!!usernameError}
               className={cn(
-                "w-full rounded-lg placeholder:text-[#9ca3af]",
+                "w-full rounded-lg bg-white text-black placeholder:text-[#9ca3af]",
                 !usernameError && "border-[#d1d5db]",
                 usernameError && "border-red-500 bg-[#FFE8E8]"
               )}
@@ -143,7 +141,7 @@ export function LoginForm() {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border-[#d1d5db] pr-10 placeholder:text-[#9ca3af]"
+                className="w-full rounded-lg bg-white text-black border-[#d1d5db] pr-10 placeholder:text-[#9ca3af]"
                 autoComplete="current-password"
               />
               <button
@@ -171,7 +169,7 @@ export function LoginForm() {
                   setKeepLoggedIn(checked === true)
                 }
                 aria-describedby="keep-login-label"
-                className="border-[#d1d5db]"
+                className="border-[#d1d5db] bg-white"
               />
               <span
                 id="keep-login-label"

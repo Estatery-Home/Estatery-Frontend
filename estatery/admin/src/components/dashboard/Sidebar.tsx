@@ -78,9 +78,9 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
         collapsed ? "w-[72px]" : "w-[240px]"
       )}
     >
-      <div className="flex h-11 items-center gap-2 border-b border-[#f1f5f9] px-2.5">
-        <Image src="/images/HomeLogo.webp" alt="" width={28} height={28} className="shrink-0 rounded object-contain" />
-        {!collapsed && <span className="truncate text-sm font-semibold text-[#1e293b]">{BRAND}</span>}
+      <div className="flex h-14 items-center gap-3 border-b border-[#f1f5f9] px-3">
+        <Image src="/images/HomeLogo.webp" alt="Home" width={36} height={36} className="shrink-0 rounded object-contain size-9" />
+        {!collapsed && <span className="truncate text-lg font-bold text-[var(--logo-hover)]">{BRAND}</span>}
         <button
           type="button"
           onClick={onToggle}

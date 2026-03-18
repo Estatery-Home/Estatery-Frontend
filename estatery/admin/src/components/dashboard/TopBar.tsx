@@ -37,7 +37,7 @@ export function TopBar() {
 
   return (
     <>
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[#f1f5f9] bg-white px-3 transition-shadow duration-200 focus-within:shadow-sm">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[#f1f5f9] bg-white px-3 transition-shadow duration-200 focus-within:shadow-sm">
         {/* Search bar – clicking opens the SearchOverlay */}
         <button
           type="button"

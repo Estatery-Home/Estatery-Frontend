@@ -41,6 +41,15 @@
   --radius-xl: calc(var(--radius) + 0.25rem);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Normalize text sizes globally to feel more standard (not too small) */
+  --text-xs: 0.8125rem; /* ~13px */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem; /* 15px, perfect for generic app text */
+  --text-sm--line-height: 1.5rem;
+  --text-base: 1.0625rem; /* 17px */
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.1875rem; /* 19px */
+  --text-lg--line-height: 1.75rem;
 }
 
 /* When user's OS is set to dark mode, switch to dark colors */
