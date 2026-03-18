@@ -7,6 +7,7 @@ urlpatterns = [
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
     path('properties/my/', views.MyPropertiesView.as_view(), name='my-properties'),
+    path('currencies/', views.CurrencyChoicesView.as_view(), name='currency-choices'),
     
     # === AVAILABILITY ===
     path('properties/<int:pk>/check-availability/', 

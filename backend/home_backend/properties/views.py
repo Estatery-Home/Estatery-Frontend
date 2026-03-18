@@ -769,3 +769,13 @@ class TenantDashboardView(APIView):
             'next_booking': BookingSerializer(next_booking).data if next_booking else None,
             'recent_bookings': BookingSerializer(recent_bookings, many=True).data
         })
+
+# ============ CONFIG VIEWS ============
+
+class CurrencyChoicesView(APIView):
+    """Get available currency choices"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        choices = [{"value": code, "label": str(name)} for code, name in Property.CURRENCY_CHOICES]
+        return Response(choices)
