@@ -173,7 +173,17 @@ class Property(models.Model):
     @property
     def security_deposit_amount(self):
         """Calculate security deposit amount"""
-        return self.effective_monthly_price * self.security_deposit_months
+        # Check if we have valid values
+        if self.effective_monthly_price is None or self.security_deposit_months is None:
+            return None
+            
+        try:
+            # Convert the float to Decimal for multiplication
+            months = Decimal(str(self.security_deposit_months))
+            return self.effective_monthly_price * months
+        except (TypeError, ValueError, decimal.InvalidOperation):
+            # Return None if conversion fails
+            return None
     
     def check_availability(self, check_in, check_out, exclude_booking_id=None):
         """Check if property is available for given dates"""
