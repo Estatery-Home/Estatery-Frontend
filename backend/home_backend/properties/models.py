@@ -177,18 +177,13 @@ class Property(models.Model):
     
     def check_availability(self, check_in, check_out, exclude_booking_id=None):
         """Check if property is available for given dates"""
-        from bookings.models import Booking   #this would avoid circular import
-        
-        qs = Booking.objects.filter(
-            property=self,
+        qs = self.bookings.filter(
             status__in=['confirmed', 'active'],
             check_out__gt=check_in,
             check_in__lt=check_out
         )
-        
         if exclude_booking_id:
             qs = qs.exclude(id=exclude_booking_id)
-            
         return not qs.exists()
     
     def calculate_total_months(self, check_in, check_out):
@@ -200,35 +195,86 @@ class Property(models.Model):
             months += 1
             
         return max(months, self.min_stay_months)
-    
+
     def calculate_total_price(self, check_in, check_out):
         """Calculate total price for stay"""
         months = self.calculate_total_months(check_in, check_out)
         monthly_rate = self.effective_monthly_price
         total = monthly_rate * months
-        
-        # Apply discounts for long stays
+
         if months >= 12:
-            total *= Decimal('0.85')  # 15% off
+            total *= Decimal('0.85')
         elif months >= 6:
-            total *= Decimal('0.90')  # 10% off
+            total *= Decimal('0.90')
         elif months >= 3:
-            total *= Decimal('0.95')  # 5% off  
+            total *= Decimal('0.95')
         return total, months, monthly_rate
-     
-    # Review methods
+
     @property
     def average_rating(self):
-        """Calculate average rating from all reviews"""
         from django.db.models import Avg
         avg = self.reviews.aggregate(Avg('rating'))['rating__avg']
         return round(avg, 1) if avg else 0
 
     @property
     def review_count(self):
-        """Total number of reviews"""
         return self.reviews.count()
-    
+
+
+# ============ PROMO / DISCOUNT CODES ============
+class PromoCode(models.Model):
+    DISCOUNT_TYPE_CHOICES = (
+        ('percent', _("Percentage")),
+        ('fixed', _("Fixed amount")),
+    )
+
+    code = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+    discount_type = models.CharField(
+        max_length=10,
+        choices=DISCOUNT_TYPE_CHOICES,
+        default='percent',
+    )
+    discount_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text=_("Percent (0–100) or fixed amount in listing currency"),
+    )
+    valid_from = models.DateField(null=True, blank=True)
+    valid_until = models.DateField(null=True, blank=True)
+    max_redemptions = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=_("Leave empty for unlimited uses"),
+    )
+    times_redeemed = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    min_booking_months = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=_("Minimum months booked to use this code"),
+    )
+    applies_to_property = models.ForeignKey(
+        'Property',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='promo_codes',
+        help_text=_("Limit to one property; leave empty for all listings"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['code', 'is_active']),
+        ]
+        verbose_name = _("Promo code")
+        verbose_name_plural = _("Promo codes")
+
+    def __str__(self):
+        return self.code
 
 
 # ============ PROPERTY IMAGE MODEL ============
@@ -271,9 +317,16 @@ class Booking(models.Model):
         ('rejected', 'Rejected'),  
     )
     
-    # Relationships
-    property_rented = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='bookings')
+    # Relationships (`rented_property` avoids shadowing Python's `@property` decorator)
+    rented_property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='bookings')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bookings')
+    promo = models.ForeignKey(
+        PromoCode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings',
+    )
     
     # Dates
     check_in = models.DateField()
@@ -332,9 +385,9 @@ class Booking(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=['property_rented', 'check_in', 'check_out', 'status']),
+            models.Index(fields=['rented_property', 'check_in', 'check_out', 'status']),
             models.Index(fields=['user', 'status', '-created_at']),
-            models.Index(fields=['property_rented', 'status', 'check_in']),
+            models.Index(fields=['rented_property', 'status', 'check_in']),
         ]
         ordering = ['-created_at']
         constraints = [
@@ -345,7 +398,7 @@ class Booking(models.Model):
         ]
     
     def __str__(self):
-        return f"Booking #{self.id} - {self.property.title} ({self.get_status_display()})"
+        return f"Booking #{self.id} - {self.rented_property.title} ({self.get_status_display()})"
     
     @property
     def is_active(self):
