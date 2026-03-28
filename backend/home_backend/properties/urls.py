@@ -3,6 +3,12 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # === CUSTOMER / PUBLIC CATALOG ===
+    path('customer/properties/', views.CustomerPropertyListView.as_view(), name='customer-property-list'),
+    path('countries/', views.CountryListView.as_view(), name='country-list'),
+    path('discounts/validate/', views.PromoCodeValidateView.as_view(), name='discount-validate'),
+    path('admin/discounts/', views.AdminPromoCodeListCreateView.as_view(), name='admin-discount-list'),
+    path('admin/discounts/<int:pk>/', views.AdminPromoCodeDetailView.as_view(), name='admin-discount-detail'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),

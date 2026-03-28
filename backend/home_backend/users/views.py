@@ -1,12 +1,36 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers as drf_serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView as JWTTokenRefreshView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from django.contrib.auth import authenticate, login, logout
+from drf_spectacular.utils import extend_schema, inline_serializer
+
 from .models import CustomUser
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
 
-# Registeration for a new user
+
+AuthTokenOut = inline_serializer(
+    name='AuthTokenResponse',
+    fields={
+        'user': UserSerializer(),
+        'refresh': drf_serializers.CharField(),
+        'access': drf_serializers.CharField(),
+        'message': drf_serializers.CharField(),
+    },
+)
+
+LogoutOut = inline_serializer(
+    name='LogoutResponse',
+    fields={'message': drf_serializers.CharField()},
+)
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Register',
+    responses={201: AuthTokenOut},
+)
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = [permissions.AllowAny]
@@ -28,7 +52,12 @@ class RegisterView(generics.CreateAPIView):
             'message': 'User created successfully'
         }, status=status.HTTP_201_CREATED)
 
-# Login for a user
+@extend_schema(
+    tags=['Auth'],
+    summary='Login',
+    request=LoginSerializer,
+    responses={200: AuthTokenOut},
+)
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     
@@ -48,6 +77,12 @@ class LoginView(APIView):
             })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Logout',
+    request=None,
+    responses={200: LogoutOut},
+)
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -55,7 +90,23 @@ class LogoutView(APIView):
         logout(request)
         return Response({'message': 'Logout successful'})
 
-# Get and update user profile
+@extend_schema(
+    tags=['Auth'],
+    summary='Refresh JWT access token',
+    request=TokenRefreshSerializer,
+    responses={200: inline_serializer(
+        name='TokenRefreshResponse',
+        fields={
+            'access': drf_serializers.CharField(),
+            'refresh': drf_serializers.CharField(required=False),
+        },
+    )},
+)
+class TokenRefreshView(JWTTokenRefreshView):
+    pass
+
+
+@extend_schema(tags=['Auth'], summary='Profile')
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]

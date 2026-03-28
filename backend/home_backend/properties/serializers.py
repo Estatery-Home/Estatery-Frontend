@@ -1,9 +1,17 @@
 from rest_framework import serializers
-from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview
+from django.db.models import Avg, F
+from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
 from users.serializers import UserSerializer
 from django.utils import timezone
 from decimal import Decimal
 from datetime import datetime
+
+from .promo import (
+    combined_discount_percent,
+    final_total_with_promo,
+    get_promo_by_code,
+    validate_promo_for_booking,
+)
 
 # ============ PROPERTY IMAGE SERIALIZER ============
 class PropertyImageSerializer(serializers.ModelSerializer):
@@ -148,38 +156,97 @@ class PropertyDetailSerializer(PropertySerializer):
         return PropertyReviewSerializer(reviews, many=True).data
     
     def get_average_rating(self, obj):
-        avg = obj.reviews.aggregate(avg=models.Avg('rating'))['avg']
+        avg = obj.reviews.aggregate(avg=Avg('rating'))['avg']
         return round(avg, 1) if avg else None
+
+
+# ============ PROMO CODE (admin + validate) ============
+class PromoCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PromoCode
+        fields = (
+            'id', 'code', 'description', 'discount_type', 'discount_value',
+            'valid_from', 'valid_until', 'max_redemptions', 'times_redeemed',
+            'is_active', 'min_booking_months', 'applies_to_property',
+            'created_at', 'updated_at',
+        )
+        read_only_fields = ('times_redeemed', 'created_at', 'updated_at')
+
+    def validate_code(self, value):
+        return value.strip().upper()
+
+    def validate(self, attrs):
+        if attrs.get('discount_type', getattr(self.instance, 'discount_type', None)) == 'percent':
+            v = attrs.get('discount_value', getattr(self.instance, 'discount_value', None))
+            if v is not None and (v < 0 or v > 100):
+                raise serializers.ValidationError({
+                    'discount_value': 'Percentage must be between 0 and 100.'
+                })
+        return attrs
+
+
+class PromoCodeValidateSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=50)
+    property_id = serializers.IntegerField()
+    check_in = serializers.DateField()
+    check_out = serializers.DateField()
+
+    def validate(self, attrs):
+        prop = Property.objects.filter(pk=attrs['property_id']).first()
+        if not prop:
+            raise serializers.ValidationError({'property_id': 'Property not found.'})
+        if attrs['check_out'] <= attrs['check_in']:
+            raise serializers.ValidationError({'check_out': 'Must be after check-in.'})
+        months = prop.calculate_total_months(attrs['check_in'], attrs['check_out'])
+        promo = get_promo_by_code(attrs['code'])
+        validate_promo_for_booking(promo, prop, months, attrs['check_in'], field='code')
+        attrs['_property'] = prop
+        attrs['_promo'] = promo
+        attrs['_months'] = months
+        return attrs
 
 
 # ============ BOOKING SERIALIZER ============
 class BookingSerializer(serializers.ModelSerializer):
     # Read-only fields for display
-    property_title = serializers.CharField(source='property.title', read_only=True)
-    property_address = serializers.CharField(source='property.address', read_only=True)
+    property_title = serializers.CharField(source='rented_property.title', read_only=True)
+    property_address = serializers.CharField(source='rented_property.address', read_only=True)
     property_image = serializers.SerializerMethodField()
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
-    
+    promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    applied_promo_code = serializers.CharField(source='promo.code', read_only=True, allow_null=True)
+
     # Writeable fields for creation
-    property = serializers.PrimaryKeyRelatedField(queryset=Property.objects.filter(status='available'))
+    property = serializers.PrimaryKeyRelatedField(
+        source='rented_property',
+        queryset=Property.objects.filter(status='available'),
+    )
     
     class Meta:
         model = Booking
-        fields = ('id', 'property', 'user',
-        'check_in', 'check_out', 'guests', 
-        'status', 'created_at', 'updated_at',
-        'deposit_paid', 'deposit_paid_at',
-        'deposit_refunded', 'deposit_refunded_at')
+        fields = (
+            'id', 'property', 'user',
+            'property_title', 'property_address', 'property_image',
+            'user_name', 'user_email',
+            'check_in', 'check_out', 'guests',
+            'promo_code', 'applied_promo_code',
+            'status', 'created_at', 'updated_at',
+            'deposit_paid', 'deposit_paid_at',
+            'deposit_refunded', 'deposit_refunded_at',
+        )
         read_only_fields = (
             'user', 'total_price', 'agreed_monthly_rate', 'months_booked',
             'security_deposit', 'discount_applied', 'status', 'confirmed_at',
             'cancelled_at', 'completed_at', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at', 'deposit_refunded', 'deposit_refunded_at'
+            'deposit_paid', 'deposit_paid_at', 'deposit_refunded', 'deposit_refunded_at',
+            'property_title', 'property_address', 'property_image',
+            'user_name', 'user_email',
+            'applied_promo_code',
         )
     
     def get_property_image(self, obj):
-        primary = obj.property.primary_image  # This returns PropertyImage object
+        primary = obj.rented_property.primary_image
         if primary:
             if hasattr(primary, 'image') and primary.image:
                 return primary.image.url
@@ -190,7 +257,7 @@ class BookingSerializer(serializers.ModelSerializer):
         
         # For CREATE operations
         if request and request.method == 'POST':
-            property_obj = attrs.get('property')
+            property_obj = attrs.get('rented_property')
             check_in = attrs.get('check_in')
             check_out = attrs.get('check_out')
             user = request.user
@@ -236,48 +303,43 @@ class BookingSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "property": "Property is not available for the selected dates."
                 })
-            
-            # Store calculated values for create method
+
+            promo = None
+            raw_promo = (attrs.get('promo_code') or '').strip()
+            if raw_promo:
+                promo = get_promo_by_code(raw_promo)
+                validate_promo_for_booking(promo, property_obj, total_months, check_in)
+
+            self.context['promo_instance'] = promo
             self.context['calculated_months'] = total_months
             self.context['calculated_monthly_rate'] = property_obj.effective_monthly_price
             self.context['calculated_total'], self.context['calculated_discount'] = self._calculate_pricing(
-                property_obj, total_months
+                property_obj, total_months, promo
             )
             self.context['calculated_deposit'] = property_obj.security_deposit_amount
         
         return attrs
     
-    def _calculate_pricing(self, property_obj, months):
-        """Calculate total price and discount"""
-        monthly_rate = property_obj.effective_monthly_price
-        base_total = monthly_rate * months
-        discount = 0
-        
-        # Apply discounts
-        if months >= 12:
-            discount = Decimal('0.15')  # 15% off
-        elif months >= 6:
-            discount = Decimal('0.10')  # 10% off
-        elif months >= 3:
-            discount = Decimal('0.05')  # 5% off
-        
-        total = base_total * (1 - discount)
-        return total, discount * 100  # Return as percentage
+    def _calculate_pricing(self, property_obj, months, promo=None):
+        """Long-stay tiers, then optional promo; returns (final_total, combined_discount_percent)."""
+        final_total = final_total_with_promo(property_obj, months, promo)
+        combined_pct = combined_discount_percent(property_obj, months, promo)
+        return final_total, combined_pct
     
     def create(self, validated_data):
         """Create booking with calculated pricing"""
         request = self.context.get('request')
-        
-        # Get calculated values from validation
+        validated_data.pop('promo_code', None)
+        promo = self.context.get('promo_instance')
+
         months = self.context.get('calculated_months', 12)
         monthly_rate = self.context.get('calculated_monthly_rate')
         total_price = self.context.get('calculated_total')
         discount = self.context.get('calculated_discount', 0)
         deposit = self.context.get('calculated_deposit', monthly_rate * 2)
-        
-        # Create booking
+
         booking = Booking.objects.create(
-            property=validated_data['property'],
+            rented_property=validated_data['rented_property'],
             user=request.user,
             check_in=validated_data['check_in'],
             check_out=validated_data['check_out'],
@@ -288,12 +350,15 @@ class BookingSerializer(serializers.ModelSerializer):
             total_price=total_price,
             security_deposit=deposit,
             discount_applied=discount,
+            promo=promo,
             emergency_contact=validated_data.get('emergency_contact', ''),
             occupation=validated_data.get('occupation', ''),
             special_requests=validated_data.get('special_requests', ''),
             status='pending'
         )
-        
+        if promo:
+            PromoCode.objects.filter(pk=promo.pk).update(times_redeemed=F('times_redeemed') + 1)
+
         return booking
     
     def update(self, instance, validated_data):
@@ -319,21 +384,23 @@ class BookingCalendarSerializer(serializers.ModelSerializer):
 
 
 # ============ HOST BOOKING SERIALIZER (hosts see more details) ============
-class HostBookingSerializer(serializers.ModelSerializer):
+class HostBookingSerializer(BookingSerializer):
     """Extended booking serializer for property owners"""
-    
+
     tenant_name = serializers.CharField(source='user.get_full_name', read_only=True)
     tenant_email = serializers.EmailField(source='user.email', read_only=True)
     tenant_phone = serializers.CharField(source='user.phone', read_only=True)
-    property_title = serializers.CharField(source='property.title', read_only=True)
     payments = serializers.SerializerMethodField()
-    
+
     class Meta(BookingSerializer.Meta):
         fields = BookingSerializer.Meta.fields + (
             'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at'
+            'rejection_reason', 'confirmed_at', 'cancelled_at',
         )
-        read_only_fields = BookingSerializer.Meta.read_only_fields
+        read_only_fields = BookingSerializer.Meta.read_only_fields + (
+            'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
+            'rejection_reason', 'confirmed_at', 'cancelled_at',
+        )
     
     def get_payments(self, obj):
         payments = obj.payments.all().order_by('due_date')
@@ -397,7 +464,7 @@ class PropertyReviewSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("This booking has already been reviewed")
             
             attrs['user'] = request.user
-            attrs['property'] = booking.property
+            attrs['property'] = booking.rented_property
             attrs['booking'] = booking
         
         return attrs
@@ -473,17 +540,46 @@ class PropertyAvailabilitySerializer(serializers.Serializer):
         }
     
     def _calculate_pricing(self, property_obj, months):
-        """Calculate total price and discount"""
-        monthly_rate = property_obj.effective_monthly_price
-        base_total = monthly_rate * months
-        discount = 0
-        
-        if months >= 12:
-            discount = Decimal('0.15')
-        elif months >= 6:
-            discount = Decimal('0.10')
-        elif months >= 3:
-            discount = Decimal('0.05')
-        
-        total = base_total * (1 - discount)
-        return total, discount * 100
+        """Calculate total price and combined discount % (no promo on availability check)."""
+        return (
+            final_total_with_promo(property_obj, months, None),
+            combined_discount_percent(property_obj, months, None),
+        )
+
+
+# ============ drf-spectacular (OpenAPI) shape hints for APIView responses ============
+class CountryRowSerializer(serializers.Serializer):
+    name = serializers.CharField()
+
+
+class PromoValidateNestedSerializer(serializers.Serializer):
+    discount_type = serializers.CharField()
+    discount_value = serializers.CharField()
+
+
+class PromoValidateResponseSerializer(serializers.Serializer):
+    valid = serializers.BooleanField()
+    code = serializers.CharField()
+    months = serializers.IntegerField()
+    currency = serializers.CharField()
+    monthly_rate = serializers.CharField()
+    base_subtotal = serializers.CharField()
+    subtotal_after_long_stay = serializers.CharField()
+    long_stay_discount_percent = serializers.CharField()
+    promo = PromoValidateNestedSerializer()
+    total_price = serializers.CharField()
+    combined_discount_percent = serializers.CharField()
+
+
+class HostDashboardSerializer(serializers.Serializer):
+    properties = serializers.JSONField()
+    bookings = serializers.JSONField()
+    revenue = serializers.JSONField()
+    recent_bookings = serializers.JSONField()
+
+
+class TenantDashboardSerializer(serializers.Serializer):
+    bookings = serializers.JSONField()
+    upcoming_payments = serializers.JSONField()
+    next_booking = serializers.JSONField(allow_null=True)
+    recent_bookings = serializers.JSONField()
