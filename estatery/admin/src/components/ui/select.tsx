@@ -130,7 +130,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
         aria-haspopup="listbox"
         aria-expanded={open}
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-[#64748b] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-9 w-full items-center justify-between rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-black shadow-sm ring-offset-background placeholder:text-[#64748b] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         onClick={() => setOpen(!open)}
@@ -196,7 +196,7 @@ const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         className={cn(
-          "fixed z-[100] max-h-60 min-w-[8rem] overflow-auto rounded-lg border border-[#e2e8f0] bg-white p-1 shadow-lg",
+          "fixed z-[100] max-h-60 min-w-[8rem] overflow-auto rounded-lg border border-[#e2e8f0] bg-white text-black p-1 shadow-lg",
           className
         )}
         style={{
@@ -239,7 +239,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
         aria-selected={isSelected}
         aria-disabled={disabled}
         className={cn(
-          "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-8 text-sm outline-none hover:bg-[#f1f5f9] focus:bg-[#f1f5f9]",
+          "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-3 pr-8 text-sm text-black outline-none hover:bg-[#f1f5f9] focus:bg-[#f1f5f9]",
           isSelected && "bg-[var(--logo-muted)] text-[var(--logo)]",
           disabled && "pointer-events-none opacity-50",
           className

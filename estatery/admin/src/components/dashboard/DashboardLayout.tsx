@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-slate-50">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={onToggle}
@@ -37,8 +37,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       />
       <div
         className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+          "flex min-h-screen flex-col transition-all duration-300",
+          sidebarCollapsed ? "ml-0 sm:ml-[80px]" : "ml-0 sm:ml-[260px]"
         )}
       >
         <TopBar />

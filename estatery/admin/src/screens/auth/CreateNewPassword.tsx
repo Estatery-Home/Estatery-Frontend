@@ -72,7 +72,7 @@ export default function CreateNewPassword() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af]",
+                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af] bg-white text-black",
                     error && "border-red-500"
                   )}
                   autoComplete="new-password"
@@ -100,7 +100,7 @@ export default function CreateNewPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af]",
+                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af] bg-white text-black",
                     error && "border-red-500"
                   )}
                   autoComplete="new-password"

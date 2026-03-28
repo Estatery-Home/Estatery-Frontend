@@ -61,7 +61,7 @@ export function AddPropertyLocationStep({
 
       <div className="space-y-2">
         <Label htmlFor="full-address" className="text-[#1e293b]">
-          Full Address
+          Full Address <span className="text-red-500">*</span>
         </Label>
         <textarea
           id="full-address"
@@ -71,13 +71,14 @@ export function AddPropertyLocationStep({
           rows={4}
           placeholder="Placeholder"
           className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+          required
         />
         <p className="text-right text-xs text-[#64748b]">{addressLength}/200</p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="city" className="text-[#1e293b]">
-          City
+          City <span className="text-red-500">*</span>
         </Label>
         <Input
           id="city"
@@ -85,12 +86,13 @@ export function AddPropertyLocationStep({
           onChange={handleCityChange}
           placeholder="e.g. Accra, New York"
           className="border-[#e2e8f0] bg-white text-[#1e293b]"
+          required
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="country" className="text-[#1e293b]">
-          Country
+          Country <span className="text-red-500">*</span>
         </Label>
         <Input
           id="country"
@@ -98,6 +100,7 @@ export function AddPropertyLocationStep({
           onChange={handleCountryChange}
           placeholder="e.g. Ghana, USA"
           className="border-[#e2e8f0] bg-white text-[#1e293b]"
+          required
         />
       </div>
     </div>

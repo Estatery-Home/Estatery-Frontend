@@ -100,7 +100,7 @@ export default function Clients() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
+    <div className="min-h-screen bg-slate-50">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={onToggle}
@@ -108,39 +108,39 @@ export default function Clients() {
       />
       <div
         className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+          "flex min-h-screen flex-col transition-all duration-300",
+          sidebarCollapsed ? "ml-0 sm:ml-[80px]" : "ml-0 sm:ml-[260px]"
         )}
       >
         <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
+        <main className="min-h-[calc(100vh-4.5rem)] flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-7xl space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-[#1e293b]">My Clients</h1>
-                <p className="mt-1 text-[#64748b]">
-                  Track and manage your property dashboard efficiently.
+                <h1 className="text-xl font-bold text-slate-900">My Clients</h1>
+                <p className="mt-1 text-xs text-slate-500">
+                  Track and manage client portfolios efficiently.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2.5 shadow-sm">
-                  <Calendar className="size-4 shrink-0 text-[#64748b]" />
-                  <span className="text-sm text-[#64748b]">Last updated: {lastUpdated}</span>
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition-all hover:bg-slate-50">
+                  <Calendar className="size-3.5 shrink-0 text-slate-400" />
+                  <span className="text-xs font-semibold text-slate-500">Last updated: {lastUpdated}</span>
                   <button
                     type="button"
                     onClick={handleRefresh}
-                    className="flex size-8 items-center justify-center rounded text-[var(--logo)] transition-colors hover:bg-[var(--logo-muted)] hover:text-[var(--logo-hover)]"
+                    className="flex size-6 items-center justify-center rounded-md text-indigo-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
                     aria-label="Refresh"
                   >
-                    <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+                    <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
                   </button>
                 </div>
                 <Button
                   onClick={handleExport}
-                  className="shrink-0 rounded-lg bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+                  className="shrink-0 h-9 rounded-xl px-3.5 text-xs font-semibold bg-indigo-600 outline-none text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
                 >
-                  <Download className="mr-2 size-4" />
+                  <Download className="mr-1.5 size-3.5" strokeWidth={2.5} />
                   Export CSV
                 </Button>
               </div>

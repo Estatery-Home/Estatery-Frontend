@@ -2,8 +2,7 @@
 
 /**
  * Main navigation sidebar – collapsible, responsive.
- * Links: Dashboard, Agents, Clients, Analytics, Calendar, Messages, etc.
- * Uses NavLink for active state; supports onLogoutClick for confirmation.
+ * Premium modernized dashboard styling.
  */
 import * as React from "react";
 import { NavLink } from "react-router-dom";
@@ -23,6 +22,7 @@ import {
   MessageCircle,
   ChevronLeft,
   LogOut,
+  Menu,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,6 @@ const BRAND = "Home";
 /** Primary nav items: Dashboard, Agents, Clients, Analytics, Calendar, Messages */
 const mainNav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
- // { to: "/dashboard/agents", label: "Agents", icon: Users },
   { to: "/clients/clients", label: "Clients", icon: UserCircle },
   { to: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/dashboard/calendar", label: "Calendar", icon: Calendar },
@@ -56,80 +55,133 @@ const bottomNav = [
 type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
-  /** Called when user clicks Logout. If provided, shows confirmation dialog instead of navigating. */
   onLogoutClick?: () => void;
 };
 
 export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
-  /** Returns className for NavLink based on active state – highlights current route */
+  /** Returns className for NavLink based on active state – minimal pill style */
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "relative flex min-h-[36px] min-w-[36px] items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-all duration-200",
+      "group relative flex items-center rounded-xl transition-all duration-300 ease-out outline-none",
+      collapsed ? "justify-center size-10 mx-auto" : "min-h-[38px] w-full gap-3 px-3 py-1.5",
+      "text-xs font-semibold",
       isActive
-        ? "bg-[var(--logo-muted)] text-[var(--logo)]"
-        : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#1e293b]",
-      isActive && "border-l-2 border-l-[var(--logo)] rounded-l-none pl-[calc(0.625rem+2px)]"
+        ? "bg-[var(--logo)] text-white shadow-md shadow-[var(--logo)]/20"
+        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
     );
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-[#f1f5f9] bg-[#f8fafc] transition-all duration-300 ease-in-out",
-        collapsed ? "w-[72px]" : "w-[240px]"
-      )}
-    >
-      <div className="flex h-14 items-center gap-3 border-b border-[#f1f5f9] px-3">
-        <Image src="/images/HomeLogo.webp" alt="Home" width={36} height={36} className="shrink-0 rounded object-contain size-9" />
-        {!collapsed && <span className="truncate text-lg font-bold text-[var(--logo-hover)]">{BRAND}</span>}
+    <>
+      {/* Mobile Hamburger Button - Appears strictly on small screens when Sidebar is collapsed to allow users to toggle it */}
+      {collapsed && (
         <button
           type="button"
           onClick={onToggle}
-          className="ml-auto flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#e2e8f0] hover:text-[#1e293b]"
+          className="sm:hidden fixed left-4 top-[18px] z-50 flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+          aria-label="Open Mobile Menu"
+        >
+          <Menu className="size-5" />
+        </button>
+      )}
+
+      {/* Mobile Backdrop Overlay - Provides focus on the sliding sidebar menu */}
+      {!collapsed && (
+        <div 
+          className="sm:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm animate-in fade-in transition-all"
+          onClick={onToggle}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-100 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out",
+          collapsed ? "w-0 overflow-hidden border-none sm:border-solid sm:border-r sm:w-[80px]" : "w-[260px] max-sm:shadow-2xl"
+        )}
+      >
+      {/* Header Logo Area */}
+      <div className={cn("flex h-[72px] w-full shrink-0 items-center transition-all relative z-50", collapsed ? "justify-center px-0" : "justify-start px-5")}>
+        <div className="flex items-center gap-3 transition-all duration-300">
+          <div className={cn("flex shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 shadow-sm transition-all duration-300 hover:scale-105 hover:rotate-2", collapsed ? "size-9" : "size-[42px]")}>
+            {/* Logo image that reduces padding to look correctly scaled when container shrinks */}
+            <Image src="/images/HomeLogo.webp" alt="Home" width={50} height={50} className={cn("object-contain transition-all duration-300", collapsed ? "p-1.5" : "p-2")} />
+          </div>
+          {/* Brand text vanishes smoothly when collapsed */}
+          {!collapsed && <span className="truncate text-xl font-extrabold tracking-tight text-slate-900 animate-in fade-in duration-300">{BRAND}</span>}
+        </div>
+        
+        {/* Floating Toggle Button - Sits half-outside the sidebar border natively for premium interaction */}
+        <button
+          type="button"
+          onClick={onToggle}
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 -right-3.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-slate-50 hover:border-indigo-500 hover:text-indigo-600 active:scale-95"
+          )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-            <ChevronLeft
-            className={cn("size-4 transition-transform duration-200", collapsed && "rotate-180")}
+          <ChevronLeft
+            className={cn("size-3.5 transition-transform duration-300", collapsed && "rotate-180")}
+            strokeWidth={2.5}
           />
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col overflow-y-auto p-2">
+      <nav className={cn("flex flex-1 flex-col overflow-y-auto overflow-x-hidden py-4 custom-scrollbar", collapsed ? "px-2" : "px-4")}>
         {/* Main Menu */}
-        {!collapsed && (
-          <p className="mb-1 px-2.5 pt-1 text-[10px] font-medium uppercase tracking-wide text-[#94a3b8]">
-            Main Menu
-          </p>
-        )}
-        <div className="space-y-0.5">
-          {mainNav.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navLinkClass} end={item.to === "/dashboard"}>
-              <item.icon className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+        <div className="mb-5">
+          {!collapsed ? (
+            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Main Menu
+            </p>
+          ) : (
+            <div className="mx-auto mb-3 h-px w-6 bg-slate-100" />
+          )}
+          <div className="space-y-1">
+            {mainNav.map((item) => (
+              <NavLink key={item.to} to={item.to} className={navLinkClass} end={item.to === "/dashboard"}>
+                {({ isActive }) => (
+                  <>
+                    <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
+                    {!collapsed && <span className="truncate tracking-wide">{item.label}</span>}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </div>
 
-        {/* Sales Chanel */}
-        {!collapsed && (
-          <p className="mb-1 mt-3 px-2.5 pt-1 text-[10px] font-medium uppercase tracking-wide text-[#94a3b8]">
-            Sales Chanel
-          </p>
-        )}
-        <div className="space-y-0.5">
-          {salesNav.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navLinkClass}>
-              <item.icon className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+        {/* Sales Channel */}
+        <div className="mb-5">
+          {!collapsed ? (
+            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Sales Channel
+            </p>
+          ) : (
+            <div className="mx-auto mb-3 h-px w-6 bg-slate-100" />
+          )}
+          <div className="space-y-1">
+            {salesNav.map((item) => (
+              <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                {({ isActive }) => (
+                  <>
+                    <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
+                    {!collapsed && <span className="truncate tracking-wide">{item.label}</span>}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </div>
 
-        {/* Bottom section - pushed to bottom, no divider */}
-        <div className="mt-auto space-y-0.5 pt-4">
+        {/* Bottom Menu */}
+        <div className="mt-auto space-y-1 pt-6 border-t border-slate-100/60 pb-2">
           {bottomNav.map((item) => (
             <NavLink key={item.to} to={item.to} className={navLinkClass}>
-              <item.icon className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {({ isActive }) => (
+                <>
+                  <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
+                  {!collapsed && <span className="truncate tracking-wide">{item.label}</span>}
+                </>
+              )}
             </NavLink>
           ))}
           {onLogoutClick && (
@@ -137,17 +189,19 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
               type="button"
               onClick={onLogoutClick}
               className={cn(
-                "relative flex min-h-[36px] w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-all duration-200",
-                "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                "group relative flex items-center rounded-xl transition-all duration-300 ease-out hover:bg-rose-50 active:scale-[0.98] outline-none",
+                collapsed ? "justify-center size-10 mx-auto" : "min-h-[38px] w-full gap-3 px-3 py-1.5",
+                "text-xs font-semibold text-rose-500"
               )}
               aria-label="Logout"
             >
-              <LogOut className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">Logout</span>}
+              <LogOut className="size-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-x-1" strokeWidth={2} />
+              {!collapsed && <span className="truncate tracking-wide">Logout</span>}
             </button>
           )}
         </div>
       </nav>
     </aside>
+    </>
   );
 }

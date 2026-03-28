@@ -66,6 +66,30 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [area, setArea] = React.useState<number>(2000);
   const [imageUrl, setImageUrl] = React.useState<string>("/images/property-1.webp");
 
+  const canContinue = () => {
+    switch (step) {
+      case 1:
+        return !!(
+          title.trim() &&
+          description.trim() &&
+          propertyType &&
+          listingType &&
+          price.trim() &&
+          (listingType === "rent" ? rentalPeriod : true)
+        );
+      case 2:
+        return !!(address.trim() && city.trim() && country.trim());
+      case 3:
+        return !!(bedrooms > 0 && bathrooms > 0 && area > 0);
+      case 4:
+        return !!imageUrl.trim();
+      case 5:
+        return !!(contactName.trim() && phone.trim() && email.trim() && agent.trim());
+      default:
+        return true;
+    }
+  };
+
   /** Update description and track length (max 200 chars for step 1) */
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value;
@@ -191,18 +215,19 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="property-title" className="text-[#1e293b]">
-                  Property Title
+                  Property Title <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="property-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="border-[#e2e8f0] bg-white text-[#1e293b]"
+                  required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="property-description" className="text-[#1e293b]">
-                  Property Description
+                  Property Description <span className="text-red-500">*</span>
                 </Label>
                 <textarea
                   id="property-description"
@@ -212,12 +237,13 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                   rows={4}
                   placeholder="Enter property description..."
                   className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+                  required
                 />
                 <p className="text-right text-xs text-[#64748b]">{descLength}/200</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="listing-type" className="text-[#1e293b]">
-                  Listing Type
+                  Listing Type <span className="text-red-500">*</span>
                 </Label>
                 <Select value={listingType} onValueChange={(v) => setListingType(v as "rent" | "sale")}>
                   <SelectTrigger id="listing-type" className="border-[#e2e8f0] bg-white text-[#1e293b]">
@@ -234,7 +260,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               </div>
               <div className="space-y-2">
                 <Label htmlFor="property-type" className="text-[#1e293b]">
-                  Property Type
+                  Property Type <span className="text-red-500">*</span>
                 </Label>
                 <Select value={propertyType} onValueChange={(v) => setPropertyType(v as Property["property_type"])}>
                   <SelectTrigger id="property-type" className="border-[#e2e8f0] bg-white text-[#1e293b]">
@@ -249,10 +275,10 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`grid gap-4 ${listingType === "sale" ? "grid-cols-1" : "grid-cols-2"}`}>
                 <div className="space-y-2">
                   <Label htmlFor="price" className="text-[#1e293b]">
-                    {listingType === "sale" ? "Price (₵)" : "Monthly Price (₵)"}
+                    {listingType === "sale" ? "Price (₵)" : "Monthly Price (₵)"} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="price"
@@ -260,24 +286,27 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="₵2,500"
                     className="border-[#e2e8f0] bg-white text-[#1e293b]"
+                    required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rental-period" className="text-[#1e293b]">
-                    {listingType === "sale" ? "—" : "Min Stay"}
-                  </Label>
-                  <Select value={rentalPeriod} onValueChange={setRentalPeriod} disabled={listingType === "sale"}>
-                    <SelectTrigger id="rental-period" className="border-[#e2e8f0] bg-white text-[#1e293b]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="6 months">6 months</SelectItem>
-                      <SelectItem value="1 year">1 year</SelectItem>
-                      <SelectItem value="2 years">2 years</SelectItem>
-                      <SelectItem value="3 years">3 years</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {listingType !== "sale" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="rental-period" className="text-[#1e293b]">
+                      Min Stay <span className="text-red-500">*</span>
+                    </Label>
+                    <Select value={rentalPeriod} onValueChange={setRentalPeriod}>
+                      <SelectTrigger id="rental-period" className="border-[#e2e8f0] bg-white text-[#1e293b]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6 months">6 months</SelectItem>
+                        <SelectItem value="1 year">1 year</SelectItem>
+                        <SelectItem value="2 years">2 years</SelectItem>
+                        <SelectItem value="3 years">3 years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -346,6 +375,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
             </Button>
             <Button
               type="button"
+              disabled={!canContinue()}
               onClick={() => {
                 if (step < STEPS.length) {
                   setStep(step + 1);
@@ -353,7 +383,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                   setShowSaveDialog(true);
                 }
               }}
-              className="bg-[var(--logo)] text-white shadow-sm transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95"
+              className="bg-[var(--logo)] text-white shadow-sm transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
               {step < STEPS.length ? "Continue" : "Save"}
             </Button>

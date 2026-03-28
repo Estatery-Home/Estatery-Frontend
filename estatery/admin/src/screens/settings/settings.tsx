@@ -144,6 +144,7 @@ export default function Settings() {
           {saveSuccess && (
             <span className="text-sm font-medium text-green-600">Changes saved</span>
           )}
+          {/*
           <Button
             type="button"
             variant="outline"
@@ -151,6 +152,7 @@ export default function Settings() {
           >
             Cancel
           </Button>
+          */}
           <Button
             type="button"
             className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
