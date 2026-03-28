@@ -7,7 +7,6 @@
  * agent detail drawer, status actions (approve, deactivate, set active).
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Star,
   Phone,
@@ -24,9 +23,7 @@ import {
   List,
   X,
 } from "lucide-react";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +40,6 @@ import {
 } from "./agents-data";
 
 export default function Agents() {
-  // --- Auth & layout
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
-
   // --- Agents list state
   const [statusFilter, setStatusFilter] = React.useState<AgentStatus | "All">("All");
   const [search, setSearch] = React.useState("");
@@ -57,13 +48,6 @@ export default function Agents() {
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
   const [addAgentOpen, setAddAgentOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<"cards" | "table">("cards");
-
-  // --- Logout flow
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
 
   const totalAgents = agents.length;
   const activeAgents = agents.filter((a) => a.status === "Active").length;
@@ -157,36 +141,16 @@ export default function Agents() {
   const showTableView = viewMode === "table" || filteredAgents.length > 12;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-7xl space-y-8">
+    <DashboardLayout>
+      <>
+      <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
             {/* Header */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e293b] via-[#334155] to-[#475569] px-6 py-8 text-white shadow-xl">
-              <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5" />
-              <div className="absolute bottom-0 right-0 h-24 w-24 rounded-full bg-white/5" />
-              <div className="relative flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Agents</h1>
-                  <p className="mt-2 max-w-md text-sm text-slate-300">
-                    Manage your sales team, track performance, and approve new agents.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
-                  <Sparkles className="size-4 text-amber-300" />
-                  <span className="text-sm font-medium">Team ready</span>
-                </div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-bold text-[#1e293b]">Agents</h1>
+                <p className="mt-1 max-w-md text-xs text-[#64748b]">
+                  Manage your sales team, track performance, and approve new agents.
+                </p>
               </div>
             </div>
 
@@ -201,7 +165,7 @@ export default function Agents() {
                   <div className="relative flex items-start justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-500">{card.title}</p>
-                      <p className="mt-1 text-3xl font-bold text-slate-800">
+                      <p className="mt-1 text-2xl font-bold text-[#0f172a]">
                         {statValues[card.valueKey]}
                       </p>
                     </div>
@@ -565,8 +529,6 @@ export default function Agents() {
                 )}
               </section>
             </div>
-          </div>
-        </main>
       </div>
       {/* Agent Detail Modal */}
       {selectedAgent && (
@@ -820,11 +782,7 @@ export default function Agents() {
         </>
       )}
 
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+      </>
+    </DashboardLayout>
   );
 }

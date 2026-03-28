@@ -50,7 +50,7 @@ export default function CreateNewPassword() {
               <Lock className="size-8 text-[var(--logo)]" />
             </div>
           </div>
-          <h1 className="text-center text-2xl font-bold text-[#1e293b]">
+          <h1 className="text-center text-xl font-bold text-[#1e293b]">
             Create New Password
           </h1>
           <p className="mt-2 text-center text-sm text-[#64748b]">

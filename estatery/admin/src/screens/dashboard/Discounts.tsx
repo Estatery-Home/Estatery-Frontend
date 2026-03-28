@@ -5,11 +5,8 @@
  * Add modal, toggle status, pagination.
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { Tag, Percent, Clock, CheckCircle2 } from "lucide-react";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
@@ -61,10 +58,6 @@ const initialDiscounts: Discount[] = [
 ];
 
 export default function Discounts() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [discounts, setDiscounts] = React.useState<Discount[]>(initialDiscounts);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
@@ -74,12 +67,6 @@ export default function Discounts() {
   const [draftPercent, setDraftPercent] = React.useState("10");
   const [draftStart, setDraftStart] = React.useState("");
   const [draftEnd, setDraftEnd] = React.useState("");
-
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
 
   const totalActive = discounts.filter((d) => d.status === "Active").length;
   const totalScheduled = discounts.filter((d) => d.status === "Scheduled").length;
@@ -129,25 +116,13 @@ export default function Discounts() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-6xl space-y-6">
+    <DashboardLayout>
+      <>
+      <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-[#1e293b]">Discounts</h1>
-                <p className="mt-1 text-sm text-[#64748b]">
+                <h1 className="text-xl font-bold text-[#1e293b]">Discounts</h1>
+                <p className="mt-1 text-xs text-[#64748b]">
                   Manage discount codes and campaigns across your properties.
                 </p>
               </div>
@@ -282,14 +257,7 @@ export default function Discounts() {
                 itemLabel="discounts"
               />
             </section>
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -379,7 +347,8 @@ export default function Discounts() {
           </div>
         </div>
       )}
-    </div>
+      </>
+    </DashboardLayout>
   );
 }
 

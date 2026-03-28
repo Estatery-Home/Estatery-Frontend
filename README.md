@@ -17,6 +17,11 @@ python manage.py runserver
 ```
 Runs at http://localhost:8000
 
+
+http://127.0.0.1:8000/api/docs/
+http://127.0.0.1:8000/api/schema/
+
+
 ### 2. Frontend
 ```bash
 # Install dependencies

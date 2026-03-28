@@ -139,7 +139,7 @@ export default function Settings() {
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Top bar: title on left, "Changes saved" message + Cancel + Save buttons on right */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-[#1e293b]">Settings</h1>
+        <h1 className="text-xl font-bold text-[#1e293b]">Settings</h1>
         <div className="flex items-center gap-2">
           {saveSuccess && (
             <span className="text-sm font-medium text-green-600">Changes saved</span>
@@ -178,7 +178,7 @@ export default function Settings() {
                     type="button"
                     onClick={() => setActiveSection(item.id)}
                     className={cn(
-                      "relative w-full rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                      "relative w-full rounded-md px-3 py-2.5 text-left text-xs font-semibold transition-colors",
                       isActive
                         ? "bg-[var(--logo-muted)] text-[#1e293b] border-l-[3px] border-l-[var(--logo)] pl-[calc(0.75rem+3px)]"
                         : "text-[#64748b] hover:bg-[#e2e8f0] hover:text-[#1e293b]"

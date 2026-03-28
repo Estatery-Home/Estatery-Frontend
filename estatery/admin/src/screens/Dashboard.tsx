@@ -6,16 +6,11 @@
  * Includes refresh and CSV export actions. Uses PropertiesContext for property data.
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import {
-  Sidebar,
-  TopBar,
-  LogoutConfirmDialog,
+  DashboardLayout,
   OverviewCards,
   ListingsChart,
   MyProperties,
@@ -26,18 +21,12 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import { getPropertyLocation, getPropertyPriceDisplay } from "@/lib/properties";
 
 export default function Dashboard() {
-  // Sidebar collapse state – controls whether sidebar is expanded or collapsed
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  // Whether the logout confirmation dialog is visible
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   // Timestamp shown as "Last updated" – updated when user clicks refresh
   const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
   // True while refresh is in progress (shows spinning icon)
   const [refreshing, setRefreshing] = React.useState(false);
-  const { logout } = useAuth();
   const { properties } = useProperties();
   const { profile } = useUserProfile();
-  const navigate = useNavigate();
 
   /** Simulate refresh: set loading state, update lastUpdated timestamp, clear after 800ms */
   const handleRefresh = () => {
@@ -101,81 +90,53 @@ export default function Dashboard() {
     URL.revokeObjectURL(url); // Clean up the blob URL so the browser can free memory
   };
 
-  /** Log out user, close dialog, and redirect to login page */
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
-
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[80px]" : "ml-[260px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-7xl space-y-6">
-            {/* Dashboard header */}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-xl font-bold text-[#1e293b]">Welcome back, {profile.username || "User"}!</h1>
-                <p className="mt-1 text-xs text-[#64748b]">
-                  Track and manage your property dashboard efficiently.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-sm">
-                  <Calendar className="size-3.5 shrink-0 text-[#64748b]" />
-                  <span className="text-xs font-medium text-[#64748b]">Last updated: {lastUpdated}</span>
-                  <button
-                    type="button"
-                    onClick={handleRefresh}
-                    className="flex size-6 items-center justify-center rounded text-[var(--logo)] transition-colors hover:bg-[var(--logo-muted)] hover:text-[var(--logo-hover)]"
-                    aria-label="Refresh"
-                  >
-                    <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-                  </button>
-                </div>
-                <Button
-                  onClick={handleExport}
-                  className="shrink-0 h-9 rounded-lg px-3 text-xs bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
-                >
-                  <Download className="mr-1.5 size-3.5" />
-                  Export CSV
-                </Button>
-              </div>
-            </div>
-
-            {/* Overview cards (3) + My Properties side column; ListingsChart below */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:items-stretch">
-              <div className="flex flex-col gap-6 lg:col-span-3">
-                <OverviewCards />
-                <ListingsChart />
-              </div>
-              <div className="lg:col-span-1 min-h-0 flex flex-col">
-                <MyProperties />
-              </div>
-            </div>
-
-            {/* Recent Payments */}
-            <RecentPayments />
+    <DashboardLayout>
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Dashboard header */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-[#1e293b]">Welcome back, {profile.username || "User"}!</h1>
+            <p className="mt-1 text-xs text-[#64748b]">
+              Track and manage your property dashboard efficiently.
+            </p>
           </div>
-        </main>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-sm">
+              <Calendar className="size-3.5 shrink-0 text-[#64748b]" />
+              <span className="text-xs font-medium text-[#64748b]">Last updated: {lastUpdated}</span>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="flex size-6 items-center justify-center rounded text-[var(--logo)] transition-colors hover:bg-[var(--logo-muted)] hover:text-[var(--logo-hover)]"
+                aria-label="Refresh"
+              >
+                <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+              </button>
+            </div>
+            <Button
+              onClick={handleExport}
+              className="h-9 shrink-0 rounded-lg bg-[var(--logo)] px-3 text-xs text-white hover:bg-[var(--logo-hover)]"
+            >
+              <Download className="mr-1.5 size-3.5" />
+              Export CSV
+            </Button>
+          </div>
+        </div>
+
+        {/* Overview cards (3) + My Properties side column; ListingsChart below */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 lg:items-start">
+          <div className="flex flex-col gap-6 lg:col-span-3">
+            <OverviewCards />
+            <ListingsChart />
+          </div>
+          <div className="flex flex-col lg:col-span-1">
+            <MyProperties />
+          </div>
+        </div>
+
+        <RecentPayments />
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+    </DashboardLayout>
   );
 }

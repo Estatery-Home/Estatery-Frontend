@@ -37,8 +37,8 @@ export default function Feedback() {
           <div className="flex size-20 items-center justify-center rounded-full bg-[#e8f5e9] text-[#2e7d32] transition-all duration-500">
             <Sparkles className="size-10" />
           </div>
-          <h2 className="mt-6 text-2xl font-bold text-[#1e293b]">Thank you!</h2>
-          <p className="mt-2 text-center text-[#64748b]">
+          <h2 className="mt-6 text-xl font-bold text-[#1e293b]">Thank you!</h2>
+          <p className="mt-2 text-center text-sm text-[#64748b]">
             Your feedback has been submitted. We appreciate you helping us improve Luxeyline.
           </p>
           <button
@@ -63,8 +63,8 @@ export default function Feedback() {
       <div className="mx-auto max-w-2xl space-y-8">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[#1e293b]">We'd love your feedback</h1>
-          <p className="mt-2 text-[#64748b]">
+          <h1 className="text-xl font-bold text-[#1e293b]">We'd love your feedback</h1>
+          <p className="mt-2 text-xs text-[#64748b]">
             Help us improve Luxeyline by sharing your experience
           </p>
         </div>

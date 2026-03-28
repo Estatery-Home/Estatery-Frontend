@@ -21,7 +21,7 @@ export default function Notifications() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-2xl font-bold text-[#1e293b]">Notifications</h1>
+        <h1 className="text-xl font-bold text-[#1e293b]">Notifications</h1>
         <div className="space-y-0 rounded-xl border border-[#e2e8f0] bg-white shadow-sm overflow-hidden">
           {notifications.map((n) => {
             const Icon = iconMap[n.type];

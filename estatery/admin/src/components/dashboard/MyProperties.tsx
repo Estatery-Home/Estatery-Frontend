@@ -26,7 +26,7 @@ export function MyProperties() {
   };
 
   return (
-    <div className="flex h-full min-h-[380px] flex-col rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-5">
         <div>
           <h3 className="text-base font-bold text-slate-900 tracking-tight">My Properties</h3>
@@ -43,7 +43,7 @@ export function MyProperties() {
         </button>
       </div>
       
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-4 px-6 py-5 overscroll-behavior-y-contain custom-scrollbar">
+      <div className="space-y-4 overflow-x-hidden px-6 py-5">
         {properties.slice(0, 4).map((prop) => (
           <Link
             key={prop.id}
@@ -78,7 +78,7 @@ export function MyProperties() {
           </Link>
         ))}
         {properties.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center text-center py-10">
+          <div className="flex min-h-[200px] flex-col items-center justify-center py-10 text-center">
              <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-slate-50">
                 <Building2 className="size-6 text-slate-400" />
              </div>

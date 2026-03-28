@@ -67,7 +67,7 @@ export function ListingsChart() {
   };
 
   return (
-    <div className="flex h-full min-h-[260px] flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:min-h-[300px] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+    <div className="flex min-h-[260px] flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:min-h-[300px] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       {/* Header: title left, dropdown + refresh right */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>

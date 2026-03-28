@@ -54,7 +54,7 @@ function SettingsWithSection() {
 /** Spinner shown while a lazy-loaded route is loading. Shown in place of page content. */
 function PageFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white" aria-hidden>
+    <div className="flex min-h-screen items-center justify-center bg-[#f1f5f9] font-sans antialiased" aria-hidden>
       <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--logo)] border-t-transparent" />
     </div>
   );

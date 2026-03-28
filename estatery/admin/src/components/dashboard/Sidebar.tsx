@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const BRAND = "Home";
 
@@ -59,6 +60,12 @@ type SidebarProps = {
 };
 
 export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
+  const isMobile = useIsMobile();
+
+  const closeMobileDrawer = React.useCallback(() => {
+    if (isMobile && !collapsed) onToggle();
+  }, [isMobile, collapsed, onToggle]);
+
   /** Returns className for NavLink based on active state – minimal pill style */
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -86,16 +93,19 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
 
       {/* Mobile Backdrop Overlay - Provides focus on the sliding sidebar menu */}
       {!collapsed && (
-        <div 
-          className="sm:hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm animate-in fade-in transition-all"
+        <div
+          className="fixed inset-0 z-[55] bg-slate-900/40 backdrop-blur-sm animate-in fade-in transition-all sm:hidden"
           onClick={onToggle}
+          aria-hidden
         />
       )}
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-100 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out",
-          collapsed ? "w-0 overflow-hidden border-none sm:border-solid sm:border-r sm:w-[80px]" : "w-[260px] max-sm:shadow-2xl"
+          "fixed left-0 top-0 z-[60] flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col border-r border-slate-100 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-[width] duration-300 ease-in-out sm:h-screen sm:max-h-none",
+          collapsed
+            ? "pointer-events-none w-0 overflow-hidden border-none opacity-0 sm:pointer-events-auto sm:overflow-visible sm:border-solid sm:border-r sm:opacity-100 sm:w-[80px]"
+            : "pointer-events-auto w-[min(260px,100vw)] opacity-100 max-sm:shadow-2xl sm:w-[260px]"
         )}
       >
       {/* Header Logo Area */}
@@ -114,7 +124,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
           type="button"
           onClick={onToggle}
           className={cn(
-            "absolute top-1/2 -translate-y-1/2 -right-3.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-slate-50 hover:border-indigo-500 hover:text-indigo-600 active:scale-95"
+            "absolute top-1/2 -translate-y-1/2 -right-3.5 hidden size-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-all hover:bg-slate-50 hover:border-indigo-500 hover:text-indigo-600 active:scale-95 sm:flex"
           )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -125,7 +135,12 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
         </button>
       </div>
 
-      <nav className={cn("flex flex-1 flex-col overflow-y-auto overflow-x-hidden py-4 custom-scrollbar", collapsed ? "px-2" : "px-4")}>
+      <nav
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain py-4 [-webkit-overflow-scrolling:touch] custom-scrollbar",
+          collapsed ? "px-2" : "px-4"
+        )}
+      >
         {/* Main Menu */}
         <div className="mb-5">
           {!collapsed ? (
@@ -137,7 +152,13 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
           )}
           <div className="space-y-1">
             {mainNav.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navLinkClass} end={item.to === "/dashboard"}>
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={navLinkClass}
+                end={item.to === "/dashboard"}
+                onClick={closeMobileDrawer}
+              >
                 {({ isActive }) => (
                   <>
                     <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
@@ -160,7 +181,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
           )}
           <div className="space-y-1">
             {salesNav.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navLinkClass}>
+              <NavLink key={item.to} to={item.to} className={navLinkClass} onClick={closeMobileDrawer}>
                 {({ isActive }) => (
                   <>
                     <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
@@ -175,7 +196,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
         {/* Bottom Menu */}
         <div className="mt-auto space-y-1 pt-6 border-t border-slate-100/60 pb-2">
           {bottomNav.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navLinkClass}>
+            <NavLink key={item.to} to={item.to} className={navLinkClass} onClick={closeMobileDrawer}>
               {({ isActive }) => (
                 <>
                   <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
@@ -187,7 +208,10 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
           {onLogoutClick && (
             <button
               type="button"
-              onClick={onLogoutClick}
+              onClick={() => {
+                closeMobileDrawer();
+                onLogoutClick?.();
+              }}
               className={cn(
                 "group relative flex items-center rounded-xl transition-all duration-300 ease-out hover:bg-rose-50 active:scale-[0.98] outline-none",
                 collapsed ? "justify-center size-10 mx-auto" : "min-h-[38px] w-full gap-3 px-3 py-1.5",

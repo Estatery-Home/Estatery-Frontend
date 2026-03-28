@@ -5,13 +5,10 @@
  * Uses lib/clients mock data; lastUpdated in localStorage.
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { Download, RefreshCw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
+import { DashboardLayout } from "@/components/dashboard";
 import { ClientsCards } from "@/components/clients/ClientsCards";
 import { ClientsTable } from "@/components/clients/clientsTable";
 import { clientsTableData } from "@/lib/clients";
@@ -20,8 +17,6 @@ export default function Clients() {
   const STORAGE_KEY = "clients-last-updated";
   const defaultLastUpdated = "July 08, 2025";
 
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -30,9 +25,6 @@ export default function Clients() {
     return defaultLastUpdated;
   });
   const [refreshing, setRefreshing] = React.useState(false);
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
   /* Update lastUpdated, persist to localStorage, show loading briefly */
   const handleRefresh = () => {
     setRefreshing(true);
@@ -93,54 +85,35 @@ export default function Clients() {
     URL.revokeObjectURL(url);
   };
 
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-all duration-300",
-          sidebarCollapsed ? "ml-0 sm:ml-[80px]" : "ml-0 sm:ml-[260px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-4.5rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-7xl space-y-6">
+    <DashboardLayout>
+      <div className="mx-auto max-w-7xl space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">My Clients</h1>
-                <p className="mt-1 text-xs text-slate-500">
+                <h1 className="text-xl font-bold text-[#1e293b]">My Clients</h1>
+                <p className="mt-1 text-xs text-[#64748b]">
                   Track and manage client portfolios efficiently.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition-all hover:bg-slate-50">
-                  <Calendar className="size-3.5 shrink-0 text-slate-400" />
-                  <span className="text-xs font-semibold text-slate-500">Last updated: {lastUpdated}</span>
+                <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-sm">
+                  <Calendar className="size-3.5 shrink-0 text-[#64748b]" />
+                  <span className="text-xs font-medium text-[#64748b]">Last updated: {lastUpdated}</span>
                   <button
                     type="button"
                     onClick={handleRefresh}
-                    className="flex size-6 items-center justify-center rounded-md text-indigo-500 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                    className="flex size-6 items-center justify-center rounded text-[var(--logo)] transition-colors hover:bg-[var(--logo-muted)] hover:text-[var(--logo-hover)]"
                     aria-label="Refresh"
                   >
-                    <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
+                    <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
                   </button>
                 </div>
                 <Button
                   onClick={handleExport}
-                  className="shrink-0 h-9 rounded-xl px-3.5 text-xs font-semibold bg-indigo-600 outline-none text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
+                  className="h-9 shrink-0 rounded-lg bg-[var(--logo)] px-3 text-xs text-white hover:bg-[var(--logo-hover)]"
                 >
-                  <Download className="mr-1.5 size-3.5" strokeWidth={2.5} />
+                  <Download className="mr-1.5 size-3.5" />
                   Export CSV
                 </Button>
               </div>
@@ -151,14 +124,7 @@ export default function Clients() {
 
             {/* Clients table */}
             <ClientsTable />
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+    </DashboardLayout>
   );
 }

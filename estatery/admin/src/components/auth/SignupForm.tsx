@@ -132,7 +132,7 @@ export function SignupForm() {
       <div className="w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center text-center">
           <img src="/images/HomeLogo.webp" alt="Home Logo" className="mb-4 size-40 object-contain" />
-          <h1 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-[#1e293b]">
             Create New Account
           </h1>
           <p className="mt-2 text-sm text-[#6b7280]">

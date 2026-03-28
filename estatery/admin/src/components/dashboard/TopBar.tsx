@@ -63,12 +63,12 @@ export function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-slate-100 bg-white/90 pl-16 pr-4 sm:px-6 backdrop-blur-xl transition-all duration-300">
+      <header className="sticky top-0 z-30 flex h-[72px] w-full max-w-full shrink-0 items-center justify-between gap-2 border-b border-slate-100 bg-white/90 pl-14 pr-3 sm:gap-4 sm:px-6 sm:pl-6 backdrop-blur-xl transition-all duration-300">
         {/* Search bar – clicking opens the SearchOverlay */}
         <button
           type="button"
           className={cn(
-            "group flex w-full max-w-xs sm:max-w-md items-center gap-2 rounded-xl border bg-slate-50/50 px-3 py-1.5 transition-all duration-300 text-left outline-none",
+            "group flex min-w-0 w-full max-w-[min(100%,20rem)] flex-1 sm:max-w-md items-center gap-2 rounded-xl border bg-slate-50/50 px-3 py-1.5 transition-all duration-300 text-left outline-none",
             searchOpen ? "border-indigo-500 bg-white ring-4 ring-indigo-500/10" : "border-slate-200 hover:border-indigo-300 hover:bg-white hover:shadow-sm"
           )}
           onClick={() => setSearchOpen(true)}
@@ -83,7 +83,7 @@ export function TopBar() {
         </button>
 
         {/* Right side: notifications bell + profile avatar */}
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
