@@ -195,7 +195,7 @@ class PropertyAvailabilityCheckView(APIView):
         
         # Get current bookings for calendar display
         bookings = Booking.objects.filter(
-            property=property_obj,
+            property_rented=property_obj,
             status__in=['confirmed', 'active'],
             check_out__gte=timezone.now().date()
         ).values('check_in', 'check_out', 'status')[:50]
@@ -229,7 +229,7 @@ class PropertyMonthlyCalendarView(APIView):
         
         # Get bookings for this month
         bookings = Booking.objects.filter(
-            property=property_obj,
+            property_rented=property_obj,
             status__in=['confirmed', 'active'],
             check_out__gt=start_date,
             check_in__lt=end_date
@@ -280,7 +280,7 @@ class BookingCreateView(generics.CreateAPIView):
         with transaction.atomic():
             # LOCK the property to prevent race conditions
             property_obj = Property.objects.select_for_update().get(
-                id=serializer.validated_data['property'].id
+                id=serializer.validated_data['property_rented'].id
             )
             
             # Check if property is available
@@ -321,7 +321,7 @@ class BookingCreateView(generics.CreateAPIView):
         # 2. Monthly rent payments
         current_date = booking.check_in
         for month in range(1, booking.months_booked + 1):
-            due_date = current_date.replace(day=booking.property.monthly_cycle_start)
+            due_date = current_date.replace(day=booking.property_rented.monthly_cycle_start)
             
             # If due date is in the past, set to next month
             if due_date < timezone.now().date():
@@ -347,7 +347,7 @@ class BookingCreateView(generics.CreateAPIView):
         # To tenant
         send_mail(
             'Booking Request Received',
-            f'Your booking for {booking.property.title} has been submitted and is pending confirmation.',
+            f'Your booking for {booking.property_rented.title} has been submitted and is pending confirmation.',
             settings.DEFAULT_FROM_EMAIL,
             [booking.user.email],
             fail_silently=True,
@@ -356,9 +356,9 @@ class BookingCreateView(generics.CreateAPIView):
         # To host
         send_mail(
             'New Booking Request',
-            f'You have a new booking request for {booking.property.title} from {booking.user.username}.',
+            f'You have a new booking request for {booking.property_rented.title} from {booking.user.username}.',
             settings.DEFAULT_FROM_EMAIL,
-            [booking.property.owner.email],
+            [booking.property_rented.owner.email],
             fail_silently=True,
         )
     
@@ -396,7 +396,7 @@ class MyBookingsView(generics.ListAPIView):
         if to_date:
             queryset = queryset.filter(check_out__lte=to_date)
         
-        return queryset.select_related('property', 'user').order_by('-created_at')
+        return queryset.select_related('property_rented', 'user').order_by('-created_at')
 
 
 class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -437,7 +437,7 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not settings.DEBUG:
             send_mail(
                 'Booking Cancelled',
-                f'Your booking for {instance.property.title} has been cancelled.',
+                f'Your booking for {instance.property_rented.title} has been cancelled.',
                 settings.DEFAULT_FROM_EMAIL,
                 [instance.user.email],
                 fail_silently=True,
@@ -468,8 +468,8 @@ class HostBookingsView(generics.ListAPIView):
     
     def get_queryset(self):
         queryset = Booking.objects.filter(
-            property__owner=self.request.user
-        ).select_related('user', 'property').order_by('-created_at')
+            property_rented__owner=self.request.user
+        ).select_related('user', 'property_rented').order_by('-created_at')
         
         # Filter by status
         status = self.request.query_params.get('status')
@@ -479,7 +479,7 @@ class HostBookingsView(generics.ListAPIView):
         # Filter by property
         property_id = self.request.query_params.get('property')
         if property_id:
-            queryset = queryset.filter(property_id=property_id)
+            queryset = queryset.filter(property_rented_id=property_id)
         
         return queryset
     
@@ -497,7 +497,7 @@ class ConfirmBookingView(generics.UpdateAPIView):
     def get_queryset(self):
         """Only bookings for host's properties"""
         return Booking.objects.filter(
-            property__owner=self.request.user,
+            property_rented__owner=self.request.user,
             status='pending'
         )
     
@@ -517,7 +517,7 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 if not settings.DEBUG:
                     send_mail(
                         'Booking Confirmed',
-                        f'Your booking for {booking.property.title} has been confirmed!',
+                        f'Your booking for {booking.property_rented.title} has been confirmed!',
                         settings.DEFAULT_FROM_EMAIL,
                         [booking.user.email],
                         fail_silently=True,
@@ -535,7 +535,7 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 if not settings.DEBUG:
                     send_mail(
                         'Booking Update',
-                        f'Your booking request for {booking.property.title} has been rejected.\nReason: {reason}',
+                        f'Your booking request for {booking.property_rented.title} has been rejected.\nReason: {reason}',
                         settings.DEFAULT_FROM_EMAIL,
                         [booking.user.email],
                         fail_silently=True,
@@ -561,7 +561,7 @@ class BookingPaymentsView(generics.ListAPIView):
         booking = get_object_or_404(Booking, id=booking_id)
         
         # Only tenant and host can view payments
-        if booking.user != self.request.user and booking.property.owner != self.request.user:
+        if booking.user != self.request.user and booking.property_rented.owner != self.request.user:
             raise PermissionDenied("You don't have permission to view these payments.")
         
         return BookingPayment.objects.filter(booking=booking).order_by('due_date')
@@ -575,7 +575,7 @@ class MarkPaymentPaidView(generics.UpdateAPIView):
     def get_queryset(self):
         """Only host of the property can mark payments as paid"""
         return BookingPayment.objects.filter(
-            booking__property__owner=self.request.user
+            booking__property_rented__owner=self.request.user
         )
     
     def update(self, request, *args, **kwargs):
@@ -672,32 +672,32 @@ class HostDashboardView(APIView):
         active_properties = Property.objects.filter(owner=user, status='available').count()
         
         # Bookings
-        total_bookings = Booking.objects.filter(property__owner=user).count()
+        total_bookings = Booking.objects.filter(property_rented__owner=user).count()
         pending_bookings = Booking.objects.filter(
-            property__owner=user, 
+            property_rented__owner=user, 
             status='pending'
         ).count()
         active_bookings = Booking.objects.filter(
-            property__owner=user,
+            property_rented__owner=user,
             status__in=['confirmed', 'active']
         ).count()
         
         # Revenue
         total_revenue = Booking.objects.filter(
-            property__owner=user,
+            property_rented__owner=user,
             status__in=['confirmed', 'active', 'completed']
         ).aggregate(total=models.Sum('total_price'))['total'] or 0
         
         upcoming_payments = BookingPayment.objects.filter(
-            booking__property__owner=user,
+            booking__property_rented__owner=user,
             status='pending',
             due_date__gte=timezone.now().date()
         ).aggregate(total=models.Sum('amount'))['total'] or 0
         
         # Recent bookings
         recent_bookings = Booking.objects.filter(
-            property__owner=user
-        ).select_related('user', 'property').order_by('-created_at')[:5]
+            property_rented__owner=user
+        ).select_related('user', 'property_rented').order_by('-created_at')[:5]
         
         return Response({
             'properties': {
@@ -756,7 +756,7 @@ class TenantDashboardView(APIView):
         # Recent bookings
         recent_bookings = Booking.objects.filter(
             user=user
-        ).select_related('property').order_by('-created_at')[:5]
+        ).select_related('property_rented').order_by('-created_at')[:5]
         
         return Response({
             'bookings': {

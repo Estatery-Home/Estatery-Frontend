@@ -155,31 +155,81 @@ class PropertyDetailSerializer(PropertySerializer):
 # ============ BOOKING SERIALIZER ============
 class BookingSerializer(serializers.ModelSerializer):
     # Read-only fields for display
-    property_title = serializers.CharField(source='property.title', read_only=True)
-    property_address = serializers.CharField(source='property.address', read_only=True)
+    property_title = serializers.CharField(source='property_rented.title', read_only=True)
+    property_address = serializers.CharField(source='property_rented.address', read_only=True)
     property_image = serializers.SerializerMethodField()
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
     
-    # Writeable fields for creation
-    property = serializers.PrimaryKeyRelatedField(queryset=Property.objects.filter(status='available'))
+    # API field `property` maps to model FK `property_rented`
+    property = serializers.PrimaryKeyRelatedField(
+        queryset=Property.objects.filter(status='available'),
+        source='property_rented',
+    )
     
     class Meta:
         model = Booking
-        fields = ('id', 'property', 'user',
-        'check_in', 'check_out', 'guests', 
-        'status', 'created_at', 'updated_at',
-        'deposit_paid', 'deposit_paid_at',
-        'deposit_refunded', 'deposit_refunded_at')
+        fields = (
+            'id',
+            'property',
+            'user',
+            'check_in',
+            'check_out',
+            'guests',
+            'booking_type',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'agreed_monthly_rate',
+            'months_booked',
+            'total_price',
+            'security_deposit',
+            'discount_applied',
+            'emergency_contact',
+            'occupation',
+            'special_requests',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'user_name',
+            'user_email',
+        )
         read_only_fields = (
-            'user', 'total_price', 'agreed_monthly_rate', 'months_booked',
-            'security_deposit', 'discount_applied', 'status', 'confirmed_at',
-            'cancelled_at', 'completed_at', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at', 'deposit_refunded', 'deposit_refunded_at'
+            'user',
+            'booking_type',
+            'total_price',
+            'agreed_monthly_rate',
+            'months_booked',
+            'security_deposit',
+            'discount_applied',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'user_name',
+            'user_email',
         )
     
     def get_property_image(self, obj):
-        primary = obj.property.primary_image  # This returns PropertyImage object
+        primary = obj.property_rented.primary_image  # This returns PropertyImage object
         if primary:
             if hasattr(primary, 'image') and primary.image:
                 return primary.image.url
@@ -190,7 +240,7 @@ class BookingSerializer(serializers.ModelSerializer):
         
         # For CREATE operations
         if request and request.method == 'POST':
-            property_obj = attrs.get('property')
+            property_obj = attrs.get('property_rented')
             check_in = attrs.get('check_in')
             check_out = attrs.get('check_out')
             user = request.user
@@ -277,7 +327,7 @@ class BookingSerializer(serializers.ModelSerializer):
         
         # Create booking
         booking = Booking.objects.create(
-            property=validated_data['property'],
+            property_rented=validated_data['property_rented'],
             user=request.user,
             check_in=validated_data['check_in'],
             check_out=validated_data['check_out'],
@@ -321,20 +371,37 @@ class BookingCalendarSerializer(serializers.ModelSerializer):
 # ============ HOST BOOKING SERIALIZER (hosts see more details) ============
 class HostBookingSerializer(serializers.ModelSerializer):
     """Extended booking serializer for property owners"""
-    
+
+    # BookingSerializer fields must be redeclared here: with Meta(BookingSerializer.Meta),
+    # DRF does not pull non-model field declarations from the parent onto this subclass.
+    property = serializers.PrimaryKeyRelatedField(
+        source='property_rented',
+        read_only=True,
+    )
+    property_title = serializers.CharField(source='property_rented.title', read_only=True)
+    property_address = serializers.CharField(source='property_rented.address', read_only=True)
+    property_image = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
     tenant_name = serializers.CharField(source='user.get_full_name', read_only=True)
     tenant_email = serializers.EmailField(source='user.email', read_only=True)
     tenant_phone = serializers.CharField(source='user.phone', read_only=True)
-    property_title = serializers.CharField(source='property.title', read_only=True)
     payments = serializers.SerializerMethodField()
     
     class Meta(BookingSerializer.Meta):
         fields = BookingSerializer.Meta.fields + (
             'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at'
         )
         read_only_fields = BookingSerializer.Meta.read_only_fields
     
+    def get_property_image(self, obj):
+        primary = obj.property_rented.primary_image
+        if primary:
+            if hasattr(primary, 'image') and primary.image:
+                return primary.image.url
+        return None
+
     def get_payments(self, obj):
         payments = obj.payments.all().order_by('due_date')
         return BookingPaymentSerializer(payments, many=True).data
@@ -397,7 +464,7 @@ class PropertyReviewSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("This booking has already been reviewed")
             
             attrs['user'] = request.user
-            attrs['property'] = booking.property
+            attrs['property'] = booking.property_rented
             attrs['booking'] = booking
         
         return attrs

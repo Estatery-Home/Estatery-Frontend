@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     #THIRD PARTY APPS
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     #this filter helps me to preview all fields when i run the backend server 
     'django_filters',
@@ -132,6 +133,10 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Email (OTP / password reset). Console backend logs messages in development.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@estatery.local'
+
 # Default primary key field type to use custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
 
@@ -163,6 +168,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 from datetime import timedelta

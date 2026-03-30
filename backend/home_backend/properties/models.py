@@ -345,7 +345,7 @@ class Booking(models.Model):
         ]
     
     def __str__(self):
-        return f"Booking #{self.id} - {self.property.title} ({self.get_status_display()})"
+        return f"Booking #{self.id} - {self.property_rented.title} ({self.get_status_display()})"
     
     @property
     def is_active(self):

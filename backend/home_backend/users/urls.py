@@ -8,4 +8,21 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path(
+        'password-reset/request/',
+        views.PasswordResetRequestView.as_view(),
+        name='password_reset_request',
+    ),
+    path(
+        'password-reset/verify-otp/',
+        views.PasswordResetVerifyOtpView.as_view(),
+        name='password_reset_verify_otp',
+    ),
+    path(
+        'password-reset/confirm/',
+        views.PasswordResetConfirmView.as_view(),
+        name='password_reset_confirm',
+    ),
+    path('otp/request/', views.OtpRequestView.as_view(), name='otp_request'),
+    path('otp/verify/', views.OtpVerifyView.as_view(), name='otp_verify'),
 ]
