@@ -133,6 +133,10 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Email (OTP / password reset). Console backend prints messages when DEBUG is True.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@estatery.local'
+
 # Default primary key field type to use custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
 
@@ -180,7 +184,13 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
     'SCHEMA_PATH_PREFIX': r'/api',
     'TAGS': [
-        {'name': 'Auth', 'description': 'Registration, login, profile, JWT refresh'},
+        {
+            'name': 'Auth',
+            'description': (
+                'Registration, login, profile, JWT refresh, password reset (OTP), '
+                'and generic OTP request/verify.'
+            ),
+        },
         {'name': 'Properties', 'description': 'Listings, detail, host "my properties"'},
         {'name': 'Customer catalog', 'description': 'Public customer-facing listing route'},
         {'name': 'Geography', 'description': 'Countries and related facets'},
