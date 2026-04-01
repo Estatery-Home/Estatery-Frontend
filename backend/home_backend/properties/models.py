@@ -408,11 +408,7 @@ class Booking(models.Model):
         ]
     
     def __str__(self):
-<<<<<<< HEAD
-        return f"Booking #{self.id} - {self.property_rented.title} ({self.get_status_display()})"
-=======
         return f"Booking #{self.id} - {self.rented_property.title} ({self.get_status_display()})"
->>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
     
     @property
     def is_active(self):

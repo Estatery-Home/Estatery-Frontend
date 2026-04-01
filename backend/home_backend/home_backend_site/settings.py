@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     'corsheaders',
     #this filter helps me to preview all fields when i run the backend server 
     'django_filters',
-    'drf_spectacular',
     #LOCAL APPS
     'users',
     'properties',
@@ -170,8 +169,6 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-<<<<<<< HEAD
-=======
 }
 
 SPECTACULAR_SETTINGS = {
@@ -187,7 +184,7 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
     'SCHEMA_PATH_PREFIX': r'/api',
     'TAGS': [
-        {'name': 'Auth', 'description': 'Registration, login, profile, JWT refresh'},
+        {'name': 'Auth', 'description': 'Registration, login, profile, JWT refresh, password reset, OTP'},
         {'name': 'Properties', 'description': 'Listings, detail, host "my properties"'},
         {'name': 'Customer catalog', 'description': 'Public customer-facing listing route'},
         {'name': 'Geography', 'description': 'Countries and related facets'},
@@ -215,7 +212,6 @@ SPECTACULAR_SETTINGS = {
         'filter': True,
         'persistAuthorization': True,
     },
->>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
 }
 
 from datetime import timedelta

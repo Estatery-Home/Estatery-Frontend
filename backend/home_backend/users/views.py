@@ -5,8 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as JWTTokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from django.contrib.auth import authenticate, login, logout
-<<<<<<< HEAD
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from .models import CustomUser, OtpChallenge
 from . import otp as otp_service
@@ -41,12 +41,6 @@ def _unsign_password_reset(token: str) -> int | None:
         return int(signer.unsign(token, max_age=RESET_TOKEN_MAX_AGE_SECONDS))
     except (BadSignature, SignatureExpired, ValueError):
         return None
-=======
-from drf_spectacular.utils import extend_schema, inline_serializer
-
-from .models import CustomUser
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
->>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
 
 
 AuthTokenOut = inline_serializer(

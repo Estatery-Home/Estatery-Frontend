@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-<<<<<<< HEAD
 from .models import (
     Property,
     PropertyImage,
     Booking,
     BookingPayment,
     PropertyReview,
+    PromoCode,
 )
 
 
@@ -41,7 +41,7 @@ class PropertyImageAdmin(admin.ModelAdmin):
 class BookingAdmin(admin.ModelAdmin):
     list_display = (
         'id',
-        'property_rented',
+        'rented_property',
         'user',
         'check_in',
         'check_out',
@@ -53,9 +53,9 @@ class BookingAdmin(admin.ModelAdmin):
     search_fields = (
         'user__username',
         'user__email',
-        'property_rented__title',
+        'rented_property__title',
     )
-    raw_id_fields = ('property_rented', 'user')
+    raw_id_fields = ('rented_property', 'user', 'promo')
     date_hierarchy = 'check_in'
     inlines = (BookingPaymentInline,)
 
@@ -82,8 +82,6 @@ class PropertyReviewAdmin(admin.ModelAdmin):
     list_filter = ('rating',)
     search_fields = ('comment', 'user__username', 'property__title')
     raw_id_fields = ('booking', 'property', 'user')
-=======
-from .models import PromoCode
 
 
 @admin.register(PromoCode)
@@ -91,4 +89,3 @@ class PromoCodeAdmin(admin.ModelAdmin):
     list_display = ('code', 'discount_type', 'discount_value', 'is_active', 'times_redeemed', 'valid_until')
     list_filter = ('is_active', 'discount_type')
     search_fields = ('code', 'description')
->>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
