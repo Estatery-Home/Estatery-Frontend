@@ -30,7 +30,7 @@ export default function Welcome() {
 
   return (
     // Full-screen layout – overflow hidden so nothing scrolls weird on mobile
-    <div className="relative min-h-screen overflow-hidden bg-[var(--logo-muted)]">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--logo-muted)] font-sans antialiased text-[#1e293b]">
       {/* Top-right Login & Sign up buttons - no nav bar */}
       <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
         <Link

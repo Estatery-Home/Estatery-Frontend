@@ -15,9 +15,7 @@ import {
   Users,
   ChevronRight,
 } from "lucide-react";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -172,21 +170,12 @@ const STAGE_STYLES: Record<LeadStage, string> = {
 };
 
 export default function Leads() {
-  const { logout } = useAuth();
   const navigate = useNavigate();
   const { properties } = useProperties();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [stageFilter, setStageFilter] = React.useState<LeadStage | "All">("All");
   const [search, setSearch] = React.useState("");
   const [leads, setLeads] = React.useState<Lead[]>(mockLeads);
   const [page, setPage] = React.useState(1);
-
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
 
   const PAGE_SIZE = 8;
   const filteredLeads = leads.filter((l) => {
@@ -225,27 +214,14 @@ export default function Leads() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-6xl space-y-6">
+    <DashboardLayout>
+      <div className="mx-auto max-w-6xl space-y-6">
             {/* Header */}
-            <header className="rounded-2xl border border-white/60 bg-white/80 px-6 py-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
+            <header className="rounded-xl border border-[#e2e8f0] bg-white px-4 py-4 shadow-sm sm:px-6 sm:py-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-[#1e293b]">Leads</h1>
-                  <p className="mt-1.5 text-sm text-[#64748b]">
+                  <h1 className="text-xl font-bold text-[#1e293b]">Leads</h1>
+                  <p className="mt-1 text-xs text-[#64748b]">
                     Track incoming leads, follow up quickly, and convert them into clients.
                   </p>
                 </div>
@@ -285,7 +261,7 @@ export default function Leads() {
             <LeadsSummaryCards />
 
             {/* Pipeline table */}
-            <section className="overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl shadow-slate-200/50">
+            <section className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
               <div className="border-b border-[#e2e8f0] bg-[#fafbfc] px-4 py-3">
                 <h2 className="text-sm font-semibold text-[#1e293b]">Pipeline</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">
@@ -414,14 +390,7 @@ export default function Leads() {
                 itemLabel="leads"
               />
             </section>
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+    </DashboardLayout>
   );
 }

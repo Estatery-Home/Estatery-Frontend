@@ -42,7 +42,7 @@ export function AddPropertyDetailsStep({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="land-area" className="text-[#1e293b]">
-            Land Area (m²)
+            Land Area (m²) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="land-area"
@@ -50,12 +50,13 @@ export function AddPropertyDetailsStep({
             onChange={(e) => setLandArea(e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="building-area" className="text-[#1e293b]">
-            Area (m² / sq ft)
+            Area (m² / sq ft) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="building-area"
@@ -69,12 +70,13 @@ export function AddPropertyDetailsStep({
             }}
             placeholder="e.g. 2000"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="bedrooms" className="text-[#1e293b]">
-            Bedrooms
+            Bedrooms <span className="text-red-500">*</span>
           </Label>
           <Input
             id="bedrooms"
@@ -88,12 +90,13 @@ export function AddPropertyDetailsStep({
             }}
             placeholder="e.g. 3"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="bathrooms" className="text-[#1e293b]">
-            Bathrooms
+            Bathrooms <span className="text-red-500">*</span>
           </Label>
           <Input
             id="bathrooms"
@@ -107,12 +110,13 @@ export function AddPropertyDetailsStep({
             }}
             placeholder="e.g. 2"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="floors" className="text-[#1e293b]">
-            Floors
+            Floors <span className="text-red-500">*</span>
           </Label>
           <Input
             id="floors"
@@ -120,12 +124,13 @@ export function AddPropertyDetailsStep({
             onChange={(e) => setFloors(e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="year-built" className="text-[#1e293b]">
-            Year Built
+            Year Built <span className="text-red-500">*</span>
           </Label>
           <Input
             id="year-built"
@@ -133,12 +138,13 @@ export function AddPropertyDetailsStep({
             onChange={(e) => setYearBuilt(e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="furnishing" className="text-[#1e293b]">
-            Furnishing
+            Furnishing <span className="text-red-500">*</span>
           </Label>
           <Input
             id="furnishing"
@@ -146,12 +152,13 @@ export function AddPropertyDetailsStep({
             onChange={(e) => setFurnishing(e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="parking-spaces" className="text-[#1e293b]">
-            Parking Spaces
+            Parking Spaces <span className="text-red-500">*</span>
           </Label>
           <Input
             id="parking-spaces"
@@ -159,6 +166,7 @@ export function AddPropertyDetailsStep({
             onChange={(e) => setParkingSpaces(e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
       </div>

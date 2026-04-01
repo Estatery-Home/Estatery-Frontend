@@ -2,13 +2,13 @@
 
 /**
  * Clients table – search, status filter, sort, pagination, row actions.
- * Uses lib/clients; navigate to client detail on row click.
+ * Premium modernized dashboard styling.
  */
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter as FilterIcon, ArrowUpDown, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Pagination } from "@/components/ui";
+import { Pagination } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -141,69 +141,75 @@ export function ClientsTable() {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-[#1e293b]">Clients Table</h2>
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
-          <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#94a3b8]" />
+        <h2 className="text-[15px] font-bold text-slate-900">Clients Ledger</h2>
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+          <div className="relative w-full sm:max-w-xs shrink-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full rounded-full border-[#e2e8f0] bg-white pl-9 pr-3 text-sm text-[#1e293b] placeholder:text-[#94a3b8]"
+              placeholder="Search clients..."
+              className="w-full rounded-xl border-slate-200 bg-white pl-9 pr-3 h-10 text-[13px] text-slate-900 placeholder:text-slate-400 focus-visible:ring-indigo-500/20"
             />
           </div>
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as "all" | ClientStatus)}
-          >
-            <SelectTrigger className="w-[110px] justify-center gap-2 rounded-full border-[#e2e8f0] bg-white px-3 py-2 text-xs font-medium text-[#1e293b]">
-              <FilterIcon className="size-4 text-[#64748b]" />
-              <SelectValue />
+          <div className="flex w-full sm:w-auto items-center gap-3">
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as "all" | ClientStatus)}
+            >
+              <SelectTrigger className="flex-1 sm:w-[130px] justify-between gap-2 h-10 rounded-xl border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700 shadow-sm focus:ring-indigo-500/20">
+              <div className="flex items-center gap-2">
+                <FilterIcon className="size-3.5 text-slate-400" />
+                <SelectValue />
+              </div>
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="On Going">On Going</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
-              <SelectItem value="Overdue">Overdue</SelectItem>
+            <SelectContent className="rounded-xl border-slate-100 shadow-lg">
+              <SelectItem value="all" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">All Status</SelectItem>
+              <SelectItem value="On Going" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">On Going</SelectItem>
+              <SelectItem value="Completed" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">Completed</SelectItem>
+              <SelectItem value="Overdue" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">Overdue</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={sortField} onValueChange={handleSortChange}>
-            <SelectTrigger className="w-[120px] justify-center gap-2 rounded-full border-[#e2e8f0] bg-white px-3 py-2 text-xs font-medium text-[#1e293b]">
-              <ArrowUpDown className="size-4 text-[#64748b]" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Client Name</SelectItem>
-              <SelectItem value="amount">Amount</SelectItem>
-              <SelectItem value="nextPayment">Next Payment</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={sortField} onValueChange={handleSortChange}>
+              <SelectTrigger className="flex-1 sm:w-[140px] justify-between gap-2 h-10 rounded-xl border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700 shadow-sm focus:ring-indigo-500/20">
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="size-3.5 text-slate-400" />
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-100 shadow-lg">
+                <SelectItem value="name" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">Sort by Name</SelectItem>
+                <SelectItem value="amount" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">Sort by Amount</SelectItem>
+                <SelectItem value="nextPayment" className="text-[13px] font-medium text-slate-700 focus:bg-slate-50">Sort by Date</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
-        <table className="min-w-[900px] w-full table-auto text-sm">
-          <thead className="bg-[#f8fafc] text-xs font-medium uppercase tracking-wide text-[#64748b]">
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-[0_1px_12px_rgba(0,0,0,0.02)]">
+        <table className="min-w-[900px] w-full table-auto text-[13px]">
+          <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-widest text-slate-400">
             <tr>
-              <th className="px-4 py-3 text-left">
+              <th className="px-4 py-3.5 text-left">
                 <Checkbox
                   checked={allChecked}
                   onCheckedChange={(value) => toggleAll(Boolean(value))}
                   className={cn(
-                    "border-[#cbd5e1]",
-                    someChecked && "data-[state=indeterminate]:bg-[var(--logo-muted)]"
+                    "border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-md",
+                    someChecked && "data-[state=indeterminate]:bg-indigo-600 data-[state=indeterminate]:border-indigo-600"
                   )}
                   aria-label="Select all clients"
                 />
               </th>
-              <th className="px-4 py-3 text-left">Client ID</th>
-              <th className="px-4 py-3 text-left">Client Name</th>
-              <th className="px-4 py-3 text-left">Property Info</th>
-              <th className="px-4 py-3 text-left">Type</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-              <th className="px-4 py-3 text-left">Next Payment</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3.5 text-left">Client ID</th>
+              <th className="px-4 py-3.5 text-left">Client Name</th>
+              <th className="px-4 py-3.5 text-left">Property Info</th>
+              <th className="px-4 py-3.5 text-left">Type</th>
+              <th className="px-4 py-3.5 text-right">Amount</th>
+              <th className="px-4 py-3.5 text-left">Next Payment</th>
+              <th className="px-4 py-3.5 text-left">Status</th>
+              <th className="px-4 py-3.5" />
             </tr>
           </thead>
           <tbody>
@@ -212,85 +218,85 @@ export function ClientsTable() {
               return (
                 <tr
                   key={client.id}
-                  className="border-t border-[#e2e8f0] hover:bg-[#f8fafc]"
+                  className="border-t border-slate-100 transition-colors hover:bg-slate-50/50"
                 >
-                  <td className="px-4 py-3 align-middle">
+                  <td className="px-4 py-3.5 align-middle">
                     <Checkbox
                       checked={checked}
                       onCheckedChange={(value) => toggleOne(client.id, Boolean(value))}
-                      className="border-[#cbd5e1]"
+                      className="border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-md"
                       aria-label={`Select client ${client.name}`}
                     />
                   </td>
-                  <td className="px-4 py-3 align-middle text-[#0f172a]">
+                  <td className="px-4 py-3.5 align-middle">
                     <button
                       type="button"
                       onClick={() => navigate(`/clients/${client.clientId}`)}
-                      className="text-left text-[#0f172a] hover:text-[var(--logo)]"
+                      className="text-left font-medium text-slate-500 transition-colors hover:text-indigo-600"
                     >
                       {client.clientId}
                     </button>
                   </td>
-                  <td className="px-4 py-3 align-middle">
+                  <td className="px-4 py-3.5 align-middle">
                     <button
                       type="button"
                       onClick={() => navigate(`/clients/${client.clientId}`)}
-                      className="flex items-center gap-3 text-left hover:text-[var(--logo)]"
+                      className="group flex items-center gap-3 text-left transition-colors"
                     >
-                      <div className="flex size-8 items-center justify-center rounded-full bg-[var(--logo-muted)] text-xs font-semibold text-[var(--logo)]">
+                      <div className="flex size-[34px] shrink-0 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100/50 text-xs font-bold text-indigo-600 transition-transform group-hover:scale-105">
                         {client.avatarInitials}
                       </div>
-                      <span className="text-[#0f172a]">{client.name}</span>
+                      <span className="font-bold text-slate-800 group-hover:text-indigo-600">{client.name}</span>
                     </button>
                   </td>
-                  <td className="px-4 py-3 align-middle">
-                    <div className="max-w-xs">
-                      <p className="truncate text-[#0f172a]">{client.propertyName}</p>
-                      <p className="truncate text-xs text-[#64748b]">{client.propertyAddress}</p>
+                  <td className="px-4 py-3.5 align-middle font-medium">
+                    <div className="max-w-[180px]">
+                      <p className="truncate text-slate-900">{client.propertyName}</p>
+                      <p className="truncate text-[11px] uppercase tracking-wider text-slate-400 mt-0.5">{client.propertyAddress}</p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 align-middle">
-                    <span className="rounded-full border border-[var(--logo-muted)] bg-[var(--logo-muted)] px-3 py-0.5 text-xs font-medium text-[var(--logo)]">
+                  <td className="px-4 py-3.5 align-middle">
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       {client.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right align-middle text-[#0f172a]">
+                  <td className="px-4 py-3.5 text-right align-middle text-[14px] font-bold tracking-tight text-slate-900">
                     {client.amount.toLocaleString("en-US", {
                       style: "currency",
                       currency: "GHS",
-                      minimumFractionDigits: 2,
+                      minimumFractionDigits: 0,
                     })}
                   </td>
-                  <td className="px-4 py-3 align-middle text-[#0f172a]">
+                  <td className="px-4 py-3.5 align-middle font-semibold text-slate-500">
                     {new Date(client.nextPayment).toLocaleDateString("en-US", {
-                      month: "long",
+                      month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </td>
-                  <td className="px-4 py-3 align-middle">
+                  <td className="px-4 py-3.5 align-middle">
                     <span
                       className={cn(
-                        "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
+                        "inline-flex rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm",
                         client.status === "On Going" &&
-                          "border-[var(--logo-muted)] bg-[var(--logo-muted)] text-[var(--logo)]",
+                          "bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-500/20",
                         client.status === "Completed" &&
-                          "border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]",
+                          "bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20",
                         client.status === "Overdue" &&
-                          "border-[#fecaca] bg-[#fef2f2] text-[#dc2626]"
+                          "bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-500/20"
                       )}
                     >
                       {client.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 align-middle text-right">
+                  <td className="px-4 py-3.5 align-middle text-right">
                     <button
                       type="button"
                       onClick={() => setSelectedClient(client)}
-                      className="inline-flex size-9 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                      className="inline-flex size-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-white hover:text-slate-900 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200 outline-none"
                       aria-label={`More options for ${client.name}`}
                     >
-                      <MoreVertical className="size-5" />
+                      <MoreVertical className="size-4" />
                     </button>
                   </td>
                 </tr>
@@ -300,28 +306,35 @@ export function ClientsTable() {
               <tr>
                 <td
                   colSpan={9}
-                  className="px-4 py-8 text-center text-sm text-[#94a3b8]"
+                  className="px-4 py-16 text-center text-[13px] font-medium text-slate-400"
                 >
-                  No clients match your filters.
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <FilterIcon className="size-10 text-slate-200" />
+                    <p>No clients match your exact filters.</p>
+                  </div>
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-        <Pagination
-          totalItems={filteredAndSorted.length}
-          pageSize={PAGE_SIZE}
-          currentPage={safePage}
-          onPageChange={setPage}
-          itemLabel="clients"
-        />
+        
+        {/* Pagination matched to the global UI component scale */}
+        <div className="border-t border-slate-100 bg-white/50 p-4 rounded-b-2xl">
+          <Pagination
+            totalItems={filteredAndSorted.length}
+            pageSize={PAGE_SIZE}
+            currentPage={safePage}
+            onPageChange={setPage}
+            itemLabel="clients"
+          />
+        </div>
       </div>
 
       {/* Client info card (modal) */}
       {selectedClient && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/30"
+            className="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm animate-in fade-in"
             onClick={() => setSelectedClient(null)}
             aria-hidden="true"
           />
@@ -329,43 +342,44 @@ export function ClientsTable() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="client-info-dialog-title"
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-xl"
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-2xl animate-in zoom-in-95 duration-200"
           >
             <div className="p-6">
-              <h2
-                id="client-info-dialog-title"
-                className="mb-4 text-lg font-bold text-[#1e293b]"
-              >
-                Client Details
-              </h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Client ID</span>
-                  <span className="font-medium text-[#1e293b]">{selectedClient.clientId}</span>
+              <div className="mb-6 flex items-center justify-between">
+                <h2
+                  id="client-info-dialog-title"
+                  className="text-lg font-black tracking-tight text-slate-900"
+                >
+                  Client Overview
+                </h2>
+                <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-bold border border-indigo-100/50 shadow-sm">
+                  {selectedClient.avatarInitials}
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Name</span>
-                  <span className="font-medium text-[#1e293b]">{selectedClient.name}</span>
+              </div>
+              
+              <div className="space-y-3 text-[13px]">
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5">
+                  <span className="font-semibold text-slate-400">Client ID</span>
+                  <span className="font-bold text-slate-900">{selectedClient.clientId}</span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Property</span>
-                  <span className="text-right font-medium text-[#1e293b]">
-                    {selectedClient.propertyName}
-                  </span>
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5">
+                  <span className="font-semibold text-slate-400">Name</span>
+                  <span className="font-bold text-slate-900">{selectedClient.name}</span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Address</span>
-                  <span className="max-w-[200px] truncate text-right text-[#1e293b]">
-                    {selectedClient.propertyAddress}
-                  </span>
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5 items-start">
+                  <span className="font-semibold text-slate-400 pt-0.5">Property</span>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-900">{selectedClient.propertyName}</p>
+                    <p className="max-w-[180px] truncate text-[10px] uppercase tracking-widest text-slate-400 mt-1">{selectedClient.propertyAddress}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Type</span>
-                  <span className="font-medium text-[#1e293b]">{selectedClient.type}</span>
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5">
+                  <span className="font-semibold text-slate-400">Type</span>
+                  <span className="font-bold text-slate-900 flex items-center">{selectedClient.type}</span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Amount</span>
-                  <span className="font-medium text-[#1e293b]">
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5">
+                  <span className="font-semibold text-slate-400">Amount</span>
+                  <span className="font-black text-[15px] tracking-tight text-slate-900 flex items-center">
                     {selectedClient.amount.toLocaleString("en-US", {
                       style: "currency",
                       currency: "GHS",
@@ -373,57 +387,57 @@ export function ClientsTable() {
                     })}
                   </span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Next Payment</span>
-                  <span className="font-medium text-[#1e293b]">
+                <div className="flex justify-between gap-2 border-b border-slate-50 pb-2.5">
+                  <span className="font-semibold text-slate-400">Next Payment</span>
+                  <span className="font-bold text-slate-900 flex items-center">
                     {new Date(selectedClient.nextPayment).toLocaleDateString("en-US", {
-                      month: "long",
+                      month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-[#64748b]">Status</span>
+                <div className="flex items-center justify-between gap-2 pt-1.5">
+                  <span className="font-semibold text-slate-400">Status</span>
                   <span
                     className={cn(
-                      "inline-flex rounded-full border px-3 py-0.5 text-xs font-medium",
+                      "inline-flex rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm",
                       selectedClient.status === "On Going" &&
-                        "border-[var(--logo-muted)] bg-[var(--logo-muted)] text-[var(--logo)]",
+                        "bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-500/20",
                       selectedClient.status === "Completed" &&
-                        "border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]",
+                        "bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20",
                       selectedClient.status === "Overdue" &&
-                        "border-[#fecaca] bg-[#fef2f2] text-[#dc2626]"
+                        "bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-500/20"
                     )}
                   >
                     {selectedClient.status}
                   </span>
                 </div>
               </div>
-              <p className="mt-4 text-xs text-[#64748b]">
-                {selectedClient.status === "On Going" || selectedClient.status === "Overdue"
-                  ? "Confirm to change status to Completed."
-                  : "Confirm to change status to On Going."}
-              </p>
-              <div className="mt-6 flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelectedClient(null)}
-                  className={cn(
-                    "flex-1 rounded-lg border-[#DFE1E7] bg-white text-[#1e293b]",
-                    "hover:bg-[#f8fafc] hover:text-[#1e293b]"
-                  )}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleConfirmStatusChange}
-                  className="flex-1 rounded-lg bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
-                >
-                  Confirm
-                </Button>
+              
+              <div className="mt-8 rounded-xl bg-slate-50 p-4 border border-slate-100">
+                <p className="text-center text-xs font-semibold text-slate-500 mb-4">
+                  {selectedClient.status === "On Going" || selectedClient.status === "Overdue"
+                    ? "Update this client's status to Completed?"
+                    : "Revert this client's status to On Going?"}
+                </p>
+                <div className="flex gap-2.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setSelectedClient(null)}
+                    className="flex-1 rounded-xl h-10 border-slate-200 bg-white text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all outline-none"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleConfirmStatusChange}
+                    className="flex-1 rounded-xl h-10 bg-indigo-600 text-xs font-bold text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all outline-none"
+                  >
+                    Confirm Change
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -432,4 +446,3 @@ export function ClientsTable() {
     </section>
   );
 }
-

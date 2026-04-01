@@ -2,7 +2,7 @@
 
 /**
  * Pagination – prev/next, page numbers with ellipsis.
- * totalItems, pageSize, currentPage, onPageChange.
+ * Modern, premium look for dashboard tables.
  */
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -58,41 +58,43 @@ export function Pagination({
 
   if (pageCount <= 1 && totalItems <= pageSize) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2e8f0] px-4 py-3">
-        <p className="text-sm text-[#64748b]">
-          Showing <span className="font-medium text-[#1e293b]">{totalItems}</span> {itemLabel}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 mt-1">
+        <p className="text-[13px] font-medium text-slate-500">
+          Showing <span className="font-bold text-slate-800">{totalItems}</span> {itemLabel}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#e2e8f0] px-4 py-3">
-      <p className="text-sm text-[#64748b]">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5 mt-1">
+      <p className="text-[13px] font-medium text-slate-500">
         Showing{" "}
-        <span className="font-medium text-[#1e293b]">{showingFrom}</span>–
-        <span className="font-medium text-[#1e293b]">{showingTo}</span> of{" "}
-        <span className="font-medium text-[#1e293b]">{totalItems}</span> {itemLabel}
+        <span className="font-bold text-slate-800">{showingFrom}</span>–
+        <span className="font-bold text-slate-800">{showingTo}</span> of{" "}
+        <span className="font-bold text-slate-800">{totalItems}</span> {itemLabel}
       </p>
-      <div className="flex items-center gap-1">
+      
+      <div className="flex items-center gap-1 bg-slate-50/80 p-1.5 rounded-xl border border-slate-100 shadow-sm">
         <button
           type="button"
           onClick={goToPrev}
           disabled={safePage === 1}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg border border-[#e2e8f0] text-[#64748b] transition-colors",
-            safePage === 1 && "cursor-not-allowed opacity-40",
-            safePage > 1 && "hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:text-[#1e293b]"
+            "flex h-8 w-8 items-center justify-center rounded-lg transition-all active:scale-95",
+            safePage === 1 && "cursor-not-allowed opacity-40 text-slate-400",
+            safePage > 1 && "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
           )}
           aria-label="Previous page"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 shrink-0" />
         </button>
+        
         <div className="flex items-center gap-0.5">
           {getPageNumbers().map((p, i) =>
             p === "ellipsis" ? (
-              <span key={`ellipsis-${i}`} className="flex h-8 w-8 items-center justify-center text-xs text-[#94a3b8]">
-                ···
+              <span key={`ellipsis-${i}`} className="flex h-8 w-8 items-center justify-center text-xs font-bold tracking-widest text-slate-400">
+                ...
               </span>
             ) : (
               <button
@@ -100,10 +102,10 @@ export function Pagination({
                 type="button"
                 onClick={() => onPageChange(p)}
                 className={cn(
-                  "flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors",
+                  "flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-[13px] transition-all duration-200 active:scale-95",
                   p === safePage
-                    ? "bg-[var(--logo)] text-white shadow-sm"
-                    : "text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                    ? "bg-indigo-600 font-bold text-white shadow-md shadow-indigo-600/20"
+                    : "font-semibold text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                 )}
                 aria-label={`Page ${p}`}
                 aria-current={p === safePage ? "page" : undefined}
@@ -113,18 +115,19 @@ export function Pagination({
             )
           )}
         </div>
+        
         <button
           type="button"
           onClick={goToNext}
           disabled={safePage === pageCount}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg border border-[#e2e8f0] text-[#64748b] transition-colors",
-            safePage === pageCount && "cursor-not-allowed opacity-40",
-            safePage < pageCount && "hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:text-[#1e293b]"
+            "flex h-8 w-8 items-center justify-center rounded-lg transition-all active:scale-95",
+            safePage === pageCount && "cursor-not-allowed opacity-40 text-slate-400",
+            safePage < pageCount && "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
           )}
           aria-label="Next page"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-4 shrink-0" />
         </button>
       </div>
     </div>

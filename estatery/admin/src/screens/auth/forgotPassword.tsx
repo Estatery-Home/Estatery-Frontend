@@ -32,7 +32,7 @@ export default function ForgotPassword() {
               <Lock className="size-8 text-[var(--logo)]" />
             </div>
           </div>
-          <h1 className="text-center text-2xl font-bold text-[#1e293b]">
+          <h1 className="text-center text-xl font-bold text-[#1e293b]">
             Forgot Password
           </h1>
           <p className="mt-2 text-center text-sm text-[#64748b]">
@@ -50,7 +50,7 @@ export default function ForgotPassword() {
                 placeholder="johndoe@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border-[#d1d5db] placeholder:text-[#9ca3af]"
+                className="w-full rounded-lg border-[#d1d5db] placeholder:text-[#1e293b] bg-white text-black"
                 autoComplete="email"
                 required
               />

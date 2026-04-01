@@ -131,10 +131,8 @@ export function SignupForm() {
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-white px-6 py-10 sm:px-8 lg:min-w-0 lg:flex-1 lg:px-14">
       <div className="w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[#E8F4FC]">
-            <User className="size-7 text-[var(--logo)]" strokeWidth={2} />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-black sm:text-3xl">
+          <img src="/images/HomeLogo.webp" alt="Home Logo" className="mb-4 size-40 object-contain" />
+          <h1 className="text-xl font-bold tracking-tight text-[#1e293b]">
             Create New Account
           </h1>
           <p className="mt-2 text-sm text-[#6b7280]">
@@ -162,7 +160,7 @@ export function SignupForm() {
               onChange={handleUsernameChange}
               error={!!usernameError}
               className={cn(
-                "w-full rounded-lg placeholder:text-[#9ca3af]",
+                "w-full rounded-lg bg-white text-black placeholder:text-[#9ca3af]",
                 !usernameError && "border-[#d1d5db]",
                 usernameError && "border-red-500 bg-[#FFE8E8]"
               )}
@@ -198,7 +196,7 @@ export function SignupForm() {
               onBlur={handleEmailBlur}
               error={!!emailError}
               className={cn(
-                "w-full rounded-lg placeholder:text-[#9ca3af]",
+                "w-full rounded-lg bg-white text-black placeholder:text-[#9ca3af]",
                 !emailError && "border-[#d1d5db]",
                 emailError && "border-red-500 bg-[#FFE8E8]"
               )}
@@ -231,7 +229,7 @@ export function SignupForm() {
               placeholder="Enter your phone number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border-[#d1d5db] placeholder:text-[#9ca3af]"
+              className="w-full rounded-lg bg-white text-black border-[#d1d5db] placeholder:text-[#9ca3af]"
               autoComplete="tel"
             />
           </div>
@@ -250,7 +248,7 @@ export function SignupForm() {
                 onChange={handlePasswordChange}
                 error={!!passwordError}
                 className={cn(
-                  "w-full rounded-lg pr-10 placeholder:text-[#9ca3af]",
+                  "w-full rounded-lg bg-white text-black pr-10 placeholder:text-[#9ca3af]",
                   !passwordError && "border-[#d1d5db]",
                   passwordError && "border-red-500 bg-[#FFE8E8]"
                 )}
@@ -295,7 +293,7 @@ export function SignupForm() {
                   setKeepLoggedIn(checked === true)
                 }
                 aria-describedby="terms-label"
-                className="border-[#d1d5db]"
+                className="border-[#d1d5db] bg-white"
               />
               <Label
                 id="terms-label"

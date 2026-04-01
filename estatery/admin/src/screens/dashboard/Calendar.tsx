@@ -7,9 +7,7 @@
 import * as React from "react";
 import { addDays, addMonths, addWeeks, endOfMonth, format, getDate, getDay, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,10 +26,6 @@ function toKeyDate(d: Date) {
 }
 
 export default function Calendar() {
-  const { logout } = useAuth();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
-
   const [view, setView] = React.useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = React.useState<Date>(new Date(2025, 6, 11)); // July 11, 2025
   const [events, setEvents] = React.useState<CalendarEvent[]>([
@@ -49,11 +43,6 @@ export default function Calendar() {
   const [draftStart, setDraftStart] = React.useState<string>("13:00");
   const [draftEnd, setDraftEnd] = React.useState<string>("14:00");
   const [draftTitle, setDraftTitle] = React.useState<string>("Home Tour");
-
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-  };
 
   /* Navigate to previous month/week/day depending on view */
   const handlePrev = () => {
@@ -299,23 +288,11 @@ export default function Calendar() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-6xl space-y-4">
+    <DashboardLayout>
+      <>
+      <div className="mx-auto max-w-6xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-2xl font-bold text-[#1e293b]">{monthLabel}</h1>
+              <h1 className="text-xl font-bold text-[#1e293b]">{monthLabel}</h1>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 rounded-full border border-[#e2e8f0] bg-white p-1 text-xs font-medium text-[#64748b]">
                   <button
@@ -384,14 +361,7 @@ export default function Calendar() {
             {view === "month" && renderMonthView()}
             {view === "week" && renderWeekView()}
             {view === "day" && renderDayView()}
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -468,7 +438,8 @@ export default function Calendar() {
           </div>
         </div>
       )}
-    </div>
+      </>
+    </DashboardLayout>
   );
 }
 

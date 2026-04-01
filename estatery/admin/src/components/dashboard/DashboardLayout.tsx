@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
+    <div className="relative min-h-screen w-full max-w-full overflow-x-hidden bg-[#f1f5f9] font-sans text-[#1e293b] antialiased">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={onToggle}
@@ -37,12 +37,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       />
       <div
         className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
+          "min-w-0 max-w-full transition-[margin] duration-300 ease-in-out",
+          sidebarCollapsed ? "ml-0 sm:ml-[80px]" : "ml-0 sm:ml-[260px]"
         )}
       >
         <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">{children}</main>
+        {/* Document scroll (body) — avoids nested scroll traps so trackpad / wheel work anywhere */}
+        <main className="w-full max-w-full overflow-x-hidden break-words px-4 py-4 pb-10 sm:px-6 sm:py-6 sm:pb-12">
+          {children}
+        </main>
       </div>
       <LogoutConfirmDialog
         open={logoutDialogOpen}

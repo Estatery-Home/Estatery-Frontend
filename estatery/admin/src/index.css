@@ -4,6 +4,18 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Brand (aligned with dashboard / globals) */
+  --logo: #2563eb;
+  --logo-hover: #1d4ed8;
+  --logo-muted: #dbeafe;
+  /* Dashboard shell tokens */
+  --admin-page-bg: #f1f5f9;
+  --admin-heading: #1e293b;
+  --admin-muted: #64748b;
+  --admin-border: #e2e8f0;
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --primary: 210 100% 50%;        /* Blue – main brand color */
   --primary-foreground: 0 0% 100%; /* White text on primary */
   --secondary: 210 20% 96%;
@@ -41,19 +53,44 @@
   --radius-xl: calc(var(--radius) + 0.25rem);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Normalize text sizes globally to feel more standard (not too small) */
+  --text-xs: 0.8125rem; /* ~13px */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem; /* 15px, perfect for generic app text */
+  --text-sm--line-height: 1.5rem;
+  --text-base: 1.0625rem; /* 17px */
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.1875rem; /* 19px */
+  --text-lg--line-height: 1.75rem;
 }
 
-/* When user's OS is set to dark mode, switch to dark colors */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+
+
+/* Lock horizontal scroll; reduce sideways overscroll on touch */
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+  overscroll-behavior-x: none;
 }
 
 /* Base styles for the whole page */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color-scheme: light;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-width: 100%;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  overflow-x: hidden;
+  overflow-y: visible;
+  max-width: 100%;
+  min-height: 100dvh;
 }

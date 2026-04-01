@@ -5,11 +5,8 @@
  * Date range (7d/30d/90d); paginated property list.
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { LineChart, PieChart, TrendingUp, Users, Home, Activity } from "lucide-react";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
@@ -26,19 +23,9 @@ const trafficData: Record<Range, number[]> = {
 };
 
 export default function Analytics() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
   const { properties } = useProperties();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [range, setRange] = React.useState<Range>("30d");
   const [page, setPage] = React.useState(1);
-
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
 
   const totalProperties = properties.length;
   const totalClients = clientsTableData.length;
@@ -54,25 +41,12 @@ export default function Analytics() {
   const pageProperties = properties.slice(startIdx, startIdx + PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-6xl space-y-6">
+    <DashboardLayout>
+      <div className="mx-auto max-w-6xl space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-[#1e293b]">Analytics</h1>
-                <p className="mt-1 text-sm text-[#64748b]">
+                <h1 className="text-xl font-bold text-[#1e293b]">Analytics</h1>
+                <p className="mt-1 text-xs text-[#64748b]">
                   Monitor performance across listings, leads, and revenue.
                 </p>
               </div>
@@ -298,15 +272,8 @@ export default function Analytics() {
                 itemLabel="properties"
               />
             </section>
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+    </DashboardLayout>
   );
 }
 

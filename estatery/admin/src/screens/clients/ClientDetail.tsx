@@ -10,9 +10,7 @@ import { Calendar, Edit3, FileText, Mail, Phone, MessageCircle, ArrowLeft, Searc
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
+import { DashboardLayout } from "@/components/dashboard";
 import {
   getClientDetail,
   getClientTransactions,
@@ -29,10 +27,6 @@ type RouteParams = {
 export default function ClientDetail() {
   const { clientId } = useParams<RouteParams>();
   const navigate = useNavigate();
-  const { logout } = useAuth();
-
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
 
   const detail = clientId ? getClientDetail(clientId) : undefined;
@@ -49,46 +43,16 @@ export default function ClientDetail() {
   const [editEmail, setEditEmail] = React.useState(detail?.email ?? "");
   const [editBio, setEditBio] = React.useState(detail?.bio ?? "");
 
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-    navigate("/auth/login", { replace: true });
-  };
-
   if (!detail) {
     return (
-      <div className="min-h-screen bg-[#f1f5f9]">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={onToggle}
-          onLogoutClick={() => setLogoutDialogOpen(true)}
-        />
-        <div
-          className={cn(
-            "flex min-h-screen flex-col transition-[margin] duration-300",
-            sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-          )}
-        >
-          <TopBar />
-          <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-            <div className="mx-auto max-w-4xl rounded-xl border border-[#e2e8f0] bg-white p-8 text-center shadow-sm">
-              <p className="text-[#64748b]">Client not found.</p>
-              <Button
-                onClick={() => navigate("/clients/clients")}
-                variant="outline"
-                className="mt-4"
-              >
-                Back to Clients
-              </Button>
-            </div>
-          </main>
+      <DashboardLayout>
+        <div className="mx-auto max-w-4xl rounded-xl border border-[#e2e8f0] bg-white p-6 text-center shadow-sm sm:p-8">
+          <p className="text-sm text-[#64748b]">Client not found.</p>
+          <Button onClick={() => navigate("/clients/clients")} variant="outline" className="mt-4">
+            Back to Clients
+          </Button>
         </div>
-        <LogoutConfirmDialog
-          open={logoutDialogOpen}
-          onClose={() => setLogoutDialogOpen(false)}
-          onConfirm={handleLogoutConfirm}
-        />
-      </div>
+      </DashboardLayout>
     );
   }
 
@@ -166,21 +130,8 @@ export default function ClientDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-6xl space-y-6">
+    <DashboardLayout>
+      <div className="mx-auto max-w-6xl space-y-6">
             <Link
               to="/clients/clients"
               className="inline-flex items-center gap-2 text-sm font-medium text-[#64748b] hover:text-[var(--logo)]"
@@ -190,7 +141,7 @@ export default function ClientDetail() {
             </Link>
 
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold text-[#1e293b]">Client Details</h1>
+              <h1 className="text-xl font-bold text-[#1e293b]">Client Details</h1>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
@@ -443,14 +394,7 @@ export default function ClientDetail() {
                 itemLabel="transactions"
               />
             </section>
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
 
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -513,7 +457,7 @@ export default function ClientDetail() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
 

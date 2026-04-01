@@ -2,12 +2,19 @@ from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Property, Booking, BookingPayment, PropertyReview
+from decimal import Decimal
+
+from .models import Property, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, HostBookingSerializer, BookingPaymentSerializer,
-    PropertyReviewSerializer, HostResponseSerializer
+    PropertyReviewSerializer, HostResponseSerializer,
+    PromoCodeSerializer, PromoCodeValidateSerializer,
+    CountryRowSerializer, PromoValidateResponseSerializer,
+    HostDashboardSerializer, TenantDashboardSerializer,
 )
+from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
+from .permissions import IsAdminUserType
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -16,47 +23,120 @@ from django.db import transaction, models
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from django.conf import settings
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view
 
 # ============ PROPERTY VIEWS ============
 
-class PropertyListView(generics.ListCreateAPIView):
-    """List all available properties or create a new property"""
+class PublicPropertyCatalogMixin:
+    """Shared filters for public property listing (marketplace / customer app)."""
     serializer_class = PropertySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        return [permissions.AllowAny()]
     filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country', 'status']
     search_fields = ['title', 'description', 'address', 'city']
     ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms']
-    ordering = ['-created_at']  # Default ordering
-    
+    ordering = ['-created_at']
+
     def get_queryset(self):
         queryset = Property.objects.all()
-        
-        # Filter by availability status
         status = self.request.query_params.get('status', 'available')
         if status == 'available':
             queryset = queryset.filter(status='available')
-        
-        # Filter by price range
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         if min_price:
             queryset = queryset.filter(monthly_price__gte=min_price)
         if max_price:
             queryset = queryset.filter(monthly_price__lte=max_price)
-        
-        # Filter by amenities
         amenities = ['wifi', 'parking', 'pool', 'gym', 'furnished', 'kitchen']
         for amenity in amenities:
             if self.request.query_params.get(f'has_{amenity}'):
                 queryset = queryset.filter(**{f'has_{amenity}': True})
-        
         return queryset
-    
+
+
+@extend_schema(tags=['Customer catalog'], summary='List properties (customer)')
+class CustomerPropertyListView(PublicPropertyCatalogMixin, generics.ListAPIView):
+    """Customer-facing catalog: GET only (same data as public list, explicit route for the website app)."""
+    permission_classes = [permissions.AllowAny]
+
+
+@extend_schema(
+    tags=['Geography'],
+    summary='List countries',
+    responses={200: CountryRowSerializer(many=True)},
+)
+class CountryListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        names = (
+            Property.objects.filter(status='available')
+            .values_list('country', flat=True)
+            .distinct()
+            .order_by('country')
+        )
+        return Response([{'name': n} for n in names if n])
+
+
+@extend_schema(
+    tags=['Discounts'],
+    summary='Validate promo code',
+    request=PromoCodeValidateSerializer,
+    responses={200: PromoValidateResponseSerializer},
+)
+class PromoCodeValidateView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        ser = PromoCodeValidateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        prop = ser.validated_data['_property']
+        promo = ser.validated_data['_promo']
+        months = ser.validated_data['_months']
+        base_total = prop.effective_monthly_price * months
+        after_long = amount_after_long_stay(prop, months)
+        final_total = final_total_with_promo(prop, months, promo)
+        return Response({
+            'valid': True,
+            'code': promo.code,
+            'months': months,
+            'currency': prop.currency,
+            'monthly_rate': str(prop.effective_monthly_price),
+            'base_subtotal': str(base_total),
+            'subtotal_after_long_stay': str(after_long),
+            'long_stay_discount_percent': str(long_stay_fraction_off(months) * Decimal('100')),
+            'promo': {
+                'discount_type': promo.discount_type,
+                'discount_value': str(promo.discount_value),
+            },
+            'total_price': str(final_total),
+            'combined_discount_percent': str(combined_discount_percent(prop, months, promo)),
+        })
+
+
+@extend_schema(tags=['Discounts'])
+class AdminPromoCodeListCreateView(generics.ListCreateAPIView):
+    queryset = PromoCode.objects.all()
+    serializer_class = PromoCodeSerializer
+    permission_classes = [IsAdminUserType]
+
+
+@extend_schema(tags=['Discounts'])
+class AdminPromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = PromoCode.objects.all()
+    serializer_class = PromoCodeSerializer
+    permission_classes = [IsAdminUserType]
+
+
+@extend_schema(tags=['Properties'], summary='List or create properties')
+class PropertyListView(PublicPropertyCatalogMixin, generics.ListCreateAPIView):
+    """List all available properties or create a new property"""
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
     def get_serializer_class(self):
         """Use different serializer for detail vs list"""
         if self.request.method == 'POST':
@@ -151,12 +231,15 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
         })
 
 
+@extend_schema(tags=['Properties'], summary='List my properties (host)')
 class MyPropertiesView(generics.ListAPIView):
     """List all properties owned by current user"""
     serializer_class = PropertySerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Property.objects.none()
         return Property.objects.filter(owner=self.request.user).order_by('-created_at')
     
     def get_serializer_class(self):
@@ -168,6 +251,19 @@ class MyPropertiesView(generics.ListAPIView):
 
 # ============ AVAILABILITY & CALCULATION VIEWS ============
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=['Availability'],
+        summary='Property availability snapshot',
+        responses={200: OpenApiTypes.OBJECT},
+    ),
+    post=extend_schema(
+        tags=['Availability'],
+        summary='Check property availability for dates',
+        request=PropertyAvailabilitySerializer,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    ),
+)
 class PropertyAvailabilityCheckView(APIView):
     """Check if property is available for specific dates"""
     permission_classes = [permissions.AllowAny]
@@ -195,7 +291,11 @@ class PropertyAvailabilityCheckView(APIView):
         
         # Get current bookings for calendar display
         bookings = Booking.objects.filter(
+<<<<<<< HEAD
             property_rented=property_obj,
+=======
+            rented_property=property_obj,
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             status__in=['confirmed', 'active'],
             check_out__gte=timezone.now().date()
         ).values('check_in', 'check_out', 'status')[:50]
@@ -211,6 +311,11 @@ class PropertyAvailabilityCheckView(APIView):
         })
 
 
+@extend_schema(
+    tags=['Availability'],
+    summary='Monthly availability calendar',
+    responses={200: OpenApiTypes.OBJECT},
+)
 class PropertyMonthlyCalendarView(APIView):
     """Get availability calendar for a property"""
     permission_classes = [permissions.AllowAny]
@@ -229,7 +334,11 @@ class PropertyMonthlyCalendarView(APIView):
         
         # Get bookings for this month
         bookings = Booking.objects.filter(
+<<<<<<< HEAD
             property_rented=property_obj,
+=======
+            rented_property=property_obj,
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             status__in=['confirmed', 'active'],
             check_out__gt=start_date,
             check_in__lt=end_date
@@ -280,7 +389,11 @@ class BookingCreateView(generics.CreateAPIView):
         with transaction.atomic():
             # LOCK the property to prevent race conditions
             property_obj = Property.objects.select_for_update().get(
+<<<<<<< HEAD
                 id=serializer.validated_data['property_rented'].id
+=======
+                id=serializer.validated_data['rented_property'].id
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             )
             
             # Check if property is available
@@ -321,7 +434,11 @@ class BookingCreateView(generics.CreateAPIView):
         # 2. Monthly rent payments
         current_date = booking.check_in
         for month in range(1, booking.months_booked + 1):
+<<<<<<< HEAD
             due_date = current_date.replace(day=booking.property_rented.monthly_cycle_start)
+=======
+            due_date = current_date.replace(day=booking.rented_property.monthly_cycle_start)
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             
             # If due date is in the past, set to next month
             if due_date < timezone.now().date():
@@ -347,7 +464,11 @@ class BookingCreateView(generics.CreateAPIView):
         # To tenant
         send_mail(
             'Booking Request Received',
+<<<<<<< HEAD
             f'Your booking for {booking.property_rented.title} has been submitted and is pending confirmation.',
+=======
+            f'Your booking for {booking.rented_property.title} has been submitted and is pending confirmation.',
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             settings.DEFAULT_FROM_EMAIL,
             [booking.user.email],
             fail_silently=True,
@@ -356,9 +477,15 @@ class BookingCreateView(generics.CreateAPIView):
         # To host
         send_mail(
             'New Booking Request',
+<<<<<<< HEAD
             f'You have a new booking request for {booking.property_rented.title} from {booking.user.username}.',
             settings.DEFAULT_FROM_EMAIL,
             [booking.property_rented.owner.email],
+=======
+            f'You have a new booking request for {booking.rented_property.title} from {booking.user.username}.',
+            settings.DEFAULT_FROM_EMAIL,
+            [booking.rented_property.owner.email],
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             fail_silently=True,
         )
     
@@ -375,12 +502,15 @@ class BookingCreateView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(tags=['Bookings'])
 class MyBookingsView(generics.ListAPIView):
     """List all bookings for current user"""
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         queryset = Booking.objects.filter(user=self.request.user)
         
         # Filter by status
@@ -396,9 +526,14 @@ class MyBookingsView(generics.ListAPIView):
         if to_date:
             queryset = queryset.filter(check_out__lte=to_date)
         
+<<<<<<< HEAD
         return queryset.select_related('property_rented', 'user').order_by('-created_at')
+=======
+        return queryset.select_related('rented_property', 'user').order_by('-created_at')
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
 
 
+@extend_schema(tags=['Bookings'])
 class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update or cancel a booking"""
     serializer_class = BookingSerializer
@@ -406,6 +541,8 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         """Users can only access their own bookings"""
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         return Booking.objects.filter(user=self.request.user)
     
     def perform_update(self, serializer):
@@ -437,7 +574,11 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not settings.DEBUG:
             send_mail(
                 'Booking Cancelled',
+<<<<<<< HEAD
                 f'Your booking for {instance.property_rented.title} has been cancelled.',
+=======
+                f'Your booking for {instance.rented_property.title} has been cancelled.',
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
                 settings.DEFAULT_FROM_EMAIL,
                 [instance.user.email],
                 fail_silently=True,
@@ -461,15 +602,23 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 # ============ HOST BOOKING MANAGEMENT VIEWS ============
 
+@extend_schema(tags=['Host'])
 class HostBookingsView(generics.ListAPIView):
     """List all bookings for host's properties"""
     serializer_class = HostBookingSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         queryset = Booking.objects.filter(
+<<<<<<< HEAD
             property_rented__owner=self.request.user
         ).select_related('user', 'property_rented').order_by('-created_at')
+=======
+            rented_property__owner=self.request.user
+        ).select_related('user', 'rented_property').order_by('-created_at')
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         
         # Filter by status
         status = self.request.query_params.get('status')
@@ -479,7 +628,11 @@ class HostBookingsView(generics.ListAPIView):
         # Filter by property
         property_id = self.request.query_params.get('property')
         if property_id:
+<<<<<<< HEAD
             queryset = queryset.filter(property_rented_id=property_id)
+=======
+            queryset = queryset.filter(rented_property_id=property_id)
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         
         return queryset
     
@@ -489,18 +642,25 @@ class HostBookingsView(generics.ListAPIView):
         return context
 
 
+@extend_schema(tags=['Host'])
 class ConfirmBookingView(generics.UpdateAPIView):
     """Host confirms or rejects a booking"""
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
-        """Only bookings for host's properties"""
+        if getattr(self, 'swagger_fake_view', False):
+            return Booking.objects.none()
         return Booking.objects.filter(
+<<<<<<< HEAD
             property_rented__owner=self.request.user,
             status='pending'
+=======
+            rented_property__owner=self.request.user,
+            status='pending',
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         )
-    
+
     def update(self, request, *args, **kwargs):
         booking = self.get_object()
         action = request.data.get('action')
@@ -517,7 +677,11 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 if not settings.DEBUG:
                     send_mail(
                         'Booking Confirmed',
+<<<<<<< HEAD
                         f'Your booking for {booking.property_rented.title} has been confirmed!',
+=======
+                        f'Your booking for {booking.rented_property.title} has been confirmed!',
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
                         settings.DEFAULT_FROM_EMAIL,
                         [booking.user.email],
                         fail_silently=True,
@@ -535,7 +699,11 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 if not settings.DEBUG:
                     send_mail(
                         'Booking Update',
+<<<<<<< HEAD
                         f'Your booking request for {booking.property_rented.title} has been rejected.\nReason: {reason}',
+=======
+                        f'Your booking request for {booking.rented_property.title} has been rejected.\nReason: {reason}',
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
                         settings.DEFAULT_FROM_EMAIL,
                         [booking.user.email],
                         fail_silently=True,
@@ -551,22 +719,30 @@ class ConfirmBookingView(generics.UpdateAPIView):
 
 # ============ PAYMENT VIEWS ============
 
+@extend_schema(tags=['Payments'])
 class BookingPaymentsView(generics.ListAPIView):
     """List all payments for a booking"""
     serializer_class = BookingPaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return BookingPayment.objects.none()
         booking_id = self.kwargs.get('pk')
         booking = get_object_or_404(Booking, id=booking_id)
         
         # Only tenant and host can view payments
+<<<<<<< HEAD
         if booking.user != self.request.user and booking.property_rented.owner != self.request.user:
+=======
+        if booking.user != self.request.user and booking.rented_property.owner != self.request.user:
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             raise PermissionDenied("You don't have permission to view these payments.")
         
         return BookingPayment.objects.filter(booking=booking).order_by('due_date')
 
 
+@extend_schema(tags=['Payments'])
 class MarkPaymentPaidView(generics.UpdateAPIView):
     """Mark a payment as paid (host or admin only)"""
     serializer_class = BookingPaymentSerializer
@@ -574,8 +750,14 @@ class MarkPaymentPaidView(generics.UpdateAPIView):
     
     def get_queryset(self):
         """Only host of the property can mark payments as paid"""
+        if getattr(self, 'swagger_fake_view', False):
+            return BookingPayment.objects.none()
         return BookingPayment.objects.filter(
+<<<<<<< HEAD
             booking__property_rented__owner=self.request.user
+=======
+            booking__rented_property__owner=self.request.user
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         )
     
     def update(self, request, *args, **kwargs):
@@ -660,6 +842,11 @@ class PropertyReviewsView(generics.ListAPIView):
 
 # ============ DASHBOARD/STATS VIEWS ============
 
+@extend_schema(
+    tags=['Dashboards'],
+    summary='Host dashboard',
+    responses={200: HostDashboardSerializer},
+)
 class HostDashboardView(APIView):
     """Dashboard statistics for hosts"""
     permission_classes = [permissions.IsAuthenticated]
@@ -672,6 +859,7 @@ class HostDashboardView(APIView):
         active_properties = Property.objects.filter(owner=user, status='available').count()
         
         # Bookings
+<<<<<<< HEAD
         total_bookings = Booking.objects.filter(property_rented__owner=user).count()
         pending_bookings = Booking.objects.filter(
             property_rented__owner=user, 
@@ -679,25 +867,47 @@ class HostDashboardView(APIView):
         ).count()
         active_bookings = Booking.objects.filter(
             property_rented__owner=user,
+=======
+        total_bookings = Booking.objects.filter(rented_property__owner=user).count()
+        pending_bookings = Booking.objects.filter(
+            rented_property__owner=user,
+            status='pending'
+        ).count()
+        active_bookings = Booking.objects.filter(
+            rented_property__owner=user,
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             status__in=['confirmed', 'active']
         ).count()
         
         # Revenue
         total_revenue = Booking.objects.filter(
+<<<<<<< HEAD
             property_rented__owner=user,
+=======
+            rented_property__owner=user,
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             status__in=['confirmed', 'active', 'completed']
         ).aggregate(total=models.Sum('total_price'))['total'] or 0
         
         upcoming_payments = BookingPayment.objects.filter(
+<<<<<<< HEAD
             booking__property_rented__owner=user,
+=======
+            booking__rented_property__owner=user,
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
             status='pending',
             due_date__gte=timezone.now().date()
         ).aggregate(total=models.Sum('amount'))['total'] or 0
         
         # Recent bookings
         recent_bookings = Booking.objects.filter(
+<<<<<<< HEAD
             property_rented__owner=user
         ).select_related('user', 'property_rented').order_by('-created_at')[:5]
+=======
+            rented_property__owner=user
+        ).select_related('user', 'rented_property').order_by('-created_at')[:5]
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         
         return Response({
             'properties': {
@@ -717,6 +927,11 @@ class HostDashboardView(APIView):
         })
 
 
+@extend_schema(
+    tags=['Dashboards'],
+    summary='Tenant dashboard',
+    responses={200: TenantDashboardSerializer},
+)
 class TenantDashboardView(APIView):
     """Dashboard statistics for tenants"""
     permission_classes = [permissions.IsAuthenticated]
@@ -756,7 +971,11 @@ class TenantDashboardView(APIView):
         # Recent bookings
         recent_bookings = Booking.objects.filter(
             user=user
+<<<<<<< HEAD
         ).select_related('property_rented').order_by('-created_at')[:5]
+=======
+        ).select_related('rented_property').order_by('-created_at')[:5]
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
         
         return Response({
             'bookings': {
@@ -769,3 +988,13 @@ class TenantDashboardView(APIView):
             'next_booking': BookingSerializer(next_booking).data if next_booking else None,
             'recent_bookings': BookingSerializer(recent_bookings, many=True).data
         })
+
+# ============ CONFIG VIEWS ============
+
+class CurrencyChoicesView(APIView):
+    """Get available currency choices"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        choices = [{"value": code, "label": str(name)} for code, name in Property.CURRENCY_CHOICES]
+        return Response(choices)

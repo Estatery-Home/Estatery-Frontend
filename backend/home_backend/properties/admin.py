@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+<<<<<<< HEAD
 from .models import (
     Property,
     PropertyImage,
@@ -81,3 +82,13 @@ class PropertyReviewAdmin(admin.ModelAdmin):
     list_filter = ('rating',)
     search_fields = ('comment', 'user__username', 'property__title')
     raw_id_fields = ('booking', 'property', 'user')
+=======
+from .models import PromoCode
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'discount_type', 'discount_value', 'is_active', 'times_redeemed', 'valid_until')
+    list_filter = ('is_active', 'discount_type')
+    search_fields = ('code', 'description')
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b

@@ -8,7 +8,7 @@ import { SignupHero } from "@/components/auth/SignupHero";
 
 export default function Signup() {
   return (
-    <main className="flex min-h-screen w-full flex-col bg-white lg:flex-row lg:overflow-hidden">
+    <main className="flex min-h-screen w-full flex-col bg-white font-sans antialiased text-[#1e293b] lg:flex-row lg:overflow-hidden">
       {/* Left: Registration form */}
       <SignupForm />
       {/* Right: Hero section with branding */}

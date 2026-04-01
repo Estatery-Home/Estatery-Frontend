@@ -7,3 +7,4 @@ export { ListingsChart } from "./ListingsChart";
 export { MyProperties } from "./MyProperties";
 export { RecentPayments } from "./RecentPayments";
 export { AddPropertyModal } from "./AddPropertyModal";
+export { AddPropertyFab } from "./AddPropertyFab";

@@ -2,36 +2,42 @@
 
 /**
  * Recent payments table – API-aligned with BookingPayment shape.
- * payment_type: deposit | rent | late_fee | utility | damage | refund
- * status: pending | paid | overdue | refunded | cancelled
- * Display fields property_title, customer come from booking in API.
+ * Premium visualization with hover animations and modern table styling.
  */
 import * as React from "react";
 import { Search, Filter, ArrowUpDown, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Pagination } from "@/components/ui";
+import { Pagination } from "@/components/ui/pagination"; 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { PaymentTypeApi, PaymentStatusApi } from "@/lib/api-types";
+// Note: Using standard string/number fallback types since api-types might vary.
+type LocalPaymentType = "deposit" | "rent" | "late_fee" | "utility" | "damage" | "refund" | string;
+type LocalPaymentStatus = "pending" | "paid" | "overdue" | "refunded" | "cancelled" | string;
 
 const PAGE_SIZE = 8;
 
-/** Payment row for table – API BookingPayment fields + property_title, customer from booking */
 type PaymentDisplay = {
   id: number;
   booking: number;
-  payment_type: PaymentTypeApi;
+  payment_type: LocalPaymentType;
   month_number: number;
   amount: string;
   due_date: string;
-  status: PaymentStatusApi;
+  status: LocalPaymentStatus;
   paid_date?: string | null;
   transaction_id?: string;
-  /** From booking – for display */
   property_title?: string;
   customer?: string;
 };
 
-const PAYMENT_TYPE_LABEL: Record<PaymentTypeApi, string> = {
+const PAYMENT_TYPE_LABEL: Record<string, string> = {
   deposit: "Deposit",
   rent: "Rent",
   late_fee: "Late Fee",
@@ -55,7 +61,7 @@ const INITIAL_PAYMENTS: PaymentDisplay[] = [
   { id: 23498, booking: 112, payment_type: "rent", month_number: 2, amount: "720.00", due_date: "2025-07-19", status: "paid", property_title: "Downtown Loft", customer: "Rachel Green" },
 ];
 
-const STATUS_OPTIONS: { value: PaymentStatusApi; label: string }[] = [
+const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "paid", label: "Paid" },
   { value: "overdue", label: "Overdue" },
@@ -63,12 +69,12 @@ const STATUS_OPTIONS: { value: PaymentStatusApi; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-const statusClass: Record<PaymentStatusApi, string> = {
-  pending: "bg-[#fef9c3] text-[#a16207]",
-  paid: "bg-[#dcfce7] text-[#16a34a]",
-  overdue: "bg-[#fee2e2] text-[#dc2626]",
-  refunded: "bg-[#e0e7ff] text-[#4f46e5]",
-  cancelled: "bg-[#fee2e2] text-[#dc2626]",
+const statusClass: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-amber-100",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-emerald-100",
+  overdue: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-rose-100",
+  refunded: "bg-indigo-50 text-indigo-700 border-indigo-200/60 shadow-indigo-100",
+  cancelled: "bg-slate-50 text-slate-700 border-slate-200/60 shadow-slate-100",
 };
 
 const FILTER_OPTIONS = [
@@ -79,6 +85,7 @@ const FILTER_OPTIONS = [
   { value: "refunded", label: "Refunded" },
   { value: "cancelled", label: "Cancelled" },
 ] as const;
+
 const SORT_BY_OPTIONS = [
   { value: "All", label: "Sort by" },
   { value: "rent", label: "Rent" },
@@ -86,14 +93,27 @@ const SORT_BY_OPTIONS = [
   { value: "late_fee", label: "Late Fee" },
 ] as const;
 
-type ConfirmState = { paymentId: number; fromStatus: PaymentStatusApi; toStatus: PaymentStatusApi } | null;
+type ConfirmState = { paymentId: number; fromStatus: string; toStatus: string } | null;
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatAmount(amount: string) {
   return `₵${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+}
+
+// Generate consistent vibrant colors from a string (for avatars)
+function getAvatarColors(name: string) {
+  const charCode = name.charCodeAt(0) || 65;
+  const colors = [
+    "from-violet-500 to-fuchsia-500",
+    "from-blue-500 to-cyan-500",
+    "from-rose-400 to-orange-400",
+    "from-emerald-400 to-teal-500",
+    "from-amber-400 to-orange-500",
+  ];
+  return colors[charCode % colors.length];
 }
 
 export function RecentPayments() {
@@ -108,7 +128,7 @@ export function RecentPayments() {
   const [confirmState, setConfirmState] = React.useState<ConfirmState>(null);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
 
-  const handleStatusChangeRequest = (payment: PaymentDisplay, newStatus: PaymentStatusApi) => {
+  const handleStatusChangeRequest = (payment: PaymentDisplay, newStatus: string) => {
     setOpenMenuId(null);
     setConfirmState({
       paymentId: payment.id,
@@ -167,166 +187,220 @@ export function RecentPayments() {
   }, [openMenuId]);
 
   return (
-    <div className="rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-      <h3 className="mb-4 text-lg font-semibold text-[#1e293b]">Recent Payments</h3>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#64748b]" />
-          <input
-            type="search"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-[#e2e8f0] bg-white py-2 pl-9 pr-3 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-            aria-label="Search payments"
-          />
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative z-0">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent Payments</h3>
+          <p className="text-[13px] text-slate-500 mt-0.5">Manage and track your incoming transactions</p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2">
-          <Filter className="size-4 shrink-0 text-[#64748b]" aria-hidden />
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="min-w-[100px] border-none bg-transparent text-sm text-[#1e293b] focus:outline-none focus:ring-0"
-            aria-label="Filter by status"
-          >
-            {FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2">
-          <ArrowUpDown className="size-4 shrink-0 text-[#64748b]" aria-hidden />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="min-w-[90px] border-none bg-transparent text-sm text-[#1e293b] focus:outline-none focus:ring-0"
-            aria-label="Sort by type"
-          >
-            {SORT_BY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative flex-1 min-w-[200px] group">
+            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+            <input
+              type="search"
+              placeholder="Search payments..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+              aria-label="Search payments"
+            />
+          </div>
+          
+          {/* Filter Dropdown */}
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none">
+              <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 min-w-0">
+                <Filter className="size-4 shrink-0 text-slate-400 group-focus:text-indigo-500" aria-hidden />
+                <SelectValue placeholder="Filter" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-100 bg-white/95 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in slide-in-from-top-1 z-[100]">
+              {FILTER_OPTIONS.map((opt) => (
+                <SelectItem 
+                  key={opt.value} 
+                  value={opt.value} 
+                  className="rounded-md font-medium text-slate-700 focus:bg-indigo-50 focus:text-indigo-700 cursor-pointer mx-1 my-0.5 px-3 py-2"
+                >
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Sort Dropdown */}
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none">
+              <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 min-w-0">
+                <ArrowUpDown className="size-4 shrink-0 text-slate-400 group-focus:text-indigo-500" aria-hidden />
+                <SelectValue placeholder="Sort by" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-100 bg-white/95 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in slide-in-from-top-1 z-[100]">
+              {SORT_BY_OPTIONS.map((opt) => (
+                <SelectItem 
+                  key={opt.value} 
+                  value={opt.value} 
+                  className="rounded-md font-medium text-slate-700 focus:bg-indigo-50 focus:text-indigo-700 cursor-pointer mx-1 my-0.5 px-3 py-2"
+                >
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+
+      <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm">
+        <table className="w-full min-w-[760px] text-sm text-left">
           <thead>
-            <tr className="border-b border-[#e2e8f0] text-left text-[#64748b]">
-              <th className="pb-3 pr-4">
-                <input type="checkbox" className="rounded border-[#cbd5e1]" aria-label="Select all" />
+            <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-500">
+              <th className="py-3.5 pl-5 pr-2 w-10">
+                <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600/20 cursor-pointer" aria-label="Select all" />
               </th>
-              <th className="pb-3 pr-4 font-medium">Payment ID</th>
-              <th className="pb-3 pr-4 font-medium">Due Date</th>
-              <th className="pb-3 pr-4 font-medium">Property</th>
-              <th className="pb-3 pr-4 font-medium">Customer</th>
-              <th className="pb-3 pr-4 font-medium">Type</th>
-              <th className="pb-3 pr-4 font-medium">Amount</th>
-              <th className="pb-3 pr-4 font-medium">Status</th>
-              <th className="pb-3 w-10" />
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Payment ID</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Property</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Customer</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Due Date</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Type</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Amount</th>
+              <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Status</th>
+              <th className="py-3.5 pr-4 pl-2 w-10" />
             </tr>
           </thead>
-          <tbody>
-            {pageRows.map((p) => (
-              <tr
-                key={p.id}
-                className="border-b border-[#e2e8f0] transition-colors hover:bg-[#f8fafc]"
-              >
-                <td className="py-3 pr-4">
-                  <input type="checkbox" className="rounded border-[#cbd5e1]" aria-label={`Select ${p.id}`} />
-                </td>
-                <td className="py-3 pr-4 font-medium text-[#1e293b]">{p.id}</td>
-                <td className="py-3 pr-4 text-[#64748b]">{formatDate(p.due_date)}</td>
-                <td className="py-3 pr-4">
-                  <p className="font-medium text-[#1e293b]">{p.property_title ?? "—"}</p>
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-[var(--logo-muted)] text-xs font-medium text-[var(--logo)]">
-                      {(p.customer ?? "?").slice(0, 1)}
-                    </div>
-                    {p.customer ?? "—"}
-                  </div>
-                </td>
-                <td className="py-3 pr-4">
-                  <span className="rounded-md bg-[var(--logo-muted)] px-2 py-0.5 text-xs font-medium text-[var(--logo)]">
-                    {PAYMENT_TYPE_LABEL[p.payment_type]}
-                  </span>
-                </td>
-                <td className="py-3 pr-4 font-medium text-[#1e293b]">{formatAmount(p.amount)}</td>
-                <td className="py-3 pr-4">
-                  <span
-                    className={cn(
-                      "inline-flex rounded-md px-2 py-0.5 text-xs font-medium capitalize",
-                      statusClass[p.status] ?? "bg-[#f1f5f9] text-[#64748b]"
-                    )}
-                  >
-                    {p.status}
-                  </span>
-                </td>
-                <td className="relative py-3">
-                  <div
-                    ref={openMenuId === p.id ? (el) => { menuRef.current = el; } : undefined}
-                    className="relative inline-flex"
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuId((prev) => (prev === p.id ? null : p.id));
-                      }}
-                      className="flex size-8 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-                      aria-label="More options"
-                      aria-expanded={openMenuId === p.id}
-                    >
-                      <MoreVertical className="size-4" />
-                    </button>
-                    {openMenuId === p.id && (
-                      <div
-                        className="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {STATUS_OPTIONS.filter((s) => s.value !== p.status).map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => handleStatusChangeRequest(p, opt.value)}
-                            className="w-full px-3 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc]"
-                          >
-                            Mark as {opt.label}
-                          </button>
-                        ))}
+          <tbody className="divide-y divide-slate-100/60 bg-white">
+            {pageRows.map((p) => {
+              const avatarGradient = getAvatarColors(p.customer ?? "?");
+              return (
+                <tr
+                  key={p.id}
+                  className="group relative transition-all duration-200 hover:bg-slate-50/80 hover:shadow-[0_0_15px_rgba(0,0,0,0.02)]"
+                >
+                  <td className="py-3.5 pl-5 pr-2">
+                    <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600/20 cursor-pointer" aria-label={`Select ${p.id}`} />
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span className="font-semibold text-slate-700">#{p.id}</span>
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <p className="font-semibold text-slate-900 truncate max-w-[160px]" title={p.property_title ?? "—"}>
+                      {p.property_title ?? "—"}
+                    </p>
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr text-xs font-bold text-white shadow-sm ring-2 ring-white",
+                        avatarGradient
+                      )}>
+                        {(p.customer ?? "?").slice(0, 1).toUpperCase()}
                       </div>
-                    )}
+                      <span className="font-medium text-slate-700">{p.customer ?? "—"}</span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-3 font-medium text-slate-500 whitespace-nowrap">
+                    {formatDate(p.due_date)}
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span className="inline-flex rounded-lg bg-slate-100 border border-slate-200/60 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      {PAYMENT_TYPE_LABEL[p.payment_type] || p.payment_type}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3 font-bold text-slate-900 whitespace-nowrap">
+                    {formatAmount(p.amount)}
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize shadow-sm",
+                        statusClass[p.status] ?? "bg-slate-50 text-slate-700 border-slate-200/60"
+                      )}
+                    >
+                      <span className="mr-1.5 size-1.5 rounded-full bg-current opacity-75" />
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="relative py-3.5 pr-5 pl-2">
+                    <div
+                      ref={openMenuId === p.id ? (el) => { menuRef.current = el; } : undefined}
+                      className="relative inline-flex"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId((prev) => (prev === p.id ? null : p.id));
+                        }}
+                        className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                        aria-label="More options"
+                        aria-expanded={openMenuId === p.id}
+                      >
+                        <MoreVertical className="size-4" />
+                      </button>
+                      
+                      {openMenuId === p.id && (
+                        <div
+                          className="absolute right-0 top-full z-50 mt-1 min-w-[160px] animate-in fade-in slide-in-from-top-1 rounded-xl border border-slate-100 bg-white/95 p-1.5 shadow-xl backdrop-blur-xl"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                            Update Status
+                          </div>
+                          <div className="space-y-0.5">
+                            {STATUS_OPTIONS.filter((s) => s.value !== p.status).map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => handleStatusChangeRequest(p, opt.value)}
+                                className="w-full flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+                              >
+                                Mark as {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-6 py-12 text-center">
+                  <div className="mx-auto flex max-w-[400px] flex-col items-center justify-center text-center">
+                    <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-slate-50">
+                      <Search className="size-6 text-slate-400" />
+                    </div>
+                    <h3 className="mb-1 text-sm font-bold text-slate-900">No payments found</h3>
+                    <p className="text-sm text-slate-500">
+                      We couldn't find any payments matching your current filters. Try adjusting your search or clearing the filters.
+                    </p>
                   </div>
                 </td>
               </tr>
-            ))}
-                    {filtered.length === 0 && (
-                      <tr>
-                        <td colSpan={9} className="px-4 py-8 text-center text-sm text-[#94a3b8]">
-                          No payments match your search.
-                        </td>
-                      </tr>
-                    )}
+            )}
           </tbody>
         </table>
       </div>
-      <Pagination
-        totalItems={filtered.length}
-        pageSize={PAGE_SIZE}
-        currentPage={safePage}
-        onPageChange={setPage}
-        itemLabel="payments"
-      />
+      
+      <div className="mt-5">
+        <Pagination
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          currentPage={safePage}
+          onPageChange={setPage}
+          itemLabel="payments"
+        />
+      </div>
 
+      {/* Confirmation Modal */}
       {confirmState && (
-        <>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div
-            className="fixed inset-0 z-50 bg-black/30"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in"
             onClick={() => setConfirmState(null)}
             aria-hidden
           />
@@ -334,36 +408,62 @@ export function RecentPayments() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="status-confirm-title"
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-xl"
+            className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
           >
-            <h2 id="status-confirm-title" className="text-lg font-semibold text-[#1e293b]">
-              Change status
-            </h2>
-            <p className="mt-2 text-sm text-[#64748b]">
-              Are you sure you want to change{" "}
-              <span className="font-medium text-[#1e293b] capitalize">{confirmState.fromStatus}</span> to{" "}
-              <span className="font-medium text-[#1e293b] capitalize">{confirmState.toStatus}</span>?
-            </p>
-            <div className="mt-6 flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirmState(null)}
-                className="flex-1 rounded-lg border-[#e2e8f0] hover:bg-[#f8fafc]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleConfirmStatusChange}
-                className="flex-1 rounded-lg bg-[var(--logo)] text-white hover:opacity-90"
-              >
-                Confirm
-              </Button>
+            <div className="p-6">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-indigo-50">
+                <ArrowUpDown className="size-6 text-indigo-600" />
+              </div>
+              <h2 id="status-confirm-title" className="text-xl font-bold text-slate-900">
+                Update payment status?
+              </h2>
+              <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                You are about to change the payment status from{" "}
+                <span className="inline-flex items-center rounded font-semibold text-slate-700 border border-slate-200 px-1 bg-slate-50 capitalize">{confirmState.fromStatus}</span> to{" "}
+                <span className={cn("inline-flex items-center rounded font-bold px-1.5 capitalize", 
+                  statusClass[confirmState.toStatus]?.replace("shadow-", "") // Reuse our status styles briefly here
+                )}>{confirmState.toStatus}</span>.
+              </p>
+              <div className="mt-8 flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmState(null)}
+                  className="flex-1 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] transition-transform"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmStatusChange}
+                  className="flex-1 rounded-xl bg-indigo-600 font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/20 active:scale-[0.98] transition-all"
+                >
+                  Confirm
+                </Button>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
+  );
+}
+
+function ChevronDownIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }

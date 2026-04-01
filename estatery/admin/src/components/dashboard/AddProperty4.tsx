@@ -61,20 +61,6 @@ export function AddPropertyMediaStep({
     <div className="space-y-5">
       <h3 className="text-lg font-semibold text-[#1e293b]">Images &amp; Media</h3>
 
-      <div className="space-y-2">
-        <Label htmlFor="upload-media" className="text-[#1e293b]">
-          Upload Media
-        </Label>
-        <button
-          id="upload-media"
-          type="button"
-          onClick={handleBrowseClick}
-          className="flex w-full items-center justify-between rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-left text-sm text-[#1e293b] shadow-sm transition-colors hover:border-[var(--logo)] hover:bg-[var(--logo-muted)]/40"
-        >
-          <span>{mediaType}</span>
-          <span className="text-xs text-[#64748b]">Change</span>
-        </button>
-      </div>
 
       <div className="space-y-2">
         <Label className="text-[#1e293b]">Upload Property Photos</Label>
@@ -101,6 +87,7 @@ export function AddPropertyMediaStep({
           multiple
           className="hidden"
           onChange={handleFilesChange}
+          required
         />
       </div>
     </div>

@@ -24,6 +24,7 @@ export const api = {
     checkAvailability: (id: number) => `${API_BASE}/properties/${id}/check-availability/`,
     propertyCalendar: (id: number) => `${API_BASE}/properties/${id}/calendar/`,
     propertyReviews: (id: number) => `${API_BASE}/properties/${id}/reviews/`,
+    currencies: `${API_BASE}/currencies/`,
     /** Bookings */
     bookings: `${API_BASE}/bookings/`,
     myBookings: `${API_BASE}/bookings/my/`,
@@ -40,6 +41,12 @@ export const api = {
     /** Dashboards */
     dashboardHost: `${API_BASE}/dashboard/host/`,
     dashboardTenant: `${API_BASE}/dashboard/tenant/`,
+    /** Promo / discounts (admin: staff or user_type admin) */
+    adminDiscounts: `${API_BASE}/admin/discounts/`,
+    adminDiscountDetail: (id: number) => `${API_BASE}/admin/discounts/${id}/`,
+    discountsValidate: `${API_BASE}/discounts/validate/`,
+    countries: `${API_BASE}/countries/`,
+    customerProperties: `${API_BASE}/customer/properties/`,
   },
 };
 

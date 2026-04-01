@@ -50,7 +50,7 @@ export default function CreateNewPassword() {
               <Lock className="size-8 text-[var(--logo)]" />
             </div>
           </div>
-          <h1 className="text-center text-2xl font-bold text-[#1e293b]">
+          <h1 className="text-center text-xl font-bold text-[#1e293b]">
             Create New Password
           </h1>
           <p className="mt-2 text-center text-sm text-[#64748b]">
@@ -72,7 +72,7 @@ export default function CreateNewPassword() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af]",
+                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af] bg-white text-black",
                     error && "border-red-500"
                   )}
                   autoComplete="new-password"
@@ -100,7 +100,7 @@ export default function CreateNewPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={cn(
-                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af]",
+                    "w-full rounded-lg border-[#93c5fd] pr-10 placeholder:text-[#9ca3af] bg-white text-black",
                     error && "border-red-500"
                   )}
                   autoComplete="new-password"

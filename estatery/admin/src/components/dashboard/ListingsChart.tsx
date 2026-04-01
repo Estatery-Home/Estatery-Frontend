@@ -2,7 +2,7 @@
 
 /**
  * Listings chart – rent vs sale by week/month/year.
- * Bar chart with range selector; mock data.
+ * Premium visualization with gradients, glassmorphism, and animations.
  */
 import * as React from "react";
 import { RefreshCw, ChevronDown, TrendingUp } from "lucide-react";
@@ -24,17 +24,17 @@ const weeklyData = WEEKLY_LABELS.map((label, i) => ({
 const monthlyData = [
   { label: "1 - 5", rent: 420, sale: 400 },
   { label: "6 - 10", rent: 380, sale: 600 },
-  { label: "11 - 15", rent: 109, sale: 45 },
+  { label: "11 - 15", rent: 509, sale: 345 },
   { label: "16 - 20", rent: 520, sale: 220 },
-  { label: "21 - 25", rent: 480, sale: 190 },
-  { label: "26 - 30", rent: 550, sale: 210 },
+  { label: "21 - 25", rent: 480, sale: 290 },
+  { label: "26 - 30", rent: 650, sale: 410 },
 ];
 
 /** Mock data: rent and sale counts per quarter */
 const yearlyData = YEARLY_LABELS.map((label, i) => ({
   label,
-  rent: [320, 380, 410, 390][i] ?? 375,
-  sale: [120, 145, 160, 150][i] ?? 144,
+  rent: [320, 480, 610, 590][i] ?? 375,
+  sale: [120, 245, 360, 250][i] ?? 144,
 }));
 
 /** Return the data array for the selected time range */
@@ -49,186 +49,203 @@ function getData(range: Range) {
   }
 }
 
-const Y_LABELS = ["₵0", "₵200", "₵400", "₵600", "₵800", "₵1K"];
+const Y_LABELS = ["0", "200", "400", "600", "800", "1K"];
 const Y_SCALE_MAX = 1000; // Fixed scale so bar heights match Y-axis figures
 const AVG_AT = 600;       // Horizontal "Avg" line sits at this value on the Y-axis
 
 export function ListingsChart() {
-  // Selected time range (weekly, monthly, yearly)
   const [range, setRange] = React.useState<Range>("monthly");
-  // True while refresh button is animating (spinning)
   const [animating, setAnimating] = React.useState(false);
-  // Index of bar currently hovered (for tooltip and highlight)
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
   const data = getData(range);
   const scaleMax = Y_SCALE_MAX;
 
-  /** Trigger refresh animation (spinning icon for 400ms) */
   const handleRefresh = () => {
     setAnimating(true);
-    setTimeout(() => setAnimating(false), 400);
+    setTimeout(() => setAnimating(false), 600);
   };
 
   return (
-    <div className="flex h-full min-h-[320px] flex-col rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm sm:min-h-[360px] sm:p-5">
+    <div className="flex min-h-[260px] flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:min-h-[300px] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       {/* Header: title left, dropdown + refresh right */}
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-4">
-        <h3 className="text-lg font-semibold text-[#1e293b]">Total Listings</h3>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 tracking-tight">Total Listings Overview</h3>
+          <p className="text-sm text-slate-500 mt-0.5">Track your rental and sales performance</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="relative group">
             <select
               value={range}
               onChange={(e) => setRange(e.target.value as Range)}
-              className="appearance-none rounded-lg border border-[#e2e8f0] bg-white py-2 pl-3 pr-8 text-sm text-[#1e293b] transition-colors hover:bg-[#f8fafc] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+              className="appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-sm font-medium text-slate-700 transition-all cursor-pointer group-hover:bg-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-[#64748b]" aria-hidden />
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-hover:text-slate-600 w-4 h-4" aria-hidden />
           </div>
           <button
             type="button"
             onClick={handleRefresh}
-            className="flex size-9 items-center justify-center rounded-full border border-[#e2e8f0] bg-white text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-all hover:bg-white hover:text-indigo-600 hover:shadow-sm hover:border-indigo-100 active:scale-95"
             aria-label="Refresh chart"
           >
-            <RefreshCw className={cn("size-4", animating && "animate-spin")} />
+            <RefreshCw className={cn("w-4 h-4", animating && "animate-spin text-indigo-600")} />
           </button>
         </div>
       </div>
 
-      {/* Big number (834), trend (10.5%), "Last updated" text, and Rent/Sale legend */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-baseline gap-2 text-sm">
-          <span className="text-xl font-bold text-[#1e293b]">834</span>
-          <span className="flex items-center gap-0.5 font-medium text-[var(--logo)]">
-            <TrendingUp className="size-4" />
-            10,5%
-          </span>
-          <span className="text-[#64748b]">Last updated: July 08, 2025</span>
-        </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <span className="size-3 rounded-sm bg-[#1e40af]" />
-            <span className="text-sm text-[#64748b]">Property Rent</span>
+      {/* Stats and Legend */}
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline gap-3">
+            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">834</span>
+            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-600 border border-emerald-100/50">
+              <TrendingUp className="w-3 h-3" />
+              10.5%
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="size-3 rounded-sm bg-[#84cc16]" />
-            <span className="text-sm text-[#64748b]">Property Sale</span>
+          <span className="text-xs font-medium text-slate-400">vs last period</span>
+        </div>
+        <div className="flex gap-5 px-1">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-gradient-to-tr from-indigo-600 to-indigo-400 shadow-sm shadow-indigo-200 transition-transform group-hover:scale-110">
+              <div className="absolute inset-0 rounded-[4px] bg-white opacity-0 mix-blend-overlay transition-opacity group-hover:opacity-20" />
+            </div>
+            <span className="text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-900">Rentals</span>
+          </div>
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-gradient-to-tr from-emerald-500 to-emerald-300 shadow-sm shadow-emerald-200 transition-transform group-hover:scale-110">
+              <div className="absolute inset-0 rounded-[4px] bg-white opacity-0 mix-blend-overlay transition-opacity group-hover:opacity-20" />
+            </div>
+            <span className="text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-900">Sales</span>
           </div>
         </div>
       </div>
 
       {/* Chart area */}
-      <div className="relative flex flex-1 min-h-[240px] flex-col sm:min-h-[280px]">
-        <div className="flex flex-1 gap-2 pr-2">
+      <div className="relative flex flex-1 min-h-[220px] flex-col mt-2">
+        <div className="flex flex-1 gap-4 pr-1">
           {/* Y-axis labels */}
-          <div className="flex flex-col justify-between pb-6 pt-0 text-xs text-[#64748b]">
+          <div className="flex flex-col justify-between pb-8 pt-0 text-[11px] font-semibold text-slate-400 tabular-nums items-end">
             {Y_LABELS.map((l) => (
-              <span key={l}>{l}</span>
+              <span key={l} className="translate-y-1/2">{l}</span>
             ))}
           </div>
           {/* Chart + grid */}
           <div className="relative flex-1 min-h-0 flex flex-col">
-            {/* Dashed grid lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pb-6">
+            {/* Grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pb-8">
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
-                  className="w-full border-t border-dashed border-[#e2e8f0]"
+                  className="w-full border-t border-slate-100"
                   style={{ marginTop: i === 0 ? 0 : undefined }}
                 />
               ))}
             </div>
+            
             {/* Avg line at ₵600 on Y-axis (60% from bottom) */}
             <div
-              className="absolute left-0 right-0 border-t-2 border-dashed border-[#1e293b]"
-              style={{
-                bottom: `calc(${(AVG_AT / scaleMax) * 100}% + 24px)`,
-              }}
-            />
-            <div
-              className="absolute rounded bg-[#1e293b] px-1.5 py-0.5 text-xs font-medium text-white"
-              style={{
-                left: 0,
-                bottom: `calc(${(AVG_AT / scaleMax) * 100}% + 12px)`,
-              }}
+              className="absolute left-0 right-0 z-0 flex items-center group"
+              style={{ bottom: `calc(${(AVG_AT / scaleMax) * 100}% + 32px)` }}
             >
-              Avg
+              <div className="w-full border-t border-dashed border-indigo-300/60" />
+              <div className="absolute right-0 translate-x-3 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold tracking-wider text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 shadow-sm border border-indigo-100">
+                AVG {AVG_AT}
+              </div>
             </div>
-            {/* Bar groups – each has a rent bar (blue) and sale bar (green), height = (value / scaleMax) * 100% */}
-            <div className="relative z-10 flex flex-1 items-end justify-between gap-1 pb-6 sm:gap-2">
-              {data.map((d, i) => (
-                <div
-                  key={`${range}-${d.label}`}
-                  className="relative flex min-w-0 flex-1 flex-col items-center gap-1 cursor-pointer"
-                  onMouseEnter={() => setHoveredIndex(i)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onFocus={() => setHoveredIndex(i)}
-                  onBlur={() => setHoveredIndex(null)}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`${d.label}: Rent ${d.rent}, Sale ${d.sale}`}
-                >
+
+            {/* Bars container */}
+            <div className="relative z-10 flex flex-1 items-end justify-between gap-2 pb-8 sm:gap-4 md:gap-6 pt-2">
+              {data.map((d, i) => {
+                const isHovered = hoveredIndex === i;
+                const isNotHovered = hoveredIndex !== null && !isHovered;
+                
+                return (
                   <div
-                    className={cn(
-                      "flex h-full w-full max-w-[64px] gap-0.5 sm:gap-1 items-end justify-center rounded-t transition-all duration-300",
-                      hoveredIndex === i && "ring-2 ring-[var(--logo)]/40 ring-offset-2 ring-offset-white"
-                    )}
+                    key={`${range}-${d.label}`}
+                    className="group relative flex min-w-0 flex-1 flex-col items-center justify-end h-full gap-2 cursor-pointer pt-6"
+                    onMouseEnter={() => setHoveredIndex(i)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    onFocus={() => setHoveredIndex(i)}
+                    onBlur={() => setHoveredIndex(null)}
+                    tabIndex={0}
                   >
-                    <div
-                      className={cn(
-                        "w-full rounded-t bg-[#1e40af] transition-all duration-300 ease-out min-h-[6px]",
-                        hoveredIndex === i ? "opacity-100 brightness-110" : "hover:brightness-105"
-                      )}
-                      style={{
-                        height: `${Math.max(6, (d.rent / scaleMax) * 100)}%`,
-                      }}
-                    />
-                    <div
-                      className={cn(
-                        "w-full rounded-t bg-[#84cc16] transition-all duration-300 ease-out min-h-[6px]",
-                        hoveredIndex === i ? "opacity-100 brightness-110" : "hover:brightness-105"
-                      )}
-                      style={{
-                        height: `${Math.max(6, (d.sale / scaleMax) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span
-                    className={cn(
-                      "w-full truncate text-center text-xs transition-colors",
-                      hoveredIndex === i ? "font-semibold text-[#1e293b]" : "text-[#64748b]",
-                      i === 2 && range === "monthly" && "font-semibold text-[#1e293b]"
-                    )}
-                  >
-                    {d.label}
-                  </span>
-                  {/* Tooltip - interactive, stays in view */}
-                  {hoveredIndex === i && (
-                    <div
-                      className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-xl transition-opacity duration-150"
-                      role="tooltip"
-                    >
-                      <p className="text-xs font-semibold text-[#1e293b]">
-                        {range === "monthly"
-                          ? `July ${d.label.split(" - ")[0] ?? ""}, 2025`
-                          : range === "weekly"
-                            ? d.label
-                            : `${d.label} 2025`}
-                      </p>
-                      <p className="mt-1 text-xs text-[#64748b]">
-                        Property Rent <span className="font-medium text-[#1e40af]">{d.rent}</span>
-                      </p>
-                      <p className="text-xs text-[#64748b]">
-                        Property Sale <span className="font-medium text-[#84cc16]">{d.sale}</span>
-                      </p>
+                    {/* Hover highlight column */}
+                    <div className={cn(
+                      "absolute inset-0 -top-4 rounded-xl transition-all duration-300 ease-out z-0",
+                      isHovered ? "bg-slate-50/80 ring-1 ring-slate-100" : "bg-transparent"
+                    )} />
+
+                    {/* Bars */}
+                    <div className="relative z-10 flex h-full w-full max-w-[48px] items-end justify-center gap-1.5 sm:gap-2">
+                      <div
+                        className={cn(
+                          "w-full rounded-t-md bg-gradient-to-t from-indigo-700 to-indigo-400 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden",
+                          isNotHovered && "opacity-40 grayscale-[30%]",
+                          isHovered && "shadow-indigo-300/50 shadow-lg -translate-y-1 brightness-110",
+                          !animating ? "" : "!h-0"
+                        )}
+                        style={{ height: animating ? '0%' : `${Math.max(4, (d.rent / scaleMax) * 100)}%` }}
+                      >
+                         <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent opacity-0 mix-blend-overlay transition-opacity group-hover/bar:opacity-100" />
+                      </div>
+                      <div
+                        className={cn(
+                          "w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-emerald-300 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden delay-[50ms]",
+                          isNotHovered && "opacity-40 grayscale-[30%]",
+                          isHovered && "shadow-emerald-300/50 shadow-lg -translate-y-1 brightness-110",
+                          !animating ? "" : "!h-0"
+                        )}
+                        style={{ height: animating ? '0%' : `${Math.max(4, (d.sale / scaleMax) * 100)}%` }}
+                      >
+                         <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent opacity-0 mix-blend-overlay transition-opacity group-hover/bar:opacity-100" />
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* X-axis Label */}
+                    <span
+                      className={cn(
+                        "relative z-10 w-full truncate text-center text-[11px] font-semibold transition-all duration-300",
+                        isHovered ? "text-indigo-700 scale-110" : "text-slate-400 scale-100"
+                      )}
+                    >
+                      {d.label}
+                    </span>
+
+                    {/* Fancy Tooltip */}
+                    {isHovered && (
+                      <div className="absolute bottom-full left-1/2 z-50 mb-3 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        <div className="relative rounded-xl border border-white/40 bg-white/95 px-4 py-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] backdrop-blur-xl min-w-[140px] before:absolute before:-bottom-2 before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-white/95">
+                          <p className="mb-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                            {range === "monthly" ? `July ${d.label}` : d.label}
+                          </p>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="size-2 rounded-full bg-indigo-500 shadow-sm" />
+                                <span className="text-xs font-medium text-slate-500">Rentals</span>
+                              </div>
+                              <span className="text-xs font-bold text-indigo-700">₵{d.rent}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="size-2 rounded-full bg-emerald-500 shadow-sm" />
+                                <span className="text-xs font-medium text-slate-500">Sales</span>
+                              </div>
+                              <span className="text-xs font-bold text-emerald-700">₵{d.sale}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -45,24 +45,20 @@ export default function HelpCenter() {
     <DashboardLayout>
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--logo)] via-[var(--logo-hover)] to-[#1e40af] p-8 text-white shadow-xl">
-          <div className="absolute right-0 top-0 h-32 w-64 -translate-y-1/2 translate-x-1/4 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute bottom-0 left-0 h-24 w-48 translate-y-1/2 -translate-x-1/4 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative">
-            <h1 className="text-3xl font-bold tracking-tight">Help Center</h1>
-            <p className="mt-2 text-blue-100">
-              Find answers, guides, and support for Luxeyline
-            </p>
-            <div className="relative mt-6 max-w-xl">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-blue-300" />
-              <input
-                type="search"
-                placeholder="Search for help..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border-0 bg-white/95 py-3.5 pl-12 pr-4 text-[#1e293b] placeholder:text-slate-400 shadow-lg transition-all duration-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-white/50"
-              />
-            </div>
+        <div className="rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-sm sm:p-8">
+          <h1 className="text-xl font-bold text-[#1e293b]">Help Center</h1>
+          <p className="mt-1 text-xs text-[#64748b]">
+            Find answers, guides, and support for your workspace.
+          </p>
+          <div className="relative mt-4 max-w-xl">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#94a3b8]" />
+            <input
+              type="search"
+              placeholder="Search for help..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-[#e2e8f0] bg-white py-2.5 pl-10 pr-4 text-sm text-[#1e293b] placeholder:text-[#94a3b8] shadow-sm focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+            />
           </div>
         </div>
 

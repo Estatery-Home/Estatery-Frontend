@@ -29,7 +29,7 @@ export function AddPropertyContactStep({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="contact-name" className="text-[#1e293b]">
-            Contact Person Name
+            Contact Person Name <span className="text-red-500">*</span>
           </Label>
           <Input
             id="contact-name"
@@ -37,11 +37,12 @@ export function AddPropertyContactStep({
             onChange={(e) => onChange("contactName", e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-[#1e293b]">
-            Phone / WhatsApp
+            Phone / WhatsApp <span className="text-red-500">*</span>
           </Label>
           <Input
             id="phone"
@@ -49,11 +50,12 @@ export function AddPropertyContactStep({
             onChange={(e) => onChange("phone", e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className="text-[#1e293b]">
-            Email
+            Email <span className="text-red-500">*</span>
           </Label>
           <Input
             id="email"
@@ -62,11 +64,12 @@ export function AddPropertyContactStep({
             onChange={(e) => onChange("email", e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="agent" className="text-[#1e293b]">
-            Agent Assigned
+            Agent Assigned <span className="text-red-500">*</span>
           </Label>
           <Input
             id="agent"
@@ -74,6 +77,7 @@ export function AddPropertyContactStep({
             onChange={(e) => onChange("agent", e.target.value)}
             placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            required
           />
         </div>
       </div>

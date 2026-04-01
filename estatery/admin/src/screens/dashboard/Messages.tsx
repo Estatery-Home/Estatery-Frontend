@@ -15,9 +15,7 @@ import {
   ChevronRight,
   Phone,
 } from "lucide-react";
-import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
-import { Sidebar, TopBar, LogoutConfirmDialog } from "@/components/dashboard";
-import { useAuth } from "@/contexts/AuthContext";
+import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clientsTableData, getClientDetail } from "@/lib/clients";
@@ -44,9 +42,6 @@ export default function Messages() {
     initialClientId || undefined
   );
 
-  const { logout } = useAuth();
-  const { collapsed: sidebarCollapsed, onToggle } = useSidebarCollapse();
-  const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const [input, setInput] = React.useState("");
   const [chatSearch, setChatSearch] = React.useState("");
 
@@ -98,11 +93,6 @@ export default function Messages() {
         c.propertyName.toLowerCase().includes(term)
     );
   }, [chatSearch]);
-
-  const handleLogoutConfirm = () => {
-    logout();
-    setLogoutDialogOpen(false);
-  };
 
   const pushMessage = (clientId: string, text: string, author: ChatMessage["author"]) => {
     setMessagesByClient((prev) => {
@@ -171,29 +161,14 @@ export default function Messages() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#f1f5f9] to-[#e2e8f0]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={onToggle}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
-      <div
-        className={cn(
-          "flex min-h-screen flex-col transition-[margin] duration-300",
-          sidebarCollapsed ? "ml-[72px]" : "ml-[240px]"
-        )}
-      >
-        <TopBar />
-        <main className="min-h-[calc(100vh-2.75rem)] flex-1 overflow-auto p-6">
-          <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <DashboardLayout>
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
             {/* Header */}
-            <header className="rounded-2xl border border-white/60 bg-white/80 px-6 py-5 shadow-lg shadow-slate-200/50 backdrop-blur-sm">
+            <header className="rounded-xl border border-[#e2e8f0] bg-white px-4 py-4 shadow-sm sm:px-6 sm:py-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="bg-gradient-to-r from-[#1e293b] to-[#475569] bg-clip-text text-2xl font-bold text-transparent">
-                    Messages
-                  </h1>
-                  <p className="mt-1.5 text-sm text-[#64748b]">
+                  <h1 className="text-xl font-bold text-[#1e293b]">Messages</h1>
+                  <p className="mt-1 text-xs text-[#64748b]">
                     Chat with your clients, share files, and keep all communication in one place.
                   </p>
                 </div>
@@ -219,9 +194,9 @@ export default function Messages() {
             </header>
 
             {/* Chat container */}
-            <section className="flex min-h-[520px] flex-col overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl shadow-slate-200/50 md:flex-row">
+            <section className="flex flex-col overflow-x-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm md:flex-row md:items-stretch">
               {/* Chats sidebar */}
-              <aside className="flex w-full flex-col border-b border-[#e2e8f0] bg-gradient-to-b from-[#fafbfc] to-[#f8fafc] md:w-72 md:border-b-0 md:border-r">
+              <aside className="flex w-full shrink-0 flex-col border-b border-[#e2e8f0] bg-gradient-to-b from-[#fafbfc] to-[#f8fafc] md:w-72 md:border-b-0 md:border-r">
                 <div className="border-b border-[#e2e8f0] px-4 py-4">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#94a3b8]" />
@@ -237,7 +212,7 @@ export default function Messages() {
                     {filteredClients.length !== 1 ? "s" : ""}
                   </p>
                 </div>
-                <div className="flex-1 space-y-0.5 overflow-y-auto py-2">
+                <div className="space-y-0.5 py-2">
                   {filteredClients.map((c) => {
                     const msgs = messagesByClient[c.clientId] ?? [];
                     const last = msgs[msgs.length - 1];
@@ -323,12 +298,12 @@ export default function Messages() {
                 <div
                   onClick={handleChatAreaClick}
                   className={cn(
-                    "relative flex-1 overflow-y-auto bg-[linear-gradient(to_bottom,#f8fafc_0%,#ffffff_100%)] px-4 py-4",
+                    "relative bg-[linear-gradient(to_bottom,#f8fafc_0%,#ffffff_100%)] px-4 py-4",
                     selectedClientId && "cursor-text"
                   )}
                 >
                   {!selectedClient ? (
-                    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 text-center">
+                    <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 py-8 text-center md:min-h-[320px]">
                       <div className="flex size-20 items-center justify-center rounded-2xl bg-[var(--logo-muted)]/50">
                         <MessageCircle className="size-10 text-[var(--logo)]" strokeWidth={1.5} />
                       </div>
@@ -342,7 +317,7 @@ export default function Messages() {
                       </div>
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 text-center">
+                    <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 py-8 text-center md:min-h-[320px]">
                       <div className="flex size-16 items-center justify-center rounded-2xl bg-[var(--logo-muted)]/50">
                         <MessageCircle className="size-8 text-[var(--logo)]" strokeWidth={1.5} />
                       </div>
@@ -449,14 +424,7 @@ export default function Messages() {
                 </div>
               </div>
             </section>
-          </div>
-        </main>
       </div>
-      <LogoutConfirmDialog
-        open={logoutDialogOpen}
-        onClose={() => setLogoutDialogOpen(false)}
-        onConfirm={handleLogoutConfirm}
-      />
-    </div>
+    </DashboardLayout>
   );
 }

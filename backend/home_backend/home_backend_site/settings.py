@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     #this filter helps me to preview all fields when i run the backend server 
     'django_filters',
+    'drf_spectacular',
     #LOCAL APPS
     'users',
     'properties',
@@ -169,6 +170,52 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+<<<<<<< HEAD
+=======
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Estatery / Home Backend API',
+    'DESCRIPTION': (
+        'REST API for the Estatery property rental platform: authentication (JWT), '
+        'listings, bookings, payments, reviews, dashboards, promos, and public catalog endpoints.'
+    ),
+    'VERSION': '1.0.0',
+    'CONTACT': {'name': 'API Support'},
+    'LICENSE': {'name': 'Proprietary'},
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api',
+    'TAGS': [
+        {'name': 'Auth', 'description': 'Registration, login, profile, JWT refresh'},
+        {'name': 'Properties', 'description': 'Listings, detail, host "my properties"'},
+        {'name': 'Customer catalog', 'description': 'Public customer-facing listing route'},
+        {'name': 'Geography', 'description': 'Countries and related facets'},
+        {'name': 'Discounts', 'description': 'Promo validation and admin promo CRUD'},
+        {'name': 'Availability', 'description': 'Calendar and availability checks'},
+        {'name': 'Bookings', 'description': 'Tenant bookings'},
+        {'name': 'Host', 'description': 'Host booking management'},
+        {'name': 'Payments', 'description': 'Booking payments and mark-paid'},
+        {'name': 'Reviews', 'description': 'Property reviews and host responses'},
+        {'name': 'Dashboards', 'description': 'Host and tenant summaries'},
+    ],
+    'SECURITY': [{'bearerAuth': []}],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'displayOperationId': False,
+        'filter': True,
+        'persistAuthorization': True,
+    },
+>>>>>>> 298f14e1aa86aee20ab5073700c7bca94129b45b
 }
 
 from datetime import timedelta
