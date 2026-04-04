@@ -174,8 +174,9 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Estatery / Home Backend API',
     'DESCRIPTION': (
-        'REST API for the Estatery property rental platform: authentication (JWT), '
-        'listings, bookings, payments, reviews, dashboards, promos, and public catalog endpoints.'
+        'REST API for the Estatery property rental platform: authentication (JWT, refresh), '
+        'password reset with OTP, generic OTP, listings, bookings, payments, reviews, '
+        'host/tenant dashboards, promo codes, and public/customer catalog endpoints.'
     ),
     'VERSION': '1.0.0',
     'CONTACT': {'name': 'API Support'},
@@ -187,6 +188,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Auth', 'description': 'Registration, login, profile, JWT refresh, password reset, OTP'},
         {'name': 'Properties', 'description': 'Listings, detail, host "my properties"'},
         {'name': 'Customer catalog', 'description': 'Public customer-facing listing route'},
+        {'name': 'Reference', 'description': 'Lookup data (e.g. currency codes)'},
         {'name': 'Geography', 'description': 'Countries and related facets'},
         {'name': 'Discounts', 'description': 'Promo validation and admin promo CRUD'},
         {'name': 'Availability', 'description': 'Calendar and availability checks'},

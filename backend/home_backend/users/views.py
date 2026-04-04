@@ -58,6 +58,40 @@ LogoutOut = inline_serializer(
     fields={'message': drf_serializers.CharField()},
 )
 
+GenericMessageOut = inline_serializer(
+    name='GenericAuthMessage',
+    fields={'message': drf_serializers.CharField()},
+)
+
+PasswordResetVerifyOut = inline_serializer(
+    name='PasswordResetVerifyResponse',
+    fields={
+        'reset_token': drf_serializers.CharField(),
+        'message': drf_serializers.CharField(),
+    },
+)
+
+AuthErrorDetailOut = inline_serializer(
+    name='AuthErrorDetail',
+    fields={'detail': drf_serializers.CharField()},
+)
+
+OtpVerifySuccessOut = inline_serializer(
+    name='OtpVerifySuccess',
+    fields={
+        'verified': drf_serializers.BooleanField(),
+        'reset_token': drf_serializers.CharField(required=False, allow_null=True),
+    },
+)
+
+OtpVerifyFailureOut = inline_serializer(
+    name='OtpVerifyFailure',
+    fields={
+        'detail': drf_serializers.CharField(),
+        'verified': drf_serializers.BooleanField(),
+    },
+)
+
 @extend_schema(
     tags=['Auth'],
     summary='Register',
@@ -150,6 +184,12 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         ).get(id=self.request.user.id)
 
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Request password reset (send OTP)',
+    request=PasswordResetRequestSerializer,
+    responses={200: GenericMessageOut},
+)
 class PasswordResetRequestView(APIView):
     """Send a one-time code to the user's email (if an account exists)."""
 
@@ -169,6 +209,15 @@ class PasswordResetRequestView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Verify password-reset OTP',
+    request=PasswordResetVerifyOtpSerializer,
+    responses={
+        200: PasswordResetVerifyOut,
+        400: AuthErrorDetailOut,
+    },
+)
 class PasswordResetVerifyOtpView(APIView):
     """Exchange email + OTP for a short-lived signed reset_token."""
 
@@ -195,6 +244,15 @@ class PasswordResetVerifyOtpView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Confirm password reset (set new password)',
+    request=PasswordResetConfirmSerializer,
+    responses={
+        200: GenericMessageOut,
+        400: AuthErrorDetailOut,
+    },
+)
 class PasswordResetConfirmView(APIView):
     """Set a new password using reset_token from verify-otp."""
 
@@ -222,6 +280,12 @@ class PasswordResetConfirmView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Request OTP (password_reset or verify_email)',
+    request=OtpRequestSerializer,
+    responses={200: GenericMessageOut},
+)
 class OtpRequestView(APIView):
     """Request an OTP for password_reset or verify_email (requires existing account)."""
 
@@ -239,6 +303,15 @@ class OtpRequestView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Auth'],
+    summary='Verify OTP (includes reset_token when purpose is password_reset)',
+    request=OtpVerifySerializer,
+    responses={
+        200: OtpVerifySuccessOut,
+        400: OtpVerifyFailureOut,
+    },
+)
 class OtpVerifyView(APIView):
     """Verify an OTP. For password_reset, returns reset_token (same flow as dedicated verify endpoint)."""
 

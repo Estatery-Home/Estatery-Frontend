@@ -12,6 +12,7 @@ from .serializers import (
     PromoCodeSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
     HostDashboardSerializer, TenantDashboardSerializer,
+    CurrencyChoiceSerializer,
 )
 from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
 from .permissions import IsAdminUserType
@@ -896,6 +897,11 @@ class TenantDashboardView(APIView):
 
 # ============ CONFIG VIEWS ============
 
+@extend_schema(
+    tags=['Reference'],
+    summary='Property currency choices',
+    responses={200: CurrencyChoiceSerializer(many=True)},
+)
 class CurrencyChoicesView(APIView):
     """Get available currency choices"""
     permission_classes = [permissions.AllowAny]

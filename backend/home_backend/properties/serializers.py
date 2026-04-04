@@ -637,3 +637,8 @@ class TenantDashboardSerializer(serializers.Serializer):
     upcoming_payments = serializers.JSONField()
     next_booking = serializers.JSONField(allow_null=True)
     recent_bookings = serializers.JSONField()
+
+
+class CurrencyChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
