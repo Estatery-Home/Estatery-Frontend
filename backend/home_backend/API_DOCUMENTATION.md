@@ -120,7 +120,157 @@ Invalidate current session (server-side session logout).
 
 ---
 
-### 1.4 Get / Update Profile
+### 1.4 Request password reset (send OTP)
+
+Sends a **6-digit** one-time code to the account email (hashed at rest). Codes expire after **10 minutes**; at most **5** wrong attempts are allowed per active challenge. Responses are generic so email addresses cannot be enumerated.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/request/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+
+**Response** `200 OK` (always the same message, whether or not the email exists):
+
+```json
+{
+  "message": "If an account exists for this email, a verification code was sent."
+}
+```
+
+In development, Django’s **console email backend** prints the message (including the code) to the server terminal. Configure `EMAIL_BACKEND` and `DEFAULT_FROM_EMAIL` in production for real delivery.
+
+---
+
+### 1.5 Verify password reset OTP
+
+Validates the code and returns a **signed `reset_token`** (valid **15 minutes**) used only for the confirm step.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/verify-otp/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `otp` | string | Yes (length 4–12; API issues 6 digits) |
+
+**Response** `200 OK`:
+
+```json
+{
+  "reset_token": "<signed_token>",
+  "message": "Verification successful. Submit a new password with this token."
+}
+```
+
+**Error** `400 Bad Request`:
+
+```json
+{ "detail": "Invalid or expired verification code." }
+```
+
+---
+
+### 1.6 Confirm password reset
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/confirm/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `reset_token` | string | Yes (from verify-otp) |
+| `new_password` | string | Yes (min length 6) |
+
+**Response** `200 OK`:
+
+```json
+{
+  "message": "Password has been reset. You can sign in with your new password."
+}
+```
+
+**Error** `400 Bad Request`: `{"detail": "Invalid or expired reset token."}`
+
+---
+
+### 1.7 Request OTP (generic)
+
+Same OTP generation as password reset, with an explicit **`purpose`**. Only **`password_reset`** and **`verify_email`** are supported; both require an existing user with that email.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/otp/request/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `purpose` | string | No (default: `password_reset`) — `password_reset` \| `verify_email` |
+
+**Response** `200 OK`:
+
+```json
+{ "message": "If this email is eligible, a verification code was sent." }
+```
+
+---
+
+### 1.8 Verify OTP (generic)
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/otp/verify/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `otp` | string | Yes |
+| `purpose` | string | Yes — `password_reset` \| `verify_email` |
+
+**Response** `200 OK` — for `verify_email`:
+
+```json
+{ "verified": true }
+```
+
+For `password_reset`, if verification succeeds:
+
+```json
+{
+  "verified": true,
+  "reset_token": "<signed_token>"
+}
+```
+
+Use `reset_token` with **`POST /api/auth/password-reset/confirm/`** to set the new password.
+
+**Error** `400 Bad Request`:
+
+```json
+{ "detail": "Invalid or expired verification code.", "verified": false }
+```
+
+---
+
+### 1.9 Get / Update Profile
 
 Retrieve or update the authenticated user's profile.
 
@@ -135,7 +285,7 @@ Retrieve or update the authenticated user's profile.
 
 ---
 
-### 1.5 Refresh Token
+### 1.10 Refresh Token
 
 Get a new access token using a valid refresh token.
 
@@ -830,6 +980,11 @@ Validation errors are returned as JSON, e.g.:
 | POST | `/api/auth/register/` | No | Register |
 | POST | `/api/auth/login/` | No | Login |
 | POST | `/api/auth/logout/` | Yes | Logout |
+| POST | `/api/auth/password-reset/request/` | No | Send password-reset OTP |
+| POST | `/api/auth/password-reset/verify-otp/` | No | Verify OTP → `reset_token` |
+| POST | `/api/auth/password-reset/confirm/` | No | Set new password with `reset_token` |
+| POST | `/api/auth/otp/request/` | No | Request OTP (`password_reset` / `verify_email`) |
+| POST | `/api/auth/otp/verify/` | No | Verify OTP (optional `reset_token` for password reset) |
 | GET/PUT/PATCH | `/api/auth/profile/` | Yes | Profile |
 | POST | `/api/auth/token/refresh/` | No | Refresh access token |
 | GET | `/api/properties/` | No | List properties |

@@ -26,3 +26,25 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.get_user_type_display()})"
 
+
+class OtpChallenge(models.Model):
+    class Purpose(models.TextChoices):
+        PASSWORD_RESET = "password_reset", "Password reset"
+        VERIFY_EMAIL = "verify_email", "Verify email"
+
+    email = models.EmailField(db_index=True)
+    purpose = models.CharField(max_length=32, choices=Purpose.choices)
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["email", "purpose", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.email} ({self.purpose})"
+
