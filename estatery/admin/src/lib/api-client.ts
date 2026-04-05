@@ -17,6 +17,11 @@ export const api = {
     logout: `${AUTH_BASE}/logout/`,
     profile: `${AUTH_BASE}/profile/`,
     refreshToken: `${AUTH_BASE}/token/refresh/`,
+    passwordResetRequest: `${AUTH_BASE}/password-reset/request/`,
+    passwordResetVerifyOtp: `${AUTH_BASE}/password-reset/verify-otp/`,
+    passwordResetConfirm: `${AUTH_BASE}/password-reset/confirm/`,
+    otpRequest: `${AUTH_BASE}/otp/request/`,
+    otpVerify: `${AUTH_BASE}/otp/verify/`,
     /** Properties */
     properties: `${API_BASE}/properties/`,
     propertyDetail: (id: number) => `${API_BASE}/properties/${id}/`,
@@ -69,6 +74,22 @@ export function apiHeaders(includeAuth = true): HeadersInit {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
+}
+
+/** Parse DRF-style `detail` string (or first validation message) from JSON error body. */
+export function apiDetailFromResponse(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const d = (data as Record<string, unknown>).detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d) && d.length > 0 && typeof d[0] === "string") return d[0];
+  return undefined;
+}
+
+/** Optional machine-readable error code from API (e.g. email_not_verified). */
+export function apiErrorCode(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const c = (data as Record<string, unknown>).code;
+  return typeof c === "string" ? c : undefined;
 }
 
 /** POST new property to API. Requires auth. Returns created property with id. */

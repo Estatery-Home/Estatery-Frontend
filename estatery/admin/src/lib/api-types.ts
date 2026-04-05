@@ -16,6 +16,7 @@ export type User = {
   phone: string;
   avatar: string | null;
   user_type: UserType;
+  email_verified?: boolean;
 };
 
 export type RegisterRequest = {

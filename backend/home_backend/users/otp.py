@@ -90,4 +90,8 @@ def verify_otp(*, email: str, code: str, purpose: str):
     challenge.save(update_fields=["consumed_at"])
 
     user = CustomUser.objects.filter(email__iexact=email_norm).first()
+    if user is not None and purpose == OtpChallenge.Purpose.VERIFY_EMAIL:
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=["email_verified"])
     return True, user

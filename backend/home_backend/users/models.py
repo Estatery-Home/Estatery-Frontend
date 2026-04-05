@@ -19,7 +19,8 @@ class CustomUser(AbstractUser):
         ('admin', _('Admin')),
     )
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
-    
+    email_verified = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

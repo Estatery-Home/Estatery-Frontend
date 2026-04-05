@@ -502,7 +502,7 @@ class MyBookingsView(generics.ListAPIView):
         if to_date:
             queryset = queryset.filter(check_out__lte=to_date)
         
-        return queryset.select_related('rented_property', 'user').order_by('-created_at')
+        return queryset.select_related('rented_property', 'user', 'review').order_by('-created_at')
 
 
 @extend_schema(tags=['Bookings'])

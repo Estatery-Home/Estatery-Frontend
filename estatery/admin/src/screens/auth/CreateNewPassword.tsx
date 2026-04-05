@@ -1,30 +1,42 @@
 "use client";
 
 /**
- * Create New Password – set new + confirm; validate match and min length.
- * On success redirect to login.
+ * Create New Password – POST /api/auth/password-reset/confirm/ with reset_token from verify-otp.
  */
 import * as React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthCardHeader, AuthCardFooter } from "@/components/auth/AuthCardLayout";
 import { cn } from "@/lib/utils";
+import { api, apiDetailFromResponse, apiHeaders } from "@/lib/api-client";
+
+type LocationState = { resetToken?: string };
 
 export default function CreateNewPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { resetToken } = (location.state ?? {}) as LocationState;
+
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showNew, setShowNew] = React.useState(false);
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
 
-  /* Validate non-empty, match, min 6 chars; then go to login */
-  const handleSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (!resetToken) {
+      navigate("/auth/forgot-password", { replace: true });
+    }
+  }, [resetToken, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!resetToken) return;
     if (!newPassword.trim()) {
       setError("Please enter a new password.");
       return;
@@ -37,8 +49,30 @@ export default function CreateNewPassword() {
       setError("Password must be at least 6 characters.");
       return;
     }
-    navigate("/auth/login");
+    setLoading(true);
+    try {
+      const res = await fetch(api.endpoints.passwordResetConfirm, {
+        method: "POST",
+        headers: apiHeaders(false),
+        body: JSON.stringify({ reset_token: resetToken, new_password: newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(apiDetailFromResponse(data) ?? "Could not reset password. Request a new code.");
+        return;
+      }
+      navigate("/auth/login", {
+        replace: true,
+        state: { bannerMessage: "Password updated. Sign in with your new password." },
+      });
+    } catch {
+      setError("Cannot reach the server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!resetToken) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f1f5f9]">
@@ -54,9 +88,9 @@ export default function CreateNewPassword() {
             Create New Password
           </h1>
           <p className="mt-2 text-center text-sm text-[#64748b]">
-            Please enter a new password. Your new password must be different from previous password.
+            Enter a new password for your account. It will be saved on the server.
           </p>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+          <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-5">
             {error && (
               <p className="text-sm font-medium text-red-600">{error}</p>
             )}
@@ -118,10 +152,11 @@ export default function CreateNewPassword() {
             </div>
             <Button
               type="submit"
+              disabled={loading}
               className="w-full rounded-lg bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
               size="lg"
             >
-              Reset Password
+              {loading ? "Saving…" : "Reset Password"}
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-[#64748b]">

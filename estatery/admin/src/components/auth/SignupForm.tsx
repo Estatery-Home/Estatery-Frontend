@@ -92,7 +92,9 @@ export function SignupForm() {
     setLoading(false);
 
     if (result.success) {
-      navigate("/auth/login");
+      navigate("/auth/verify-otp", {
+        state: { email: email.trim(), flow: "verify_email" as const },
+      });
     } else {
       setSubmitError(result.error ?? "Registration failed.");
     }
