@@ -217,34 +217,76 @@ class BookingSerializer(serializers.ModelSerializer):
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     applied_promo_code = serializers.CharField(source='promo.code', read_only=True, allow_null=True)
 
-    # Writeable fields for creation
+    # API field `property` maps to model FK `rented_property`
     property = serializers.PrimaryKeyRelatedField(
-        source='rented_property',
         queryset=Property.objects.filter(status='available'),
+        source='rented_property',
     )
-    
+
     class Meta:
         model = Booking
         fields = (
-            'id', 'property', 'user',
-            'property_title', 'property_address', 'property_image',
-            'user_name', 'user_email',
-            'check_in', 'check_out', 'guests',
-            'promo_code', 'applied_promo_code',
-            'status', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at',
-            'deposit_refunded', 'deposit_refunded_at',
+            'id',
+            'property',
+            'user',
+            'check_in',
+            'check_out',
+            'guests',
+            'booking_type',
+            'promo_code',
+            'applied_promo_code',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'agreed_monthly_rate',
+            'months_booked',
+            'total_price',
+            'security_deposit',
+            'discount_applied',
+            'emergency_contact',
+            'occupation',
+            'special_requests',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'user_name',
+            'user_email',
         )
         read_only_fields = (
-            'user', 'total_price', 'agreed_monthly_rate', 'months_booked',
-            'security_deposit', 'discount_applied', 'status', 'confirmed_at',
-            'cancelled_at', 'completed_at', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at', 'deposit_refunded', 'deposit_refunded_at',
-            'property_title', 'property_address', 'property_image',
-            'user_name', 'user_email',
+            'user',
+            'booking_type',
+            'total_price',
+            'agreed_monthly_rate',
+            'months_booked',
+            'security_deposit',
+            'discount_applied',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'user_name',
+            'user_email',
             'applied_promo_code',
         )
-    
+
     def get_property_image(self, obj):
         primary = obj.rented_property.primary_image
         if primary:
@@ -387,6 +429,16 @@ class BookingCalendarSerializer(serializers.ModelSerializer):
 class HostBookingSerializer(BookingSerializer):
     """Extended booking serializer for property owners"""
 
+    property = serializers.PrimaryKeyRelatedField(
+        source='rented_property',
+        read_only=True,
+    )
+    property_title = serializers.CharField(source='rented_property.title', read_only=True)
+    property_address = serializers.CharField(source='rented_property.address', read_only=True)
+    property_image = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
     tenant_name = serializers.CharField(source='user.get_full_name', read_only=True)
     tenant_email = serializers.EmailField(source='user.email', read_only=True)
     tenant_phone = serializers.CharField(source='user.phone', read_only=True)
@@ -395,13 +447,15 @@ class HostBookingSerializer(BookingSerializer):
     class Meta(BookingSerializer.Meta):
         fields = BookingSerializer.Meta.fields + (
             'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at',
         )
-        read_only_fields = BookingSerializer.Meta.read_only_fields + (
-            'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at',
-        )
-    
+
+    def get_property_image(self, obj):
+        primary = obj.rented_property.primary_image
+        if primary:
+            if hasattr(primary, 'image') and primary.image:
+                return primary.image.url
+        return None
+
     def get_payments(self, obj):
         payments = obj.payments.all().order_by('due_date')
         return BookingPaymentSerializer(payments, many=True).data
@@ -588,3 +642,8 @@ class TenantDashboardSerializer(serializers.Serializer):
     upcoming_payments = serializers.JSONField()
     next_booking = serializers.JSONField(allow_null=True)
     recent_bookings = serializers.JSONField()
+
+
+class CurrencyChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
