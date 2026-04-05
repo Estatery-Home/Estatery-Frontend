@@ -12,8 +12,9 @@ from .serializers import (
     PromoCodeSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
     HostDashboardSerializer, TenantDashboardSerializer,
-    CurrencyChoiceSerializer,
+    LocaleChoiceSerializer,
 )
+from .locale_data import LANGUAGE_CHOICES, TIMEZONE_CHOICES
 from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
 from .permissions import IsAdminUserType
 from datetime import datetime, timedelta
@@ -294,7 +295,7 @@ class PropertyAvailabilityCheckView(APIView):
         bookings = Booking.objects.filter(
             rented_property=property_obj,
             status__in=['confirmed', 'active'],
-            check_out__gte=timezone.now().date(),
+            check_out__gte=timezone.now().date()
         ).values('check_in', 'check_out', 'status')[:50]
         
         return Response({
@@ -334,7 +335,7 @@ class PropertyMonthlyCalendarView(APIView):
             rented_property=property_obj,
             status__in=['confirmed', 'active'],
             check_out__gt=start_date,
-            check_in__lt=end_date,
+            check_in__lt=end_date
         )
         
         # Mark days as available/unavailable
@@ -382,7 +383,7 @@ class BookingCreateView(generics.CreateAPIView):
         with transaction.atomic():
             # LOCK the property to prevent race conditions
             property_obj = Property.objects.select_for_update().get(
-                id=serializer.validated_data['rented_property'].id,
+                id=serializer.validated_data['rented_property'].id
             )
             
             # Check if property is available
@@ -423,7 +424,8 @@ class BookingCreateView(generics.CreateAPIView):
         # 2. Monthly rent payments
         current_date = booking.check_in
         for month in range(1, booking.months_booked + 1):
-            due_date = current_date.replace(day=booking.rented_property.monthly_cycle_start)            
+            due_date = current_date.replace(day=booking.rented_property.monthly_cycle_start)
+            
             # If due date is in the past, set to next month
             if due_date < timezone.now().date():
                 due_date = (due_date + relativedelta(months=1))
@@ -502,6 +504,7 @@ class MyBookingsView(generics.ListAPIView):
         
         return queryset.select_related('rented_property', 'user').order_by('-created_at')
 
+
 @extend_schema(tags=['Bookings'])
 class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update or cancel a booking"""
@@ -577,9 +580,9 @@ class HostBookingsView(generics.ListAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Booking.objects.none()
         queryset = Booking.objects.filter(
-            rented_property__owner=self.request.user,
+            rented_property__owner=self.request.user
         ).select_related('user', 'rented_property').order_by('-created_at')
-
+        
         # Filter by status
         status = self.request.query_params.get('status')
         if status:
@@ -588,7 +591,8 @@ class HostBookingsView(generics.ListAPIView):
         # Filter by property
         property_id = self.request.query_params.get('property')
         if property_id:
-            queryset = queryset.filter(rented_property_id=property_id)        
+            queryset = queryset.filter(rented_property_id=property_id)
+        
         return queryset
     
     def get_serializer_context(self):
@@ -691,7 +695,7 @@ class MarkPaymentPaidView(generics.UpdateAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return BookingPayment.objects.none()
         return BookingPayment.objects.filter(
-            booking__rented_property__owner=self.request.user,
+            booking__rented_property__owner=self.request.user
         )
     
     def update(self, request, *args, **kwargs):
@@ -800,26 +804,26 @@ class HostDashboardView(APIView):
         ).count()
         active_bookings = Booking.objects.filter(
             rented_property__owner=user,
-            status__in=['confirmed', 'active'],
+            status__in=['confirmed', 'active']
         ).count()
-
+        
         # Revenue
         total_revenue = Booking.objects.filter(
             rented_property__owner=user,
-            status__in=['confirmed', 'active', 'completed'],
+            status__in=['confirmed', 'active', 'completed']
         ).aggregate(total=models.Sum('total_price'))['total'] or 0
-
+        
         upcoming_payments = BookingPayment.objects.filter(
             booking__rented_property__owner=user,
             status='pending',
-            due_date__gte=timezone.now().date(),
+            due_date__gte=timezone.now().date()
         ).aggregate(total=models.Sum('amount'))['total'] or 0
-
+        
         # Recent bookings
         recent_bookings = Booking.objects.filter(
-            rented_property__owner=user,
+            rented_property__owner=user
         ).select_related('user', 'rented_property').order_by('-created_at')[:5]
-
+        
         return Response({
             'properties': {
                 'total': total_properties,
@@ -882,7 +886,8 @@ class TenantDashboardView(APIView):
         # Recent bookings
         recent_bookings = Booking.objects.filter(
             user=user
-        ).select_related('rented_property').order_by('-created_at')[:5]        
+        ).select_related('rented_property').order_by('-created_at')[:5]
+        
         return Response({
             'bookings': {
                 'total': total_bookings,
@@ -897,11 +902,6 @@ class TenantDashboardView(APIView):
 
 # ============ CONFIG VIEWS ============
 
-@extend_schema(
-    tags=['Reference'],
-    summary='Property currency choices',
-    responses={200: CurrencyChoiceSerializer(many=True)},
-)
 class CurrencyChoicesView(APIView):
     """Get available currency choices"""
     permission_classes = [permissions.AllowAny]
@@ -909,3 +909,27 @@ class CurrencyChoicesView(APIView):
     def get(self, request):
         choices = [{"value": code, "label": str(name)} for code, name in Property.CURRENCY_CHOICES]
         return Response(choices)
+
+
+@extend_schema(
+    tags=['Locale'],
+    summary='List UI languages',
+    responses={200: LocaleChoiceSerializer(many=True)},
+)
+class LanguageListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response([{"value": v, "label": l} for v, l in LANGUAGE_CHOICES])
+
+
+@extend_schema(
+    tags=['Locale'],
+    summary='List time zones',
+    responses={200: LocaleChoiceSerializer(many=True)},
+)
+class TimeZoneListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response([{"value": v, "label": l} for v, l in TIMEZONE_CHOICES])

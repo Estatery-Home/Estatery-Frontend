@@ -2,8 +2,9 @@
 
 /**
  * Time & Language – time zone, language.
- * Uses SettingsContext.timeLang / setTimeLang.
+ * Options loaded from GET /api/timezones/ and /api/languages/.
  */
+import * as React from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,13 +14,76 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSettings } from "@/contexts/SettingsContext";
+import { api } from "@/lib/api-client";
+
+type Choice = { value: string; label: string };
+
+function normalizeChoices(data: unknown): Choice[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((c: { value?: string; code?: string; label?: string; name?: string }) => ({
+      value: String(c.value ?? c.code ?? ""),
+      label: String(c.label ?? c.name ?? c.value ?? ""),
+    }))
+    .filter((c) => c.value && c.label);
+}
+
+function withCurrentOption(options: Choice[], current: string): Choice[] {
+  if (!current || options.some((o) => o.value === current)) return options;
+  return [...options, { value: current, label: current }].sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
+}
 
 export function TimeLang() {
   const { timeLang, setTimeLang } = useSettings();
+  const [timezoneOptions, setTimezoneOptions] = React.useState<Choice[]>([]);
+  const [languageOptions, setLanguageOptions] = React.useState<Choice[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [tzRes, langRes] = await Promise.all([
+          fetch(api.endpoints.timezones),
+          fetch(api.endpoints.languages),
+        ]);
+        if (cancelled) return;
+        if (tzRes.ok) {
+          const tz = normalizeChoices(await tzRes.json()).sort((a, b) =>
+            a.label.localeCompare(b.label)
+          );
+          setTimezoneOptions(tz);
+        }
+        if (langRes.ok) {
+          const lang = normalizeChoices(await langRes.json()).sort((a, b) =>
+            a.label.localeCompare(b.label)
+          );
+          setLanguageOptions(lang);
+        }
+      } catch {
+        /* keep empty; selects show fallback messaging */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const tzItems = React.useMemo(
+    () => withCurrentOption(timezoneOptions, timeLang.timeZone),
+    [timezoneOptions, timeLang.timeZone]
+  );
+  const langItems = React.useMemo(
+    () => withCurrentOption(languageOptions, timeLang.language),
+    [languageOptions, timeLang.language]
+  );
 
   return (
     <div className="space-y-0">
-      {/* Time & Language Settings  */}
       <section className="flex flex-col gap-6 pb-10 md:flex-row md:gap-8">
         <div className="shrink-0 md:w-56 lg:w-64">
           <h3 className="text-lg font-bold text-[#1e293b]">Time</h3>
@@ -37,15 +101,17 @@ export function TimeLang() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Africa/Accra">GMT (Africa/Accra)</SelectItem>
-                <SelectItem value="America/New_York">EST (America/New_York)</SelectItem>
-                <SelectItem value="Europe/London">GMT (Europe/London)</SelectItem>
-                <SelectItem value="Europe/Paris">CET (Europe/Paris)</SelectItem>
-                <SelectItem value="America/Los_Angeles">Pacific Time (PST / PDT)</SelectItem>
-                <SelectItem value="Asia/Dubai">GST (Asia/Dubai)</SelectItem>
-                <SelectItem value="Asia/Kolkata">IST (Asia/Kolkata)</SelectItem>
-                <SelectItem value="Asia/Tokyo">JST (Asia/Tokyo)</SelectItem>
-                <SelectItem value="Australia/Sydney">AEST (Australia/Sydney)</SelectItem>
+                {loading ? (
+                  <SelectItem value={timeLang.timeZone}>{timeLang.timeZone}</SelectItem>
+                ) : tzItems.length > 0 ? (
+                  tzItems.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value={timeLang.timeZone}>{timeLang.timeZone}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -54,7 +120,6 @@ export function TimeLang() {
 
       <hr className="border-t my-10 border-[#e2e8f0] -mx-6" />
 
-      {/* Language  */}
       <section className="flex flex-col gap-6 pt-10 md:flex-row md:gap-8">
         <div className="shrink-0 md:w-56 lg:w-64">
           <h3 className="text-lg font-bold text-[#1e293b]">Set language</h3>
@@ -73,12 +138,17 @@ export function TimeLang() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en-US">English (United States)</SelectItem>
-                  <SelectItem value="en-GB">English (United Kingdom)</SelectItem>
-                  <SelectItem value="fr-FR">French (France)</SelectItem>
-                  <SelectItem value="fr-CA">French (Canada)</SelectItem>
-                  <SelectItem value="es-ES">Spanish (Spain)</SelectItem>
-                  <SelectItem value="es-MX">Spanish (Mexico)</SelectItem>
+                  {loading ? (
+                    <SelectItem value={timeLang.language}>{timeLang.language}</SelectItem>
+                  ) : langItems.length > 0 ? (
+                    langItems.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={timeLang.language}>{timeLang.language}</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

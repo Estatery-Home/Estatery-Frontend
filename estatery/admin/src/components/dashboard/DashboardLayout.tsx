@@ -22,8 +22,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
 
   /** Log out, close dialog, redirect to login */
-  const handleLogoutConfirm = () => {
-    logout();
+  const handleLogoutConfirm = async () => {
+    await logout();
     setLogoutDialogOpen(false);
     navigate("/auth/login", { replace: true });
   };
