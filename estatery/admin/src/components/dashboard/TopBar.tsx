@@ -26,8 +26,8 @@ export function TopBar() {
   
   const profileRef = React.useRef<HTMLDivElement>(null);
 
-  const handleLogoutConfirm = () => {
-    logout();
+  const handleLogoutConfirm = async () => {
+    await logout();
     setLogoutDialogOpen(false);
     navigate("/auth/login", { replace: true });
   };

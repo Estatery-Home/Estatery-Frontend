@@ -552,6 +552,11 @@ class CountryRowSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
+class LocaleChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
 class PromoValidateNestedSerializer(serializers.Serializer):
     discount_type = serializers.CharField()
     discount_value = serializers.CharField()

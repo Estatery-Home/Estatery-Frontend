@@ -14,6 +14,8 @@ urlpatterns = [
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
     path('properties/my/', views.MyPropertiesView.as_view(), name='my-properties'),
     path('currencies/', views.CurrencyChoicesView.as_view(), name='currency-choices'),
+    path('languages/', views.LanguageListView.as_view(), name='language-list'),
+    path('timezones/', views.TimeZoneListView.as_view(), name='timezone-list'),
     
     # === AVAILABILITY ===
     path('properties/<int:pk>/check-availability/', 

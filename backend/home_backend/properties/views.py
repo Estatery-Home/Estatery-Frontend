@@ -12,7 +12,9 @@ from .serializers import (
     PromoCodeSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
     HostDashboardSerializer, TenantDashboardSerializer,
+    LocaleChoiceSerializer,
 )
+from .locale_data import LANGUAGE_CHOICES, TIMEZONE_CHOICES
 from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
 from .permissions import IsAdminUserType
 from datetime import datetime, timedelta
@@ -907,3 +909,27 @@ class CurrencyChoicesView(APIView):
     def get(self, request):
         choices = [{"value": code, "label": str(name)} for code, name in Property.CURRENCY_CHOICES]
         return Response(choices)
+
+
+@extend_schema(
+    tags=['Locale'],
+    summary='List UI languages',
+    responses={200: LocaleChoiceSerializer(many=True)},
+)
+class LanguageListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response([{"value": v, "label": l} for v, l in LANGUAGE_CHOICES])
+
+
+@extend_schema(
+    tags=['Locale'],
+    summary='List time zones',
+    responses={200: LocaleChoiceSerializer(many=True)},
+)
+class TimeZoneListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response([{"value": v, "label": l} for v, l in TIMEZONE_CHOICES])
