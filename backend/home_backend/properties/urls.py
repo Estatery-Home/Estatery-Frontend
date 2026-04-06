@@ -35,6 +35,11 @@ urlpatterns = [
     path('host/bookings/<int:pk>/confirm/', 
          views.ConfirmBookingView.as_view(), 
          name='confirm-booking'),
+    path('host/clients/', views.HostClientsListView.as_view(), name='host-clients-list'),
+    path('host/clients/<int:user_id>/', views.HostClientDetailView.as_view(), name='host-client-detail'),
+    path('host/analytics/', views.HostAnalyticsView.as_view(), name='host-analytics'),
+    path('host/calendar/', views.HostCalendarView.as_view(), name='host-calendar'),
+    path('host/payments/', views.HostPaymentsListView.as_view(), name='host-payments-list'),
     
     # === PAYMENTS ===
     path('bookings/<int:pk>/payments/', 

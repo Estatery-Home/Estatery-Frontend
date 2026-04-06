@@ -645,6 +645,11 @@ class HostDashboardSerializer(serializers.Serializer):
     bookings = serializers.JSONField()
     revenue = serializers.JSONField()
     recent_bookings = serializers.JSONField()
+    recent_payments = serializers.JSONField()
+    listings_chart = serializers.JSONField()
+    activity_chart = serializers.JSONField()
+    comparison = serializers.JSONField()
+    currency = serializers.CharField()
 
 
 class TenantDashboardSerializer(serializers.Serializer):

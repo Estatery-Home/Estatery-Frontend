@@ -712,6 +712,106 @@ Or for reject: `"message": "Booking rejected"`.
 
 ---
 
+### 5.3 Host calendar (aggregated booking nights)
+
+Bookings on the host’s properties, expanded to **one row per occupied night** (`check_in` ≤ night &lt; `check_out`). Useful for admin calendar UIs.
+
+| | |
+|---|---|
+| **Endpoint** | `GET /api/host/calendar/` |
+| **Auth** | Required (host) |
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start` | string (YYYY-MM-DD) | First calendar day to include (required) |
+| `end` | string (YYYY-MM-DD) | Last calendar day to include (required) |
+
+Statuses included: `pending`, `confirmed`, `active`, `completed` (excludes cancelled/rejected).
+
+**Response** `200 OK`:
+
+```json
+{
+  "events": [
+    {
+      "id": "42-2026-03-15",
+      "booking_id": 42,
+      "title": "Downtown Loft · Jane Doe",
+      "date": "2026-03-15",
+      "status": "confirmed",
+      "property_id": 3,
+      "property_title": "Downtown Loft",
+      "all_day": true
+    }
+  ]
+}
+```
+
+**Error** `400 Bad Request`: missing or invalid `start`/`end`, or `end` &lt; `start`.
+
+---
+
+### 5.4 Host payment schedule (all installments)
+
+All **BookingPayment** rows for bookings on the host’s properties (deposit + rent schedule). Suitable for a transactions / payouts screen; hosts mark items paid via `PATCH /api/payments/<id>/mark-paid/`.
+
+| | |
+|---|---|
+| **Endpoint** | `GET /api/host/payments/` |
+| **Auth** | Required (host) |
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | Optional. Comma-separated `BookingPayment` statuses, e.g. `pending` or `pending,overdue`. Omit for all. |
+| `page` | int | Page number (1-based). With `page_size`, max 200 per page; if only `page` is sent, `page_size` defaults to 50. |
+| `page_size` | int | Rows per page when using `page` (default 50 if `page` is set, max 200). |
+| `limit` | int | Legacy: when `page` / `page_size` are not used, sizes the first (and only implied) page (default 500, max 2000). |
+
+**Response** `200 OK`:
+
+```json
+{
+  "payments": [
+    {
+      "id": 1,
+      "booking": 10,
+      "payment_type": "rent",
+      "month_number": 2,
+      "amount": "1500.00",
+      "due_date": "2026-04-01",
+      "status": "pending",
+      "paid_date": null,
+      "transaction_id": "",
+      "property_title": "Downtown Loft",
+      "customer": "Jane Doe"
+    }
+  ],
+  "summary": {
+    "count": 1,
+    "paid": 0,
+    "pending": 1,
+    "overdue": 0,
+    "cancelled": 0,
+    "refunded": 0,
+    "outstanding_amount": "1500.00"
+  },
+  "page": 1,
+  "page_size": 12,
+  "total_count": 1,
+  "total_pages": 1
+}
+```
+
+`summary` counts and `outstanding_amount` (sum of amounts with status `pending` or `overdue`) apply to the **full result set after `status` filtering**, not only the current page.
+
+**Error** `400 Bad Request`: invalid `status` value.
+
+---
+
 ## 6. Payments
 
 ### 6.1 List Booking Payments
@@ -1002,6 +1102,8 @@ Validation errors are returned as JSON, e.g.:
 | PUT/PATCH | `/api/bookings/<id>/` | Yes (tenant) | Update booking |
 | DELETE | `/api/bookings/<id>/` | Yes (tenant) | Cancel booking |
 | GET | `/api/host/bookings/` | Yes (host) | Host bookings |
+| GET | `/api/host/calendar/` | Yes (host) | Host calendar (booking nights by date range) |
+| GET | `/api/host/payments/` | Yes (host) | Host booking payment schedule (all installments) |
 | PUT/PATCH | `/api/host/bookings/<id>/confirm/` | Yes (host) | Confirm/reject booking |
 | GET | `/api/bookings/<id>/payments/` | Yes (tenant/host) | List payments |
 | PUT/PATCH | `/api/payments/<id>/mark-paid/` | Yes (host) | Mark payment paid |

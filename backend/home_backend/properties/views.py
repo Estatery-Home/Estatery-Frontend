@@ -17,16 +17,23 @@ from .serializers import (
 from .locale_data import LANGUAGE_CHOICES, TIMEZONE_CHOICES
 from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
 from .permissions import IsAdminUserType
-from datetime import datetime, timedelta
+from users.serializers import UserSerializer
+import calendar
+from datetime import date, datetime, timedelta
+from typing import Optional
 from dateutil.relativedelta import relativedelta
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.utils import timezone
 from django.db import transaction, models
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from collections import Counter
+
+_HOST_PAYMENT_STATUS_CODES = frozenset(c[0] for c in BookingPayment.STATUS_CHOICES)
 
 # ============ PROPERTY VIEWS ============
 
@@ -663,6 +670,457 @@ class ConfirmBookingView(generics.UpdateAPIView):
         })
 
 
+# ============ HOST CLIENTS (tenants / customers on host listings) ============
+
+def _client_avatar_initials(user):
+    name = (user.get_full_name() or user.username or '?').strip()
+    parts = name.split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[-1][0]).upper()
+    return (name[:2] or '?').upper()
+
+
+def _host_featured_booking(bookings_qs):
+    for st in ('active', 'confirmed', 'pending', 'completed', 'cancelled', 'rejected'):
+        b = bookings_qs.filter(status=st).order_by('-created_at').first()
+        if b:
+            return b
+    return bookings_qs.order_by('-created_at').first()
+
+
+def _host_client_row_for_user(host, user):
+    bookings = Booking.objects.filter(
+        user=user,
+        rented_property__owner=host,
+    ).select_related('rented_property')
+    if not bookings.exists():
+        return None
+
+    featured = _host_featured_booking(bookings)
+    prop = featured.rented_property
+    if prop.listing_type == 'sale':
+        type_label = 'Buy'
+        amount = featured.total_price
+    else:
+        type_label = 'Rent'
+        amount = featured.agreed_monthly_rate
+
+    addr = ', '.join(x for x in (prop.address, prop.city, prop.country) if x)
+
+    payments = BookingPayment.objects.filter(booking__in=bookings)
+    today = timezone.now().date()
+    next_pay = payments.filter(status='pending').order_by('due_date').first()
+    has_overdue = payments.filter(status='pending', due_date__lt=today).exists()
+    has_open = bookings.filter(status__in=['pending', 'confirmed', 'active']).exists()
+
+    if has_overdue:
+        ui_status = 'Overdue'
+    elif has_open:
+        ui_status = 'On Going'
+    else:
+        ui_status = 'Completed'
+
+    display_name = (user.get_full_name() or '').strip() or user.username
+    return {
+        'id': str(user.id),
+        'clientId': str(user.id),
+        'tenant_user_id': user.id,
+        'name': display_name,
+        'avatarInitials': _client_avatar_initials(user),
+        'propertyName': prop.title,
+        'propertyAddress': addr,
+        'type': type_label,
+        'amount': str(amount),
+        'currency': prop.currency,
+        'nextPayment': next_pay.due_date.isoformat() if next_pay else '',
+        'status': ui_status,
+        'user_type': user.user_type,
+    }
+
+
+@extend_schema(tags=['Host'], summary='List host clients (tenant customers)')
+class HostClientsListView(APIView):
+    """Distinct users who have bookings on the host's properties (linked customer accounts)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        host = request.user
+        tenant_ids = (
+            Booking.objects.filter(rented_property__owner=host)
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+        User = get_user_model()
+        users = User.objects.filter(id__in=tenant_ids).order_by('username')
+
+        rows = []
+        summary = {'total': 0, 'ongoing': 0, 'completed': 0}
+        for u in users:
+            row = _host_client_row_for_user(host, u)
+            if row:
+                rows.append(row)
+                summary['total'] += 1
+                if row['status'] in ('On Going', 'Overdue'):
+                    summary['ongoing'] += 1
+                elif row['status'] == 'Completed':
+                    summary['completed'] += 1
+
+        return Response({'summary': summary, 'clients': rows})
+
+
+@extend_schema(tags=['Host'], summary='Host client detail (tenant customer)')
+class HostClientDetailView(APIView):
+    """Profile, bookings, and payment schedule for one tenant linked via bookings."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        host = request.user
+        User = get_user_model()
+        tenant = get_object_or_404(User, pk=user_id)
+        bookings = Booking.objects.filter(
+            user=tenant,
+            rented_property__owner=host,
+        ).select_related('rented_property')
+        if not bookings.exists():
+            return Response(
+                {'detail': 'Not a client of yours.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        featured = _host_featured_booking(bookings)
+        prop = featured.rented_property
+        addr = ', '.join(x for x in (prop.address, prop.city, prop.country) if x)
+
+        payments = BookingPayment.objects.filter(booking__in=bookings).order_by(
+            '-due_date', '-id'
+        )
+        tx_rows = []
+        for p in payments:
+            tx_rows.append({
+                'id': str(p.id),
+                'paymentType': p.get_payment_type_display(),
+                'dueDate': p.due_date.isoformat(),
+                'amount': float(p.amount),
+                'status': 'Paid' if p.status == 'paid' else 'Pending',
+            })
+
+        display_name = (tenant.get_full_name() or '').strip() or tenant.username
+        detail_block = {
+            'clientId': str(tenant.id),
+            'tenantUserId': tenant.id,
+            'name': display_name,
+            'avatarInitials': _client_avatar_initials(tenant),
+            'email': tenant.email,
+            'phone': tenant.phone or '',
+            'bio': '',
+            'user_type': tenant.user_type,
+            'propertyName': prop.title,
+            'propertyAddress': addr,
+            'propertyType': prop.get_property_type_display(),
+            'transactionDate': featured.created_at.date().isoformat(),
+            'transactionType': 'Rent' if prop.listing_type == 'rent' else 'Purchase',
+            'rentDuration': (
+                f'{featured.months_booked} mo.' if prop.listing_type == 'rent' else '—'
+            ),
+        }
+
+        bookings_brief = HostBookingSerializer(
+            bookings.order_by('-created_at')[:25],
+            many=True,
+            context={'request': request},
+        ).data
+
+        return Response({
+            'tenant': UserSerializer(tenant).data,
+            'detail': detail_block,
+            'bookings': bookings_brief,
+            'transactions': tx_rows,
+        })
+
+
+@extend_schema(tags=['Host'], summary='Host analytics (bookings, mix, top properties)')
+class HostAnalyticsView(APIView):
+    """
+    Aggregates for the host analytics screen. Query: ?range=7d|30d|90d (default 30d).
+    Traffic series = new bookings per day (no separate view-tracking yet).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        host = request.user
+        r = request.query_params.get('range', '30d')
+        if r not in ('7d', '30d', '90d'):
+            r = '30d'
+        days = {'7d': 7, '30d': 30, '90d': 90}[r]
+
+        today = timezone.now().date()
+        start_date = today - timedelta(days=days - 1)
+        start_dt = timezone.make_aware(
+            datetime.combine(start_date, datetime.min.time()),
+            timezone.get_current_timezone(),
+        )
+
+        prop_qs = Property.objects.filter(owner=host)
+        total_props = prop_qs.count()
+        available_props = prop_qs.filter(status='available').count()
+
+        tenant_ids = (
+            Booking.objects.filter(rented_property__owner=host)
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+        clients_count = len(set(tenant_ids))
+
+        if total_props > 0:
+            occupied = prop_qs.filter(status='rented').count()
+            occupancy_rate = min(100, int(round(100 * occupied / total_props)))
+        else:
+            occupancy_rate = 0
+
+        prop_ids = list(prop_qs.values_list('id', flat=True))
+        promo_qs = PromoCode.objects.filter(is_active=True).filter(
+            models.Q(applies_to_property_id__in=prop_ids)
+            | models.Q(applies_to_property__isnull=True)
+        ).filter(
+            models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=today),
+        ).filter(
+            models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=today),
+        )
+        active_discounts = promo_qs.distinct().count()
+
+        series = []
+        labels = []
+        for i in range(days):
+            d = start_date + timedelta(days=i)
+            labels.append(d.isoformat())
+            n = Booking.objects.filter(
+                rented_property__owner=host,
+                created_at__date=d,
+            ).count()
+            series.append(n)
+
+        rent_listings = prop_qs.filter(
+            listing_type='rent', status='available'
+        ).count()
+        sale_listings = prop_qs.filter(
+            listing_type='sale', status='available'
+        ).count()
+        occupied_or_other = max(0, total_props - rent_listings - sale_listings)
+        mix_denom = max(1, rent_listings + sale_listings + occupied_or_other)
+        pct_rent = int(round(100 * rent_listings / mix_denom))
+        pct_sale = int(round(100 * sale_listings / mix_denom))
+        pct_reserved = max(0, 100 - pct_rent - pct_sale)
+
+        top_qs = (
+            prop_qs.annotate(
+                period_bookings=models.Count(
+                    'bookings',
+                    filter=models.Q(bookings__created_at__gte=start_dt),
+                )
+            )
+            .order_by('-period_bookings', '-updated_at')[:30]
+        )
+        top_properties = []
+        for p in top_qs:
+            loc_parts = [x for x in (p.city, p.country) if x]
+            top_properties.append({
+                'id': p.id,
+                'title': p.title,
+                'location': ', '.join(loc_parts) if loc_parts else (p.address or ''),
+                'bookings_in_period': p.period_bookings,
+                'leads': p.period_bookings,
+                'updated_at': p.updated_at.isoformat() if p.updated_at else '',
+            })
+
+        return Response({
+            'range': r,
+            'summary': {
+                'properties_total': total_props,
+                'properties_available': available_props,
+                'clients': clients_count,
+                'occupancy_rate': occupancy_rate,
+                'active_discounts': active_discounts,
+            },
+            'traffic': {
+                'metric': 'bookings_created',
+                'labels': labels,
+                'series': series,
+            },
+            'listing_mix': {
+                'rent': rent_listings,
+                'sale': sale_listings,
+                'reserved': occupied_or_other,
+                'total': total_props,
+                'percent': {
+                    'rent': pct_rent,
+                    'sale': pct_sale,
+                    'reserved': pct_reserved,
+                },
+            },
+            'top_properties': top_properties,
+        })
+
+
+@extend_schema(tags=['Host'], summary='Host calendar events (bookings)')
+class HostCalendarView(APIView):
+    """
+    Bookings on the host's properties, expanded to one entry per occupied night.
+    Query: start=YYYY-MM-DD&end=YYYY-MM-DD (inclusive range of dates to return).
+    Occupied nights: check_in <= d < check_out.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        start_s = request.query_params.get('start')
+        end_s = request.query_params.get('end')
+        if not start_s or not end_s:
+            return Response(
+                {'detail': 'Query params "start" and "end" are required (YYYY-MM-DD).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            start_date = datetime.strptime(start_s, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_s, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+        if end_date < start_date:
+            return Response({'detail': '"end" must be >= "start".'}, status=status.HTTP_400_BAD_REQUEST)
+
+        host = request.user
+        bookings = (
+            Booking.objects.filter(
+                rented_property__owner=host,
+                status__in=['pending', 'confirmed', 'active', 'completed'],
+                check_in__lte=end_date,
+                check_out__gt=start_date,
+            )
+            .select_related('rented_property', 'user')
+            .order_by('check_in', 'id')
+        )
+
+        events = []
+        for b in bookings:
+            tenant_label = (b.user.get_full_name() or '').strip() or b.user.username
+            title = f'{b.rented_property.title} · {tenant_label}'
+            d = max(b.check_in, start_date)
+            while d < b.check_out and d <= end_date:
+                events.append({
+                    'id': f'{b.id}-{d.isoformat()}',
+                    'booking_id': b.id,
+                    'title': title,
+                    'date': d.isoformat(),
+                    'status': b.status,
+                    'property_id': b.rented_property_id,
+                    'property_title': b.rented_property.title,
+                    'all_day': True,
+                })
+                d += timedelta(days=1)
+
+        return Response({'events': events})
+
+
+@extend_schema(
+    tags=['Host'],
+    summary='Booking payments across your properties',
+    parameters=[
+        {
+            'name': 'status',
+            'required': False,
+            'in': 'query',
+            'description': 'Comma-separated statuses: pending,paid,overdue,cancelled,refunded',
+            'schema': {'type': 'string'},
+        },
+        {
+            'name': 'page',
+            'required': False,
+            'in': 'query',
+            'description': 'Page number (1-based). Use with page_size.',
+            'schema': {'type': 'integer', 'minimum': 1},
+        },
+        {
+            'name': 'page_size',
+            'required': False,
+            'in': 'query',
+            'description': 'Page size (default 50, max 200)',
+            'schema': {'type': 'integer', 'minimum': 1},
+        },
+        {
+            'name': 'limit',
+            'required': False,
+            'in': 'query',
+            'description': 'Legacy: first-page page size when page/page_size omitted (max 2000)',
+            'schema': {'type': 'integer', 'minimum': 1},
+        },
+    ],
+)
+class HostPaymentsListView(APIView):
+    """
+    Scheduled booking payments (deposit + rent installments) for listings you own.
+    Filtering: optional status (comma-separated). Pagination: page + page_size (defaults 1 and 50).
+    Legacy clients may pass limit only (no page) to fetch the first page with up to limit rows.
+    Summary reflects the full filtered set (not just the current page).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            status_filter = _parse_host_payments_status_param(request.query_params.get('status'))
+        except ValidationError as e:
+            return Response(e.detail if isinstance(e.detail, dict) else {'detail': e.detail}, status=400)
+
+        qs = _host_payments_base_queryset(request.user)
+        if status_filter is not None:
+            qs = qs.filter(status__in=status_filter)
+
+        summary = _host_payments_summary(qs)
+        total_count = summary['count']
+
+        qp = request.query_params
+        try:
+            page = int(qp.get('page', 1))
+        except ValueError:
+            page = 1
+        page = max(1, page)
+
+        if 'page_size' in qp:
+            try:
+                page_size = int(qp['page_size'])
+            except ValueError:
+                page_size = 50
+            page_size = max(1, min(page_size, 200))
+        elif 'limit' in qp:
+            try:
+                page_size = int(qp.get('limit', 500))
+            except ValueError:
+                page_size = 500
+            page_size = max(1, min(page_size, 2000))
+        elif 'page' in qp:
+            page_size = 50
+        else:
+            # No hints: same default cap as pre-pagination API (single "page")
+            page_size = 500
+
+        offset = (page - 1) * page_size
+        page_qs = qs[offset : offset + page_size]
+        payments = [_serialize_booking_payment_row(p) for p in page_qs]
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size) if total_count else 1
+
+        return Response({
+            'payments': payments,
+            'summary': summary,
+            'page': page,
+            'page_size': page_size,
+            'total_count': total_count,
+            'total_pages': total_pages,
+        })
+
+
 # ============ PAYMENT VIEWS ============
 
 @extend_schema(tags=['Payments'])
@@ -780,6 +1238,244 @@ class PropertyReviewsView(generics.ListAPIView):
 
 # ============ DASHBOARD/STATS VIEWS ============
 
+def _pct_change(current: Decimal, previous: Decimal) -> Optional[float]:
+    if previous is not None and previous > 0:
+        return float((current - previous) / previous * 100)
+    return None
+
+
+def _revenue_in_period(user, start, end):
+    q = Booking.objects.filter(
+        rented_property__owner=user,
+        status__in=['confirmed', 'active', 'completed'],
+        created_at__gte=start,
+        created_at__lt=end,
+    ).aggregate(total=models.Sum('total_price'))['total']
+    return q if q is not None else Decimal('0')
+
+
+def _host_payments_base_queryset(user):
+    return (
+        BookingPayment.objects.filter(booking__rented_property__owner=user)
+        .select_related('booking__user', 'booking__rented_property')
+        .order_by('-due_date', '-id')
+    )
+
+
+def _serialize_booking_payment_row(p: BookingPayment):
+    return {
+        'id': p.id,
+        'booking': p.booking_id,
+        'payment_type': p.payment_type,
+        'month_number': p.month_number,
+        'amount': str(p.amount),
+        'due_date': p.due_date.isoformat(),
+        'status': p.status,
+        'paid_date': p.paid_date.isoformat() if p.paid_date else None,
+        'transaction_id': p.transaction_id or '',
+        'property_title': p.booking.rented_property.title,
+        'customer': (
+            (p.booking.user.get_full_name() or '').strip()
+            or p.booking.user.username
+        ),
+    }
+
+
+def _parse_host_payments_status_param(raw: Optional[str]):
+    """
+    Comma-separated status values, e.g. pending or pending,overdue.
+    Empty or missing means no filter (all statuses).
+    """
+    if raw is None or not str(raw).strip():
+        return None
+    parts = [s.strip() for s in str(raw).split(',') if s.strip()]
+    if not parts:
+        return None
+    invalid = [s for s in parts if s not in _HOST_PAYMENT_STATUS_CODES]
+    if invalid:
+        raise ValidationError(
+            {'status': f'Invalid status value(s): {", ".join(invalid)}. '
+             f'Allowed: {", ".join(sorted(_HOST_PAYMENT_STATUS_CODES))}.'}
+        )
+    return parts
+
+
+def _host_payments_summary(qs):
+    """Counts and outstanding amount for the (filtered) queryset, before pagination."""
+    total = qs.count()
+    agg = {row['status']: row['n'] for row in qs.values('status').annotate(n=models.Count('id'))}
+    outstanding = (
+        qs.filter(status__in=['pending', 'overdue']).aggregate(t=models.Sum('amount'))['t']
+        or Decimal('0')
+    )
+    return {
+        'count': total,
+        'paid': agg.get('paid', 0),
+        'pending': agg.get('pending', 0),
+        'overdue': agg.get('overdue', 0),
+        'cancelled': agg.get('cancelled', 0),
+        'refunded': agg.get('refunded', 0),
+        'outstanding_amount': str(outstanding),
+    }
+
+
+def _serialize_recent_payments_for_host(user, limit=100):
+    qs = _host_payments_base_queryset(user)[:limit]
+    return [_serialize_booking_payment_row(p) for p in qs]
+
+
+def _listings_chart(user):
+    today = timezone.now().date()
+    weekday_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    days_since_sun = (today.weekday() + 1) % 7
+    sun = today - timedelta(days=days_since_sun)
+    weekly = []
+    for i in range(7):
+        d = sun + timedelta(days=i)
+        qs = Property.objects.filter(owner=user, created_at__date=d)
+        weekly.append({
+            "label": weekday_labels[i],
+            "rent": qs.filter(listing_type='rent').count(),
+            "sale": qs.filter(listing_type='sale').count(),
+        })
+
+    year, month = today.year, today.month
+    last_day = calendar.monthrange(year, month)[1]
+    bucket_defs = [
+        (1, 5, "1 - 5"),
+        (6, 10, "6 - 10"),
+        (11, 15, "11 - 15"),
+        (16, 20, "16 - 20"),
+        (21, 25, "21 - 25"),
+        (26, 31, f"26 - {last_day}"),
+    ]
+    monthly = []
+    for dmin, dmax, label in bucket_defs:
+        end = min(dmax, last_day)
+        if dmin > last_day:
+            monthly.append({"label": label, "rent": 0, "sale": 0})
+            continue
+        start_d = date(year, month, dmin)
+        end_d = date(year, month, end)
+        qs = Property.objects.filter(
+            owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        )
+        monthly.append({
+            "label": label,
+            "rent": qs.filter(listing_type='rent').count(),
+            "sale": qs.filter(listing_type='sale').count(),
+        })
+
+    y = today.year
+    quarterly_labels = ["Q1", "Q2", "Q3", "Q4"]
+    yearly = []
+    for qi, (start_m, end_m) in enumerate([(1, 3), (4, 6), (7, 9), (10, 12)]):
+        qs = Property.objects.filter(
+            owner=user,
+            created_at__year=y,
+            created_at__month__gte=start_m,
+            created_at__month__lte=end_m,
+        )
+        yearly.append({
+            "label": quarterly_labels[qi],
+            "rent": qs.filter(listing_type='rent').count(),
+            "sale": qs.filter(listing_type='sale').count(),
+        })
+
+    return {"weekly": weekly, "monthly": monthly, "yearly": yearly}
+
+
+def _activity_chart(user):
+    today = timezone.now().date()
+
+    daily = []
+    for i in range(13, -1, -1):
+        d = today - timedelta(days=i)
+        b_n = Booking.objects.filter(
+            rented_property__owner=user, created_at__date=d
+        ).count()
+        l_n = Property.objects.filter(owner=user, created_at__date=d).count()
+        daily.append({
+            "date": d.isoformat(),
+            "dateLabel": d.strftime("%B %d, %Y"),
+            "views": b_n,
+            "property": l_n,
+        })
+
+    weekly = []
+    for w in range(3, -1, -1):
+        end_d = today - timedelta(days=w * 7)
+        start_d = end_d - timedelta(days=6)
+        b_n = Booking.objects.filter(
+            rented_property__owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        l_n = Property.objects.filter(
+            owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        weekly.append({
+            "date": start_d.isoformat(),
+            "dateLabel": start_d.strftime("%B %d, %Y"),
+            "views": b_n,
+            "property": l_n,
+        })
+
+    monthly = []
+    for m_back in range(5, -1, -1):
+        dt = today.replace(day=1) - relativedelta(months=m_back)
+        y, mo = dt.year, dt.month
+        last = calendar.monthrange(y, mo)[1]
+        start_d = date(y, mo, 1)
+        end_d = date(y, mo, last)
+        b_n = Booking.objects.filter(
+            rented_property__owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        l_n = Property.objects.filter(
+            owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        monthly.append({
+            "date": start_d.isoformat(),
+            "dateLabel": start_d.strftime("%B %Y"),
+            "views": b_n,
+            "property": l_n,
+        })
+
+    yearly = []
+    for m_back in range(11, -1, -1):
+        dt = today.replace(day=1) - relativedelta(months=m_back)
+        y, mo = dt.year, dt.month
+        last = calendar.monthrange(y, mo)[1]
+        start_d = date(y, mo, 1)
+        end_d = date(y, mo, last)
+        b_n = Booking.objects.filter(
+            rented_property__owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        l_n = Property.objects.filter(
+            owner=user,
+            created_at__date__gte=start_d,
+            created_at__date__lte=end_d,
+        ).count()
+        yearly.append({
+            "date": start_d.isoformat(),
+            "dateLabel": start_d.strftime("%B %Y"),
+            "views": b_n,
+            "property": l_n,
+        })
+
+    return {"Daily": daily, "Weekly": weekly, "Monthly": monthly, "Yearly": yearly}
+
+
 @extend_schema(
     tags=['Dashboards'],
     summary='Host dashboard',
@@ -791,11 +1487,30 @@ class HostDashboardView(APIView):
     
     def get(self, request):
         user = request.user
-        
+        now = timezone.now()
+        start_30 = now - timedelta(days=30)
+        start_60 = now - timedelta(days=60)
+
         # Properties
-        total_properties = Property.objects.filter(owner=user).count()
-        active_properties = Property.objects.filter(owner=user, status='available').count()
-        
+        prop_base = Property.objects.filter(owner=user)
+        total_properties = prop_base.count()
+        active_properties = prop_base.filter(status='available').count()
+        rent_listings = prop_base.filter(listing_type='rent').count()
+        sale_listings = prop_base.filter(listing_type='sale').count()
+
+        rent_new_30 = prop_base.filter(
+            listing_type='rent', created_at__gte=start_30
+        ).count()
+        rent_new_prev = prop_base.filter(
+            listing_type='rent', created_at__gte=start_60, created_at__lt=start_30
+        ).count()
+        sale_new_30 = prop_base.filter(
+            listing_type='sale', created_at__gte=start_30
+        ).count()
+        sale_new_prev = prop_base.filter(
+            listing_type='sale', created_at__gte=start_60, created_at__lt=start_30
+        ).count()
+
         # Bookings
         total_bookings = Booking.objects.filter(rented_property__owner=user).count()
         pending_bookings = Booking.objects.filter(
@@ -806,28 +1521,37 @@ class HostDashboardView(APIView):
             rented_property__owner=user,
             status__in=['confirmed', 'active']
         ).count()
-        
+
         # Revenue
         total_revenue = Booking.objects.filter(
             rented_property__owner=user,
             status__in=['confirmed', 'active', 'completed']
-        ).aggregate(total=models.Sum('total_price'))['total'] or 0
-        
+        ).aggregate(total=models.Sum('total_price'))['total'] or Decimal('0')
+
         upcoming_payments = BookingPayment.objects.filter(
             booking__rented_property__owner=user,
             status='pending',
             due_date__gte=timezone.now().date()
-        ).aggregate(total=models.Sum('amount'))['total'] or 0
-        
+        ).aggregate(total=models.Sum('amount'))['total'] or Decimal('0')
+
+        rev_last_30 = _revenue_in_period(user, start_30, now)
+        rev_prior_30 = _revenue_in_period(user, start_60, start_30)
+
         # Recent bookings
         recent_bookings = Booking.objects.filter(
             rented_property__owner=user
         ).select_related('user', 'rented_property').order_by('-created_at')[:5]
-        
+
+        primary_currency = (
+            prop_base.values_list('currency', flat=True).first() or 'ghs'
+        )
+
         return Response({
             'properties': {
                 'total': total_properties,
                 'active': active_properties,
+                'rent_listings': rent_listings,
+                'sale_listings': sale_listings,
             },
             'bookings': {
                 'total': total_bookings,
@@ -835,10 +1559,27 @@ class HostDashboardView(APIView):
                 'active': active_bookings,
             },
             'revenue': {
-                'total': total_revenue,
-                'upcoming': upcoming_payments,
+                'total': str(total_revenue),
+                'upcoming': str(upcoming_payments),
+                'last_30_days': str(rev_last_30),
+                'prior_30_days': str(rev_prior_30),
             },
-            'recent_bookings': HostBookingSerializer(recent_bookings, many=True, context={'request': request}).data
+            'recent_bookings': HostBookingSerializer(
+                recent_bookings, many=True, context={'request': request}
+            ).data,
+            'recent_payments': _serialize_recent_payments_for_host(user),
+            'listings_chart': _listings_chart(user),
+            'activity_chart': _activity_chart(user),
+            'comparison': {
+                'revenue_pct': _pct_change(rev_last_30, rev_prior_30),
+                'rent_listings_pct': _pct_change(
+                    Decimal(rent_new_30), Decimal(rent_new_prev)
+                ),
+                'sale_listings_pct': _pct_change(
+                    Decimal(sale_new_30), Decimal(sale_new_prev)
+                ),
+            },
+            'currency': primary_currency,
         })
 
 
