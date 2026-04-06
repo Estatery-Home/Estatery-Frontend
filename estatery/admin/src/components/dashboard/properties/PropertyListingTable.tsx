@@ -6,8 +6,11 @@
  */
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, MoreHorizontal } from "lucide-react";
+import { Search, Filter, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EditPropertyModal, toPropertyNumericId } from "@/components/dashboard/EditPropertyModal";
+import { deleteProperty } from "@/lib/api-client";
+import { useProperties } from "@/contexts/PropertiesContext";
 import type { Property } from "@/lib/properties";
 import type { PropertyTypeApi, PropertyStatusApi, ListingTypeApi } from "@/lib/api-types";
 import {
@@ -39,6 +42,15 @@ function parsePrice(price: string): number {
 }
 
 export function PropertyListingTable({ properties }: PropertyListingTableProps) {
+  const { refetchProperties } = useProperties();
+  const [rowMenuId, setRowMenuId] = React.useState<string | number | null>(null);
+  const [editTarget, setEditTarget] = React.useState<Property | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Property | null>(null);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  const closeRowMenu = () => setRowMenuId(null);
+
   const [search, setSearch] = React.useState("");
   const [sortBy, setSortBy] = React.useState("Last Updated");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
@@ -241,7 +253,9 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
             </tr>
           </thead>
           <tbody>
-            {pageProps.map((prop) => (
+            {pageProps.map((prop) => {
+              const canMutateApi = toPropertyNumericId(prop.id) != null;
+              return (
               <tr
                 key={prop.id}
                 className="border-b border-[#e2e8f0] transition-colors hover:bg-[#f8fafc]"
@@ -292,17 +306,71 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                 <td className="px-3 py-2 text-[#64748b] sm:px-4">
                   {prop.updated_at ? new Date(prop.updated_at).toLocaleDateString("en-US") : "—"}
                 </td>
-                <td className="px-3 py-2 sm:px-4">
+                <td className="relative px-3 py-2 sm:px-4">
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-                    aria-label="More options"
+                    onClick={() =>
+                      setRowMenuId((cur) => (cur === prop.id ? null : prop.id))
+                    }
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]",
+                      rowMenuId === prop.id && "bg-[#f1f5f9] text-[#1e293b]"
+                    )}
+                    aria-expanded={rowMenuId === prop.id}
+                    aria-haspopup="menu"
+                    aria-label={`Actions for ${prop.title}`}
                   >
                     <MoreHorizontal className="size-3.5" />
                   </button>
+                  {rowMenuId === prop.id ? (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        aria-hidden
+                        onClick={closeRowMenu}
+                      />
+                      <div
+                        role="menu"
+                        className="absolute right-2 top-full z-40 mt-1 w-48 overflow-hidden rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={!canMutateApi}
+                          title={!canMutateApi ? "Only listings saved on the server can be edited" : undefined}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => {
+                            if (!canMutateApi) return;
+                            setEditTarget(prop);
+                            closeRowMenu();
+                          }}
+                        >
+                          <Pencil className="size-3.5 shrink-0" />
+                          Edit property
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={!canMutateApi}
+                          title={!canMutateApi ? "Only listings saved on the server can be removed" : undefined}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => {
+                            if (!canMutateApi) return;
+                            setDeleteError(null);
+                            setDeleteTarget(prop);
+                            closeRowMenu();
+                          }}
+                        >
+                          <Trash2 className="size-3.5 shrink-0" />
+                          Remove listing
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
@@ -313,6 +381,66 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
         onPageChange={setPage}
         itemLabel="properties"
       />
+
+      <EditPropertyModal
+        property={editTarget}
+        open={editTarget != null}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => void refetchProperties()}
+      />
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            aria-hidden
+            onClick={() => !deleteBusy && setDeleteTarget(null)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#1e293b]">Remove listing?</h3>
+            <p className="mt-2 text-sm text-[#64748b]">
+              <span className="font-medium text-[#1e293b]">{deleteTarget.title}</span> will be soft-removed:
+              status set to maintenance and pending bookings cancelled. Only you (the owner) can do this.
+            </p>
+            {deleteError ? (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{deleteError}</p>
+            ) : null}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={deleteBusy}
+                onClick={() => setDeleteTarget(null)}
+                className="border-[#e2e8f0]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={deleteBusy || toPropertyNumericId(deleteTarget.id) == null}
+                className="bg-red-600 text-white hover:bg-red-700"
+                onClick={() => {
+                  const id = toPropertyNumericId(deleteTarget.id);
+                  if (id == null) return;
+                  setDeleteBusy(true);
+                  setDeleteError(null);
+                  void deleteProperty(id).then((r) => {
+                    setDeleteBusy(false);
+                    if (!r.ok) {
+                      setDeleteError(r.message ?? "Could not remove listing.");
+                      return;
+                    }
+                    setDeleteTarget(null);
+                    void refetchProperties();
+                  });
+                }}
+              >
+                {deleteBusy ? "Removing…" : "Remove listing"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

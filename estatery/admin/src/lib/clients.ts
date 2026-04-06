@@ -1,6 +1,8 @@
 /**
  * Client types and mock data for the clients list and detail views.
  */
+import type { HostClientListRowApi } from "@/lib/api-types";
+
 export type ClientStatus = "On Going" | "Completed" | "Overdue";
 
 // ClientRow to be used in the app to access the client row data
@@ -15,7 +17,26 @@ export type ClientRow = {
   amount: number;
   nextPayment: string; // ISO-like date string
   status: ClientStatus;
+  /** Property / booking currency code (e.g. ghs) for display */
+  currency?: string;
 };
+
+export function mapHostClientListRow(raw: HostClientListRowApi): ClientRow {
+  const amount = parseFloat(String(raw.amount)) || 0;
+  return {
+    id: String(raw.id),
+    clientId: String(raw.clientId),
+    name: raw.name,
+    avatarInitials: raw.avatarInitials,
+    propertyName: raw.propertyName,
+    propertyAddress: raw.propertyAddress,
+    type: raw.type === "Buy" ? "Buy" : "Rent",
+    amount,
+    nextPayment: raw.nextPayment ?? "",
+    status: raw.status,
+    currency: raw.currency || "ghs",
+  };
+}
 
 // clientsTableData to be used in the app to access the client table data
 export const clientsTableData: ClientRow[] = [
@@ -132,6 +153,8 @@ export const clientsTableData: ClientRow[] = [
 // ClientDetail to be used in the app to access the client detail data
 export type ClientDetail = {
   clientId: string;
+  /** When set (e.g. from bookings API), Messages can open a real thread with this user id */
+  tenantUserId?: number;
   name: string;
   avatarInitials: string;
   email: string;

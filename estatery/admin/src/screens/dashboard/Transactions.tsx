@@ -1,478 +1,331 @@
 "use client";
 
 /**
- * Transactions – payment list with search, filter, pagination.
- * Status: Success, Pending, Failed; type: Rent, Sale.
+ * Transactions — booking payment schedule (deposit + rent) from GET /api/host/payments/.
+ * Host records receipts manually (no in-app card checkout). Mark paid via PATCH /api/payments/:id/mark-paid/.
  */
 import * as React from "react";
 import {
-  Calendar,
   RefreshCw,
-  ChevronDown,
   Download,
-  Upload,
-  CheckCircle2,
-  Clock,
-  XCircle,
   Search,
   Filter,
-  MoreVertical,
+  Wallet,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Landmark,
   TrendingUp,
+  ArrowUpRight,
 } from "lucide-react";
+import { format, subMonths, subWeeks, startOfWeek, endOfWeek, eachWeekOfInterval } from "date-fns";
 import { DashboardLayout } from "@/components/dashboard";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui";
-import type { PaymentTypeApi, PaymentStatusApi } from "@/lib/api-types";
+import { cn, formatDashboardCurrency } from "@/lib/utils";
+import { fetchHostDashboard, fetchHostPayments, markHostPaymentPaid } from "@/lib/api-client";
+import type { HostDashboardResponse, HostRecentPaymentRow } from "@/lib/api-types";
 
-/** API BookingPayment + display fields from booking */
-type PaymentDisplay = {
-  id: number;
-  booking: number;
-  payment_type: PaymentTypeApi;
-  month_number: number;
-  amount: string;
-  due_date: string;
-  status: PaymentStatusApi;
-  paid_date?: string | null;
-  property_title?: string;
-  customer?: string;
-};
-
-const PAYMENT_TYPE_LABEL: Record<PaymentTypeApi, string> = {
+const PAYMENT_TYPE_LABEL: Record<string, string> = {
   deposit: "Deposit",
   rent: "Rent",
-  late_fee: "Late Fee",
+  late_fee: "Late fee",
   utility: "Utility",
   damage: "Damage",
   refund: "Refund",
 };
 
-const PAYMENTS: PaymentDisplay[] = [
-  { id: 23487, booking: 101, payment_type: "rent", month_number: 1, amount: "293.00", due_date: "2025-07-08", status: "paid", property_title: "Oak Grove Estates", customer: "David Martinez" },
-  { id: 23488, booking: 102, payment_type: "rent", month_number: 2, amount: "320.00", due_date: "2025-07-09", status: "paid", property_title: "Maple Heights", customer: "Sarah Johnson" },
-  { id: 23489, booking: 103, payment_type: "rent", month_number: 1, amount: "275.00", due_date: "2025-07-10", status: "pending", property_title: "Riverbend Apartments", customer: "Michael Smith" },
-  { id: 23490, booking: 104, payment_type: "rent", month_number: 1, amount: "450.00", due_date: "2025-07-11", status: "paid", property_title: "Sunset Terrace", customer: "Emma Wilson" },
-  { id: 23491, booking: 105, payment_type: "deposit", month_number: 0, amount: "8500.00", due_date: "2025-07-12", status: "paid", property_title: "Lakeside Villa", customer: "James Brown" },
-  { id: 23492, booking: 106, payment_type: "rent", month_number: 3, amount: "380.00", due_date: "2025-07-13", status: "pending", property_title: "Urban Heights", customer: "Anna Davis" },
-  { id: 23493, booking: 107, payment_type: "rent", month_number: 2, amount: "520.00", due_date: "2025-07-14", status: "paid", property_title: "Green Valley", customer: "Chris Lee" },
-  { id: 23494, booking: 108, payment_type: "deposit", month_number: 0, amount: "12000.00", due_date: "2025-07-15", status: "cancelled", property_title: "Harbor View", customer: "Maria Garcia" },
-  { id: 23495, booking: 109, payment_type: "rent", month_number: 1, amount: "610.00", due_date: "2025-07-16", status: "pending", property_title: "Park Place", customer: "Tom Anderson" },
-  { id: 23496, booking: 110, payment_type: "rent", month_number: 4, amount: "295.00", due_date: "2025-07-17", status: "paid", property_title: "Riverside", customer: "Lisa Moore" },
-  { id: 23497, booking: 111, payment_type: "deposit", month_number: 0, amount: "9200.00", due_date: "2025-07-18", status: "pending", property_title: "Hilltop Manor", customer: "Paul Clark" },
-  { id: 23498, booking: 112, payment_type: "rent", month_number: 2, amount: "720.00", due_date: "2025-07-19", status: "paid", property_title: "Downtown Loft", customer: "Rachel Green" },
-  { id: 23499, booking: 113, payment_type: "rent", month_number: 1, amount: "410.00", due_date: "2025-07-20", status: "paid", property_title: "Garden View", customer: "Steve Adams" },
-];
-
-// Revenue chart data by period
-const LAST_PERIOD_COLOR = "#84cc16"; // lime green
-
-type ChartData = {
-  labels: string[];
-  fullDateLabels: [string, string];
-  thisPeriod: number[];
-  lastPeriod: number[];
-  totalRevenue: string;
-  changePercent: string;
+const STATUS_STYLES: Record<string, string> = {
+  paid: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80",
+  pending: "bg-amber-50 text-amber-900 ring-1 ring-amber-200/70",
+  overdue: "bg-rose-50 text-rose-800 ring-1 ring-rose-200/80",
+  refunded: "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/70",
+  cancelled: "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80",
 };
 
-const CHART_DATA: Record<string, ChartData> = {
-  weekly: {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    fullDateLabels: ["Jul 7, 2025", "Jul 13, 2025"],
-    thisPeriod: [18.2, 19.5, 20.1, 21.8, 22.5, 23.0, 23.57],
-    lastPeriod: [15.0, 16.2, 17.0, 16.8, 17.5, 18.0, 18.5],
-    totalRevenue: "₵23,569.00",
-    changePercent: "10,5",
-  },
-  monthly: {
-    labels: ["Jun 15", "Jun 18", "Jun 21", "Jun 24", "Jun 27", "Jun 30", "Jul 3", "Jul 6", "Jul 9", "Jul 12", "Jul 15"],
-    fullDateLabels: ["June 15, 2025", "July 15, 2025"],
-    thisPeriod: [12.5, 14.2, 15.8, 16.5, 18.2, 19.0, 20.5, 21.2, 22.8, 23.2, 23.57],
-    lastPeriod: [11.0, 12.5, 13.8, 14.5, 15.2, 14.8, 15.5, 16.2, 17.0, 17.5, 18.5],
-    totalRevenue: "₵23,569.00",
-    changePercent: "10,5",
-  },
-  yearly: {
-    labels: ["Q1", "Q2", "Q3", "Q4"],
-    fullDateLabels: ["Jan 1, 2025", "Dec 31, 2025"],
-    thisPeriod: [58, 62, 68, 72],
-    lastPeriod: [52, 55, 60, 65],
-    totalRevenue: "₵260,000.00",
-    changePercent: "8,2",
-  },
-};
+type Period = "weekly" | "monthly" | "yearly";
 
-function SelectAllCheckbox({
-  allSelected,
-  someSelected,
-  onChange,
+function parseAmount(s: string): number {
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function CollectedChart({
+  payments,
+  period,
+  currency,
 }: {
-  allSelected: boolean;
-  someSelected: boolean;
-  onChange: () => void;
+  payments: HostRecentPaymentRow[];
+  period: Period;
+  currency: string;
 }) {
-  const ref = React.useRef<HTMLInputElement>(null);
-  React.useEffect(() => {
-    if (ref.current) ref.current.indeterminate = someSelected && !allSelected;
-  }, [someSelected, allSelected]);
+  const { labels, values } = React.useMemo(() => {
+    const paid = payments.filter((p) => p.status === "paid" && p.paid_date);
+    const now = new Date();
+
+    if (period === "monthly") {
+      const pts: { label: string; v: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = subMonths(now, i);
+        const prefix = format(d, "yyyy-MM");
+        const label = format(d, "MMM");
+        const v = paid
+          .filter((p) => p.paid_date!.startsWith(prefix))
+          .reduce((s, p) => s + parseAmount(p.amount), 0);
+        pts.push({ label, v });
+      }
+      return { labels: pts.map((p) => p.label), values: pts.map((p) => p.v) };
+    }
+
+    if (period === "weekly") {
+      const start = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 7);
+      const weeks = eachWeekOfInterval({ start, end: now }, { weekStartsOn: 1 }).slice(-8);
+      const pts = weeks.map((wStart) => {
+        const wEnd = endOfWeek(wStart, { weekStartsOn: 1 });
+        const label = `${format(wStart, "d MMM")}`;
+        const v = paid.filter((p) => {
+          const pd = new Date(p.paid_date!);
+          return pd >= wStart && pd <= wEnd;
+        }).reduce((s, p) => s + parseAmount(p.amount), 0);
+        return { label, v };
+      });
+      return { labels: pts.map((p) => p.label), values: pts.map((p) => p.v) };
+    }
+
+    // yearly → quarters current year
+    const y = now.getFullYear();
+    const pts: { label: string; v: number }[] = [];
+    for (let q = 0; q < 4; q++) {
+      const startM = q * 3 + 1;
+      const endM = startM + 2;
+      const v = paid
+        .filter((p) => {
+          const pd = new Date(p.paid_date!);
+          return pd.getFullYear() === y && pd.getMonth() + 1 >= startM && pd.getMonth() + 1 <= endM;
+        })
+        .reduce((s, p) => s + parseAmount(p.amount), 0);
+      pts.push({ label: `Q${q + 1}`, v });
+    }
+    return { labels: pts.map((p) => p.label), values: pts.map((p) => p.v) };
+  }, [payments, period]);
+
+  const maxV = Math.max(1, ...values, 1);
+  const total = values.reduce((a, b) => a + b, 0);
+
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={allSelected}
-      onChange={onChange}
-      className="rounded border-[#cbd5e1]"
-      aria-label="Select all"
-    />
+    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/50 p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Collected</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+            {formatDashboardCurrency(currency, total)}
+          </p>
+          <p className="text-xs text-slate-500">Sum of recorded payouts in this view</p>
+        </div>
+        <div className="flex items-center gap-1.5 text-emerald-600">
+          <TrendingUp className="size-4" />
+          <span className="text-sm font-medium">By {period === "weekly" ? "week" : period === "monthly" ? "month" : "quarter"}</span>
+        </div>
+      </div>
+      <div className="flex h-36 items-end gap-1.5">
+        {values.map((v, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center gap-2">
+            <div
+              className="w-full max-w-[3rem] rounded-t-lg bg-gradient-to-t from-[var(--logo)]/85 to-[var(--logo)]/60 transition-all hover:from-[var(--logo)] hover:to-[var(--logo-hover)]/90"
+              style={{ height: `${Math.max(8, (v / maxV) * 100)}%` }}
+              title={formatDashboardCurrency(currency, v)}
+            />
+            <span className="max-w-full truncate text-[10px] font-medium text-slate-500">{labels[i]}</span>
+          </div>
+        ))}
+      </div>
+      {values.every((v) => v === 0) && (
+        <p className="mt-3 text-center text-xs text-slate-400">No paid installments in this range yet.</p>
+      )}
+    </div>
   );
 }
 
-const PADDING_LEFT = 38;
-const PADDING_TOP = 14;
-const PADDING_BOTTOM = 24;
-const PADDING_RIGHT = 6;
-
-function RevenueChart({
-  period,
-  onPeriodChange,
-  onRefresh,
+function RecordPaymentModal({
+  open,
+  payment,
+  onClose,
+  onDone,
+  currency,
 }: {
-  period: string;
-  onPeriodChange: (v: string) => void;
-  onRefresh: () => void;
+  open: boolean;
+  payment: HostRecentPaymentRow | null;
+  onClose: () => void;
+  onDone: () => void;
+  currency: string;
 }) {
-  const svgRef = React.useRef<SVGSVGElement>(null);
-  const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
-  const [animating, setAnimating] = React.useState(false);
+  const [ref, setRef] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
 
-  const data = CHART_DATA[period] ?? CHART_DATA.monthly;
-  React.useEffect(() => setHoverIndex(null), [period]);
-  const { labels, fullDateLabels, thisPeriod, lastPeriod, totalRevenue, changePercent } = data;
-
-  const allValues = [...thisPeriod, ...lastPeriod];
-  const maxY = Math.ceil((Math.max(...allValues) * 1.12) / 5) * 5 || 25;
-  const minY = Math.max(0, Math.floor((Math.min(...allValues) * 0.88) / 5) * 5);
-
-  const chartHeight = 160;
-  const chartWidth = 520;
-  const plotWidth = chartWidth - PADDING_LEFT - PADDING_RIGHT;
-  const plotHeight = chartHeight - PADDING_TOP - PADDING_BOTTOM;
-
-  const toY = (val: number) =>
-    PADDING_TOP + (plotHeight - ((val - minY) / (maxY - minY || 1)) * plotHeight);
-  const toX = (i: number) =>
-    PADDING_LEFT + (labels.length > 1 ? (i / (labels.length - 1)) * plotWidth : plotWidth / 2);
-
-  const thisPath = thisPeriod
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`)
-    .join(" ");
-  const lastPath = lastPeriod
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(v)}`)
-    .join(" ");
-  const baselineY = chartHeight - PADDING_BOTTOM;
-  const thisAreaPath = `${thisPath} L ${toX(thisPeriod.length - 1)} ${baselineY} L ${toX(0)} ${baselineY} Z`;
-  const lastAreaPath = `${lastPath} L ${toX(lastPeriod.length - 1)} ${baselineY} L ${toX(0)} ${baselineY} Z`;
-
-  const handleRefresh = () => {
-    setAnimating(true);
-    onRefresh();
-    setTimeout(() => setAnimating(false), 400);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((e.clientX - rect.left) / rect.width) * chartWidth - PADDING_LEFT;
-    if (x < 0 || x > plotWidth) {
-      setHoverIndex(null);
-      return;
+  React.useEffect(() => {
+    if (open) {
+      setRef("");
+      setErr(null);
     }
-    const idx =
-      labels.length > 1
-        ? Math.round((x / plotWidth) * (labels.length - 1))
-        : 0;
-    setHoverIndex(Math.max(0, Math.min(labels.length - 1, idx)));
-  };
+  }, [open, payment]);
 
-  const formatVal = (v: number) =>
-    v >= 1000 ? `₵${(v / 1000).toFixed(1)}M` : `₵${v.toFixed(1)}K`;
+  if (!open || !payment) return null;
+
+  const submit = () => {
+    setBusy(true);
+    setErr(null);
+    void markHostPaymentPaid(payment.id, ref.trim() || undefined).then((r) => {
+      setBusy(false);
+      if (!r.ok) {
+        setErr(r.message ?? "Could not update payment.");
+        return;
+      }
+      onDone();
+      onClose();
+    });
+  };
 
   return (
-    <div className="animate-fade-in-up overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl shadow-slate-200/50 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-300/40">
-      <div className="border-b border-[#e2e8f0] bg-white px-4 py-3">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <h3 className="text-sm font-bold text-[#1e293b]">Revenue Statistics</h3>
-          <div className="flex items-center gap-2">
-            <Select value={period} onValueChange={onPeriodChange}>
-              <SelectTrigger className="h-8 min-w-[100px] rounded-lg border-[#e2e8f0] bg-[#f8fafc] px-3 text-xs">
-                <span>
-                  {period === "weekly"
-                    ? "Weekly"
-                    : period === "yearly"
-                      ? "Yearly"
-                      : "Monthly"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="flex size-8 items-center justify-center rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-              aria-label="Refresh chart"
-            >
-              <RefreshCw className={cn("size-3.5", animating && "animate-spin")} />
-            </button>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button type="button" className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]" aria-label="Close" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <h3 className="text-lg font-semibold text-slate-900">Record payment received</h3>
+        <p className="mt-2 text-sm text-slate-600">
+          Mark this installment as paid after you confirm funds (transfer, MoMo, cash, etc.). Optional reference helps
+          your records.
+        </p>
+        <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm">
+          <p className="font-medium text-slate-900">{payment.property_title ?? "Property"}</p>
+          <p className="text-slate-600">{payment.customer}</p>
+          <p className="mt-2 text-base font-semibold text-slate-900">
+            {formatDashboardCurrency(currency, payment.amount)}{" "}
+            <span className="text-xs font-normal text-slate-500">· {PAYMENT_TYPE_LABEL[payment.payment_type] ?? payment.payment_type}</span>
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Due {payment.due_date}</p>
         </div>
-
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-xl font-bold text-[#1e293b]">{totalRevenue}</p>
-            <p className="flex items-center gap-1 text-xs text-[#64748b]">
-              <span className="flex items-center gap-1 font-medium text-[var(--logo)]">
-                <TrendingUp className="size-3" />
-                ↑ {changePercent.replace(",", ".")}%
-              </span>
-              from last period
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[var(--logo)]" />
-              <span className="text-xs text-[#64748b]">This period</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[#84cc16]" />
-              <span className="text-xs text-[#64748b]">Last period</span>
-            </div>
-          </div>
+        <label className="mt-4 block text-xs font-medium text-slate-700">
+          Reference (optional)
+          <input
+            value={ref}
+            onChange={(e) => setRef(e.target.value)}
+            placeholder="e.g. MoMo TXN ID"
+            className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+          />
+        </label>
+        {err ? <p className="mt-3 text-sm text-red-600">{err}</p> : null}
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="outline" type="button" onClick={onClose} disabled={busy} className="border-slate-200">
+            Cancel
+          </Button>
+          <Button type="button" disabled={busy} onClick={submit} className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]">
+            {busy ? "Saving…" : "Mark as paid"}
+          </Button>
         </div>
-      </div>
-
-      <div className="relative px-3 pb-3 pt-1">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          className="min-h-[180px] w-full"
-          preserveAspectRatio="xMidYMid meet"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoverIndex(null)}
-        >
-          <defs>
-            <linearGradient id="thisGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--logo)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--logo)" stopOpacity={0.02} />
-            </linearGradient>
-            <linearGradient id="lastGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#84cc16" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#84cc16" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-
-          {Array.from({ length: 5 }, (_, i) => minY + ((maxY - minY) * i) / 4).map((val) => (
-            <text
-              key={val}
-              x={PADDING_LEFT - 6}
-              y={toY(val) + 3}
-              textAnchor="end"
-              fill="#94a3b8"
-              style={{ fontSize: 9, fontWeight: 500 }}
-            >
-              ₵{val >= 1000 ? `${(val / 1000).toFixed(0)}M` : `${Math.round(val)}K`}
-            </text>
-          ))}
-
-          <text
-            x={PADDING_LEFT}
-            y={chartHeight - 6}
-            textAnchor="start"
-            fill="#94a3b8"
-            style={{ fontSize: 9, fontWeight: 500 }}
-          >
-            {fullDateLabels[0]}
-          </text>
-          <text
-            x={chartWidth - PADDING_RIGHT}
-            y={chartHeight - 6}
-            textAnchor="end"
-            fill="#94a3b8"
-            style={{ fontSize: 9, fontWeight: 500 }}
-          >
-            {fullDateLabels[1]}
-          </text>
-
-          {Array.from({ length: 5 }, (_, i) => minY + ((maxY - minY) * i) / 4).map((val) => (
-            <line
-              key={`h-${val}`}
-              x1={PADDING_LEFT}
-              y1={toY(val)}
-              x2={chartWidth - PADDING_RIGHT}
-              y2={toY(val)}
-              stroke="#e2e8f0"
-              strokeDasharray="4 4"
-              strokeWidth={1}
-            />
-          ))}
-          {labels.map((_, i) => (
-            <line
-              key={`v-${i}`}
-              x1={toX(i)}
-              y1={PADDING_TOP}
-              x2={toX(i)}
-              y2={chartHeight - PADDING_BOTTOM}
-              stroke="#e2e8f0"
-              strokeDasharray="4 4"
-              strokeWidth={1}
-            />
-          ))}
-
-          <path d={lastAreaPath} fill="url(#lastGrad)" stroke="none" />
-          <path d={thisAreaPath} fill="url(#thisGrad)" stroke="none" />
-          <path
-            d={thisPath}
-            fill="none"
-            stroke="var(--logo)"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d={lastPath}
-            fill="none"
-            stroke={LAST_PERIOD_COLOR}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {hoverIndex !== null && (
-            <>
-              <line
-                x1={toX(hoverIndex)}
-                y1={PADDING_TOP}
-                x2={toX(hoverIndex)}
-                y2={chartHeight - PADDING_BOTTOM}
-                stroke="#94a3b8"
-                strokeDasharray="4 4"
-                strokeWidth={1}
-              />
-              <circle
-                cx={toX(hoverIndex)}
-                cy={toY(thisPeriod[hoverIndex] ?? 0)}
-                r={4}
-                fill="var(--logo)"
-                stroke="white"
-                strokeWidth={1.5}
-              />
-              <circle
-                cx={toX(hoverIndex)}
-                cy={toY(lastPeriod[hoverIndex] ?? 0)}
-                r={4}
-                fill={LAST_PERIOD_COLOR}
-                stroke="white"
-                strokeWidth={1.5}
-              />
-            </>
-          )}
-
-          <rect
-            x={PADDING_LEFT}
-            y={PADDING_TOP}
-            width={plotWidth}
-            height={plotHeight}
-            fill="transparent"
-          />
-        </svg>
-
-        {hoverIndex !== null && (
-          <div
-            className="pointer-events-none absolute z-10 w-fit max-w-[180px] rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-xl"
-            style={{
-              left: `${12 + (hoverIndex / Math.max(1, labels.length - 1)) * 68}%`,
-              top: 12,
-              transform: "translateX(-50%)",
-            }}
-          >
-            <p className="mb-1.5 text-[10px] font-bold text-[#1e293b]">Total Revenue</p>
-            <div className="space-y-1 text-[10px]">
-              <div className="flex items-center justify-between gap-6">
-                <span className="text-[#64748b]">
-                  {labels[hoverIndex] ?? ""}
-                  {period === "monthly" && ", 2025"}
-                  {period === "yearly" && " 2025"}
-                  {period === "weekly" && ", 2025"}
-                </span>
-                <span className="font-semibold text-[var(--logo)]">
-                  {formatVal(thisPeriod[hoverIndex] ?? 0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-6">
-                <span className="text-[#64748b]">
-                  {labels[hoverIndex] ?? ""}
-                  {period === "monthly" && ", 2024"}
-                  {period === "yearly" && " 2024"}
-                  {period === "weekly" && ", 2024"}
-                </span>
-                <span className="font-semibold text-[#84cc16]">
-                  {formatVal(lastPeriod[hoverIndex] ?? 0)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
 export default function Transactions() {
-  const [lastUpdated, setLastUpdated] = React.useState("July 08, 2025");
-  const [headerRefreshing, setHeaderRefreshing] = React.useState(false);
-  const [period, setPeriod] = React.useState("monthly");
-  const [payments, setPayments] = React.useState<PaymentDisplay[]>(PAYMENTS);
+  const [payments, setPayments] = React.useState<HostRecentPaymentRow[]>([]);
+  const [summary, setSummary] = React.useState({
+    count: 0,
+    paid: 0,
+    pending: 0,
+    overdue: 0,
+    cancelled: 0,
+    refunded: 0,
+  });
+  const [dash, setDash] = React.useState<HostDashboardResponse | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [period, setPeriod] = React.useState<Period>("monthly");
   const [search, setSearch] = React.useState("");
-  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
-  const [rowMenuOpen, setRowMenuOpen] = React.useState<number | null>(null);
-  const [statusChangeModal, setStatusChangeModal] = React.useState<{
-    paymentId: number;
-    newStatus: PaymentStatusApi;
-  } | null>(null);
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [typeFilter, setTypeFilter] = React.useState<string>("all");
   const [filterOpen, setFilterOpen] = React.useState(false);
-  const [statusFilter, setStatusFilter] = React.useState<PaymentStatusApi | "all">("all");
-  const filterContainerRef = React.useRef<HTMLDivElement>(null);
-  const rowMenuRef = React.useRef<HTMLTableCellElement | null>(null);
-  const [typeFilter, setTypeFilter] = React.useState<PaymentTypeApi | "all">("all");
   const [page, setPage] = React.useState(1);
+  const [recordPayment, setRecordPayment] = React.useState<HostRecentPaymentRow | null>(null);
 
-  const handleRefresh = () => {
-    setHeaderRefreshing(true);
-    const d = new Date();
-    setLastUpdated(
-      d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-    );
-    setTimeout(() => setHeaderRefreshing(false), 600);
+  const currency = dash?.currency ?? "ghs";
+
+  const load = React.useCallback(async () => {
+    const [payRes, dashRes] = await Promise.all([fetchHostPayments(1500), fetchHostDashboard()]);
+    if (!payRes) {
+      setError("Could not load payments. Sign in as a host and ensure the API is running.");
+      setPayments([]);
+    } else {
+      setError(null);
+      setPayments(payRes.payments);
+      setSummary(payRes.summary);
+    }
+    setDash(dashRes);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    void load();
   };
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const outstandingTotal = React.useMemo(
+    () =>
+      payments
+        .filter((p) => p.status === "pending" || p.status === "overdue")
+        .reduce((s, p) => s + parseAmount(p.amount), 0),
+    [payments]
+  );
 
-  const handleImport = () => {
-    fileInputRef.current?.click();
-  };
+  const filtered = React.useMemo(() => {
+    let list = payments;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (p) =>
+          String(p.id).includes(q) ||
+          String(p.booking).includes(q) ||
+          (p.customer ?? "").toLowerCase().includes(q) ||
+          (p.property_title ?? "").toLowerCase().includes(q)
+      );
+    }
+    if (statusFilter !== "all") list = list.filter((p) => p.status === statusFilter);
+    if (typeFilter !== "all") list = list.filter((p) => p.payment_type === typeFilter);
+    return [...list].sort((a, b) => {
+      const da = new Date(a.due_date).getTime();
+      const db = new Date(b.due_date).getTime();
+      return db - da;
+    });
+  }, [payments, search, statusFilter, typeFilter]);
 
-  const formatAmount = (a: string) => `₵${Number(a).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const PAGE_SIZE = 12;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  React.useEffect(() => setPage(1), [search, statusFilter, typeFilter]);
 
-  const handleExport = () => {
-    const headers = ["ID", "Due Date", "Property", "Customer", "Type", "Amount", "Status"];
-    const rows = filteredPayments.map((p) =>
-      [p.id, p.due_date, p.property_title ?? "", p.customer ?? "", PAYMENT_TYPE_LABEL[p.payment_type], formatAmount(p.amount), p.status]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+  const exportCsv = () => {
+    const headers = ["ID", "Booking", "Due", "Paid", "Property", "Tenant", "Type", "Amount", "Status", "Reference"];
+    const rows = filtered.map((p) =>
+      [
+        p.id,
+        p.booking,
+        p.due_date,
+        p.paid_date ?? "",
+        p.property_title ?? "",
+        p.customer ?? "",
+        PAYMENT_TYPE_LABEL[p.payment_type] ?? p.payment_type,
+        p.amount,
+        p.status,
+        p.transaction_id ?? "",
+      ]
+        .map((c) => `"${String(c).replace(/"/g, '""')}"`)
         .join(",")
     );
     const csv = [headers.join(","), ...rows].join("\n");
@@ -480,478 +333,333 @@ export default function Transactions() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `booking-payments-${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return;
-      const parsed: PaymentDisplay[] = [];
-      const typeMap: Record<string, PaymentTypeApi> = { Rent: "rent", Deposit: "deposit", Sale: "deposit", "Late Fee": "late_fee" };
-      const statusMap: Record<string, PaymentStatusApi> = { Success: "paid", Completed: "paid", paid: "paid", Pending: "pending", pending: "pending", Failed: "cancelled", cancelled: "cancelled" };
-      for (let i = 1; i < lines.length; i++) {
-        const vals = lines[i].match(/("(?:[^"]|"")*"|[^,]*)/g)?.map((v) => v.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) ?? [];
-        if (vals.length >= 7) {
-          const typeVal = vals[5] ?? vals[4] ?? "Rent";
-          const amountVal = vals[6] ?? vals[5] ?? "0";
-          const statusVal = vals[7] ?? vals[6] ?? "pending";
-          parsed.push({
-            id: 90000 + i,
-            booking: 90000 + i,
-            payment_type: typeMap[typeVal] ?? "rent",
-            month_number: 1,
-            amount: String(amountVal).replace(/[^\d.]/g, "") || "0",
-            due_date: vals[1] || new Date().toISOString().slice(0, 10),
-            status: statusMap[statusVal] ?? "pending",
-            property_title: vals[2],
-            customer: vals[3] ?? vals[4],
-          });
-        }
-      }
-      if (parsed.length > 0) {
-        setPayments((prev) => [...parsed, ...prev]);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  const parseDate = (d: string) => new Date(d).getTime() || 0;
-
-  const filteredPayments = React.useMemo(() => {
-    let list = payments;
-    const s = search.toLowerCase();
-    if (s) {
-      list = list.filter(
-        (p) =>
-          String(p.id).includes(s) ||
-          (p.customer && p.customer.toLowerCase().includes(s)) ||
-          (p.property_title && p.property_title.toLowerCase().includes(s))
-      );
-    }
-    if (statusFilter !== "all") {
-      list = list.filter((p) => p.status === statusFilter);
-    }
-    if (typeFilter !== "all") {
-      list = list.filter((p) => p.payment_type === typeFilter);
-    }
-    return [...list].sort((a, b) => parseDate(b.due_date) - parseDate(a.due_date));
-  }, [payments, search, statusFilter, typeFilter]);
-
-  const PAGE_SIZE = 10;
-  const pageCount = Math.max(1, Math.ceil(filteredPayments.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
-  const startIdx = (safePage - 1) * PAGE_SIZE;
-  const pagePayments = filteredPayments.slice(startIdx, startIdx + PAGE_SIZE);
-  React.useEffect(() => setPage(1), [search, statusFilter, typeFilter]);
-
-  const allSelected = filteredPayments.length > 0 && filteredPayments.every((p) => selectedIds.has(p.id));
-  const someSelected = filteredPayments.some((p) => selectedIds.has(p.id));
-
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredPayments.map((p) => p.id)));
-    }
-  };
-
-  const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  React.useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (filterContainerRef.current?.contains(target)) return;
-      if (rowMenuRef.current?.contains(target)) return;
-      setRowMenuOpen(null);
-      setFilterOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const handleConfirmStatusChange = (paymentId: number, newStatus: PaymentStatusApi) => {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === paymentId ? { ...p, status: newStatus } : p))
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[40vh] items-center justify-center text-slate-500">Loading payments…</div>
+      </DashboardLayout>
     );
-    if (statusFilter !== "all" && statusFilter !== newStatus) {
-      setStatusFilter("all");
-    }
-    setStatusChangeModal(null);
-    setRowMenuOpen(null);
-  };
-
-  const statusClass: Record<PaymentStatusApi, string> = {
-    paid: "bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0]",
-    pending: "bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd]",
-    overdue: "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]",
-    refunded: "bg-[#e0e7ff] text-[#4f46e5] border border-[#c7d2fe]",
-    cancelled: "bg-[#fee2e2] text-[#dc2626] border border-[#fecaca]",
-  };
+  }
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-[1400px] space-y-4">
-        {/* Page header */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-[#1e293b]">Transactions</h1>
-            <p className="mt-0.5 text-xs text-[#64748b]">
-              Track and manage your property dashboard efficiently.
-            </p>
+      <div className="mx-auto max-w-6xl space-y-8 pb-10">
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/80 to-[var(--logo-muted)]/30 px-6 py-8 shadow-sm sm:px-10 sm:py-10">
+          <div className="absolute -right-20 -top-20 size-64 rounded-full bg-[var(--logo)]/5 blur-3xl" aria-hidden />
+          <div className="relative flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200/80">
+                <Landmark className="size-3.5 text-[var(--logo)]" />
+                Rent schedule &amp; receipts
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Transactions
+              </h1>
+              <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
+                These lines are <strong className="font-medium text-slate-800">booking installments</strong> (security
+                deposit + monthly rent) generated when tenants reserve your units. There is no in-app card checkout—use{" "}
+                <strong className="font-medium text-slate-800">Record payment</strong> when money hits your account.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onRefresh}
+                className="gap-2 border-slate-200 bg-white/90 shadow-sm hover:bg-white"
+              >
+                <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+                Refresh
+              </Button>
+              {dash?.revenue && (
+                <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-right shadow-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last 30 days (dashboard)</p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {formatDashboardCurrency(currency, dash.revenue.last_30_days)}
+                  </p>
+                  <p className="text-xs text-slate-500">Pending pipeline: {formatDashboardCurrency(currency, dash.revenue.upcoming)}</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="flex items-center gap-1.5 rounded-lg border border-[#f1f5f9] bg-white px-3 py-1.5 shadow-sm transition-colors hover:bg-[#f8fafc]"
+        </section>
+
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+        ) : null}
+
+        {/* Summary */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              label: "In this list",
+              value: summary.count,
+              sub: "schedule rows loaded",
+              icon: Wallet,
+              tone: "text-slate-700",
+              bg: "bg-slate-50 ring-slate-200/80",
+            },
+            {
+              label: "Collected rows",
+              value: summary.paid,
+              sub: "marked paid",
+              icon: CheckCircle2,
+              tone: "text-emerald-700",
+              bg: "bg-emerald-50 ring-emerald-200/60",
+            },
+            {
+              label: "Awaiting",
+              value: summary.pending + summary.overdue,
+              sub: `${summary.pending} pending · ${summary.overdue} overdue`,
+              icon: Clock,
+              tone: "text-amber-800",
+              bg: "bg-amber-50 ring-amber-200/60",
+            },
+            {
+              label: "Outstanding amount",
+              value: formatDashboardCurrency(currency, outstandingTotal),
+              sub: "pending + overdue installments",
+              icon: AlertTriangle,
+              tone: "text-rose-800",
+              bg: "bg-rose-50 ring-rose-200/50",
+            },
+          ].map((card, i) => (
+            <div
+              key={card.label}
+              className={cn(
+                "flex gap-4 rounded-2xl border border-white/60 p-5 ring-1 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                card.bg
+              )}
+              style={{ animationDelay: `${i * 40}ms` }}
             >
-              <Calendar className="size-3.5 shrink-0 text-[#64748b]" />
-              <span className="text-xs text-[#64748b]">Last updated: {lastUpdated}</span>
-              <RefreshCw
-                className={cn("size-3.5 shrink-0 text-[var(--logo)] transition-colors hover:text-[var(--logo-hover)]", headerRefreshing && "animate-spin")}
-                aria-hidden
-              />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleFileChange}
-              aria-hidden
-            />
-            <div className="flex items-center gap-1 overflow-hidden rounded-lg border border-[#e2e8f0] bg-white shadow-sm">
-              <button
-                type="button"
-                onClick={handleImport}
-                className="flex shrink-0 items-center gap-1.5 border-r border-[#e2e8f0] px-3 py-2 text-xs font-medium text-[#475569] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
-              >
-                <Upload className="size-3.5 shrink-0" />
-                <span className="whitespace-nowrap">Import</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExport}
-                className="flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#475569] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
-              >
-                <Download className="size-3.5 shrink-0" />
-                <span className="whitespace-nowrap">Export</span>
-              </button>
+              <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm", card.tone)}>
+                <card.icon className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{card.label}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">{card.value}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-600">{card.sub}</p>
+              </div>
             </div>
+          ))}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {(["weekly", "monthly", "yearly"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-xs font-semibold capitalize transition",
+                    period === p
+                      ? "bg-[var(--logo)] text-white shadow-md"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <CollectedChart payments={payments} period={period} currency={currency} />
+          </div>
+          <div className="lg:col-span-3 flex flex-col justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6">
+            <ArrowUpRight className="mb-2 size-5 text-[var(--logo)]" />
+            <h3 className="text-base font-semibold text-slate-900">How this fits your workflow</h3>
+            <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-slate-600">
+              <li>Payments are created from the booking&apos;s payment schedule—not from app store purchases.</li>
+              <li>Use <strong className="text-slate-800">Mark as paid</strong> after you verify the tenant&apos;s transfer.</li>
+              <li>Export CSV for accounting; references can store MoMo or bank transaction IDs.</li>
+            </ul>
           </div>
         </div>
 
-        {/* Revenue Statistics */}
-        <RevenueChart
-          period={period}
-          onPeriodChange={setPeriod}
-          onRefresh={handleRefresh}
-        />
-
-        {/* Summary cards */}
-        <div className="grid gap-2 md:grid-cols-3">
-          <div
-            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
-            style={{ animationDelay: "0.05s" }}
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
-              <CheckCircle2 className="size-4 text-[var(--logo)]" />
+        {/* Table */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-4 py-4 sm:px-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Payment schedule</h2>
+              <p className="text-xs text-slate-500">{filtered.length} row{filtered.length !== 1 ? "s" : ""} (filtered)</p>
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-[#64748b]">Completed Transactions</p>
-              <p className="mt-0.5 text-lg font-bold text-[#1e293b]">134</p>
-              <p className="mt-0.5 text-xs font-medium text-[#16a34a]">+15% from last month</p>
-            </div>
-          </div>
-          <div
-            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
-            style={{ animationDelay: "0.1s" }}
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
-              <Clock className="size-4 text-[var(--logo)]" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-[#64748b]">On Progress Transactions</p>
-              <p className="mt-0.5 text-lg font-bold text-[#1e293b]">59</p>
-              <p className="mt-0.5 text-xs font-medium text-[#ef4444]">-8.5% from last month</p>
-            </div>
-          </div>
-          <div
-            className="animate-fade-in-up flex items-center gap-2 rounded-lg border border-[#f1f5f9] bg-white p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-[#e2e8f0] hover:shadow-lg"
-            style={{ animationDelay: "0.15s" }}
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--logo-muted)]">
-              <XCircle className="size-4 text-[var(--logo)]" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-[#64748b]">Cancelled Transactions</p>
-              <p className="mt-0.5 text-lg font-bold text-[#1e293b]">27</p>
-              <p className="mt-0.5 text-xs text-[#64748b]">from last month</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Payments */}
-        <div className="animate-fade-in-up overflow-hidden rounded-lg border border-[#f1f5f9] bg-white shadow-sm transition-all duration-200 ease-out hover:border-[#e2e8f0] hover:shadow-md">
-          <div className="border-b border-[#f1f5f9] px-3 py-2">
-            <h3 className="mb-2 text-base font-semibold text-[#1e293b]">Recent Payments</h3>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[140px]">
-                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#64748b]" />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
-                  placeholder="Search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-md border border-[#f1f5f9] bg-white py-1.5 pl-8 pr-2.5 text-xs text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                  aria-label="Search payments"
+                  placeholder="Search tenant, property, ID…"
+                  className="w-52 rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-3 text-sm focus:border-[var(--logo)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/15 sm:w-64"
                 />
               </div>
-              <div className="relative" ref={filterContainerRef}>
-                <button
+              <div className="relative">
+                <Button
                   type="button"
-                  onClick={() => setFilterOpen((v) => !v)}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilterOpen((o) => !o)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
-                    statusFilter !== "all"
-                      ? "border-[var(--logo)] bg-[var(--logo-muted)] font-medium text-[var(--logo)] hover:bg-[var(--logo-muted)]"
-                      : "border-[#f1f5f9] bg-white text-[#64748b] hover:bg-[#f8fafc] hover:text-[#1e293b]"
+                    "gap-1.5 border-slate-200",
+                    statusFilter !== "all" && "border-[var(--logo)]/40 bg-[var(--logo-muted)]"
                   )}
                 >
                   <Filter className="size-3.5" />
-                  Filter
-                  {statusFilter !== "all" && (
-                    <span className="size-1.5 rounded-full bg-[var(--logo)]" />
-                  )}
-                </button>
-                {filterOpen && (
-                  <div
-                    className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-                      Status
-                    </p>
-                    {(["all", "paid", "pending", "cancelled", "overdue", "refunded"] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => {
-                          setStatusFilter(opt);
-                          setFilterOpen(false);
-                        }}
-                        className={cn(
-                          "flex w-full px-4 py-2 text-left text-sm",
-                          statusFilter === opt
-                            ? "bg-[var(--logo-muted)] text-[var(--logo)] font-medium"
-                            : "text-[#1e293b] hover:bg-[#f8fafc]"
-                        )}
-                      >
-                        {opt === "all" ? "All statuses" : opt.charAt(0).toUpperCase() + opt.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  Status
+                </Button>
+                {filterOpen ? (
+                  <>
+                    <button type="button" className="fixed inset-0 z-40 cursor-default" aria-hidden onClick={() => setFilterOpen(false)} />
+                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                      {["all", "paid", "pending", "overdue", "cancelled", "refunded"].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={cn(
+                            "w-full px-4 py-2 text-left text-sm capitalize",
+                            statusFilter === s ? "bg-[var(--logo-muted)] font-medium text-[var(--logo)]" : "hover:bg-slate-50"
+                          )}
+                          onClick={() => {
+                            setStatusFilter(s);
+                            setFilterOpen(false);
+                          }}
+                        >
+                          {s === "all" ? "All statuses" : s}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
               </div>
-              <div className="relative flex items-center">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as PaymentTypeApi | "all")}
-                  className="cursor-pointer appearance-none rounded-lg border border-[#e2e8f0] bg-white py-1.5 pl-2.5 pr-8 text-xs text-[#1e293b] transition-colors hover:border-[#cbd5e1] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                >
-                  <option value="all">All</option>
-                  <option value="rent">Rent</option>
-                  <option value="deposit">Deposit</option>
-                  <option value="late_fee">Late Fee</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-[#64748b]" />
-              </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/15"
+              >
+                <option value="all">All types</option>
+                <option value="rent">Rent</option>
+                <option value="deposit">Deposit</option>
+                <option value="late_fee">Late fee</option>
+                <option value="utility">Utility</option>
+                <option value="damage">Damage</option>
+                <option value="refund">Refund</option>
+              </select>
+              <Button type="button" variant="outline" size="sm" onClick={exportCsv} className="gap-1.5 border-slate-200">
+                <Download className="size-3.5" />
+                Export
+              </Button>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[800px] w-full text-xs">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead>
-                <tr className="border-b border-[#f1f5f9] bg-[#f8fafc] text-left text-[10px] font-medium uppercase tracking-wide text-[#64748b]">
-                  <th className="px-3 py-2">
-                    <SelectAllCheckbox
-                      allSelected={allSelected}
-                      someSelected={someSelected}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th className="px-3 py-2 font-medium">Payment ID</th>
-                  <th className="px-3 py-2 font-medium">Due Date</th>
-                  <th className="px-3 py-2 font-medium">Property</th>
-                  <th className="px-3 py-2 font-medium">Customer Name</th>
-                  <th className="px-3 py-2 font-medium">Type</th>
-                  <th className="px-3 py-2 font-medium">Amount</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="w-8 px-3 py-2" />
+                <tr className="border-b border-slate-100 bg-slate-50/90 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3 sm:px-6">ID</th>
+                  <th className="px-4 py-3">Due</th>
+                  <th className="px-4 py-3">Property</th>
+                  <th className="px-4 py-3">Tenant</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right sm:px-6">Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {pagePayments.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="border-b border-[#f1f5f9] transition-colors hover:bg-[#f8fafc]"
-                  >
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                        className="rounded border-[#cbd5e1]"
-                        aria-label={`Select ${p.id}`}
-                      />
-                    </td>
-                    <td className="px-3 py-2 font-medium text-[#1e293b]">{p.id}</td>
-                    <td className="px-3 py-2 text-[#64748b]">{formatDate(p.due_date)}</td>
-                    <td className="px-3 py-2">
-                      <p className="font-medium text-[#1e293b]">{p.property_title ?? "—"}</p>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex size-7 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[10px] font-medium text-[var(--logo)]">
-                          {(p.customer ?? "?").charAt(0).toUpperCase()}
-                        </div>
-                        {p.customer ?? "—"}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="rounded-full bg-[var(--logo-muted)] px-2.5 py-0.5 text-xs font-medium text-[var(--logo)]">
-                        {PAYMENT_TYPE_LABEL[p.payment_type]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-medium text-[#1e293b]">{formatAmount(p.amount)}</td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                          statusClass[p.status]
-                        )}
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                    <td
-                      className="relative px-3 py-2"
-                      ref={rowMenuOpen === p.id ? rowMenuRef : undefined}
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRowMenuOpen((v) => (v === p.id ? null : p.id));
-                        }}
-                        className="flex size-8 items-center justify-center rounded text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#1e293b]"
-                        aria-label="More options"
-                      >
-                        <MoreVertical className="size-3.5" />
-                      </button>
-                      {rowMenuOpen === p.id && (
-                        <div
-                          className="absolute right-0 top-full z-[100] mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-xl"
-                          onClick={(e) => e.stopPropagation()}
+              <tbody className="divide-y divide-slate-50">
+                {pageRows.map((p) => {
+                  const canRecord = p.status === "pending" || p.status === "overdue";
+                  return (
+                    <tr key={p.id} className="transition-colors hover:bg-slate-50/80">
+                      <td className="px-4 py-3.5 font-mono text-xs text-slate-700 sm:px-6">
+                        #{p.id}
+                        <span className="mt-0.5 block font-sans text-[10px] text-slate-400">Booking {p.booking}</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-600">{format(new Date(p.due_date), "MMM d, yyyy")}</td>
+                      <td className="px-4 py-3.5">
+                        <span className="font-medium text-slate-900">{p.property_title ?? "—"}</span>
+                        {p.paid_date ? (
+                          <span className="mt-0.5 block text-xs text-emerald-600">Paid {p.paid_date}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="flex items-center gap-2">
+                          <span className="flex size-8 items-center justify-center rounded-full bg-[var(--logo-muted)] text-xs font-semibold text-[var(--logo)]">
+                            {(p.customer ?? "?").charAt(0).toUpperCase()}
+                          </span>
+                          {p.customer ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                          {PAYMENT_TYPE_LABEL[p.payment_type] ?? p.payment_type}
+                          {p.month_number > 0 ? ` · M${p.month_number}` : null}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 font-semibold tabular-nums text-slate-900">
+                        {formatDashboardCurrency(currency, p.amount)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize",
+                            STATUS_STYLES[p.status] ?? "bg-slate-100 text-slate-700"
+                          )}
                         >
-                          <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-                            Change status
-                          </p>
-                          {(["paid", "pending", "cancelled"] as const).map((status) => (
-                            <button
-                              key={status}
-                              type="button"
-                              onClick={() => {
-                                setStatusChangeModal({ paymentId: p.id, newStatus: status });
-                                setRowMenuOpen(null);
-                              }}
-                              disabled={p.status === status}
-                              className={cn(
-                                "flex w-full px-4 py-2 text-left text-sm",
-                                p.status === status
-                                  ? "cursor-not-allowed text-[#94a3b8]"
-                                  : "text-[#1e293b] hover:bg-[#f8fafc]"
-                              )}
-                            >
-                              Change to {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right sm:px-6">
+                        {canRecord ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-[var(--logo)]/30 font-medium text-[var(--logo)] hover:bg-[var(--logo-muted)]"
+                            onClick={() => setRecordPayment(p)}
+                          >
+                            Record payment
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-slate-400">
+                            {p.transaction_id ? `Ref: ${p.transaction_id}` : "—"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <Pagination
-            totalItems={filteredPayments.length}
-            pageSize={PAGE_SIZE}
-            currentPage={safePage}
-            onPageChange={setPage}
-            itemLabel="payments"
-          />
-          {filteredPayments.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-[#94a3b8]">No payments found.</p>
+
+          {filtered.length === 0 ? (
+            <p className="px-6 py-12 text-center text-sm text-slate-500">No payments match your filters.</p>
+          ) : (
+            <Pagination
+              totalItems={filtered.length}
+              pageSize={PAGE_SIZE}
+              currentPage={safePage}
+              onPageChange={setPage}
+              itemLabel="payments"
+            />
           )}
         </div>
       </div>
 
-      {/* Status change confirmation modal */}
-      {statusChangeModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setStatusChangeModal(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-xl border border-[#e2e8f0] bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-2 text-lg font-semibold text-[#1e293b]">Change status?</h3>
-            <p className="mb-6 text-sm text-[#64748b]">
-              Are you sure you want to change this payment&apos;s status to{" "}
-              <span className="font-medium text-[#1e293b]">{statusChangeModal.newStatus}</span>?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setStatusChangeModal(null);
-                }}
-                className="rounded-lg border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-medium text-[#64748b] transition-colors hover:bg-[#f8fafc] hover:text-[#1e293b]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmStatusChange(statusChangeModal.paymentId, statusChangeModal.newStatus);
-                }}
-                className="rounded-lg bg-[var(--logo)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--logo-hover)]"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RecordPaymentModal
+        open={recordPayment != null}
+        payment={recordPayment}
+        onClose={() => setRecordPayment(null)}
+        currency={currency}
+        onDone={() => void load()}
+      />
     </DashboardLayout>
   );
 }

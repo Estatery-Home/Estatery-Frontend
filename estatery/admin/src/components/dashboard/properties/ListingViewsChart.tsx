@@ -8,6 +8,7 @@ import * as React from "react";
 import { RefreshCw, ChevronDown } from "lucide-react";
 import { addDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import type { HostActivityChart } from "@/lib/api-types";
 
 type RangeType = "Daily" | "Weekly" | "Monthly" | "Yearly";
 
@@ -73,33 +74,51 @@ function generateChartData(range: RangeType, seed: number): ChartPoint[] {
 }
 
 const PADDING = { top: 20, right: 16, bottom: 36, left: 40 };
-const Y_TICKS = [0, 200, 400, 600, 800, 1000];
 
-export function ListingViewsChart() {
+type ListingViewsChartProps = {
+  activityChart?: HostActivityChart | null;
+  onRefresh?: () => void;
+};
+
+export function ListingViewsChart({ activityChart, onRefresh }: ListingViewsChartProps) {
   const [range, setRange] = React.useState<RangeType>("Monthly");
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
-  const data = React.useMemo(
-    () => generateChartData(range, refreshKey),
-    [range, refreshKey]
-  );
+  const data = React.useMemo(() => {
+    const fromApi = activityChart?.[range];
+    if (fromApi?.length) {
+      return fromApi.map((p) => ({
+        date: new Date(`${p.date}T12:00:00`),
+        dateLabel: p.dateLabel,
+        views: p.views,
+        property: p.property,
+      }));
+    }
+    return generateChartData(range, refreshKey);
+  }, [activityChart, range, refreshKey]);
 
   const chartWidth = 400;
   const chartHeight = 180;
 
+  const yMax = Math.max(
+    5,
+    Math.ceil(
+      Math.max(1, ...data.flatMap((d) => [d.views, d.property])) / 5
+    ) * 5
+  );
+  const yTicks = Array.from({ length: 6 }, (_, i) =>
+    Math.round((yMax * i) / 5)
+  );
+
   const xScale = (i: number) =>
     PADDING.left +
     (i / Math.max(1, data.length - 1)) * (chartWidth - PADDING.left - PADDING.right);
-  const yScale = (v: number) => {
-    const maxVal = Math.max(1000, ...data.flatMap((d) => [d.views, d.property]));
-    return (
-      chartHeight -
-      PADDING.bottom -
-      (v / maxVal) * (chartHeight - PADDING.top - PADDING.bottom)
-    );
-  };
+  const yScale = (v: number) =>
+    chartHeight -
+    PADDING.bottom -
+    (v / yMax) * (chartHeight - PADDING.top - PADDING.bottom);
 
   const viewsPath = data
     .map((d, i) => `${i === 0 ? "M" : "L"} ${xScale(i)} ${yScale(d.views)}`)
@@ -113,7 +132,10 @@ export function ListingViewsChart() {
   const propertyAreaPath =
     `${propertyPath} L ${xScale(data.length - 1)} ${chartHeight - PADDING.bottom} L ${xScale(0)} ${chartHeight - PADDING.bottom} Z`;
 
-  const handleRefresh = () => setRefreshKey((k) => k + 1);
+  const handleRefresh = () => {
+    onRefresh?.();
+    setRefreshKey((k) => k + 1);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -140,15 +162,15 @@ export function ListingViewsChart() {
       {/* Header row */}
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#1e293b]">Listing Views</h3>
+          <h3 className="text-lg font-semibold text-[#1e293b]">Activity</h3>
           <div className="mt-2 flex gap-4 text-sm">
             <span className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-[#f97316]" />
-              Views Count
+              Bookings started
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-[#22c55e]" />
-              Property Count
+              New listings
             </span>
           </div>
         </div>
@@ -292,7 +314,7 @@ export function ListingViewsChart() {
           )}
 
           {/* Y-axis labels */}
-          {Y_TICKS.map((tick) => (
+          {yTicks.map((tick) => (
             <text
               key={tick}
               x={PADDING.left - 8}
@@ -301,7 +323,7 @@ export function ListingViewsChart() {
               fill="#94a3b8"
               style={{ fontSize: 10, fontWeight: 500 }}
             >
-              {tick === 1000 ? "1K" : tick}
+              {tick >= 1000 ? `${(tick / 1000).toFixed(tick % 1000 === 0 ? 0 : 1)}K` : tick}
             </text>
           ))}
 
@@ -345,13 +367,13 @@ export function ListingViewsChart() {
             </p>
             <div className="mt-1.5 space-y-1">
               <p className="text-xs">
-                <span className="text-[#64748b]">Views </span>
+                <span className="text-[#64748b]">Bookings </span>
                 <span className="font-semibold text-[#f97316]">
                   {hoveredPoint.views.toLocaleString()}
                 </span>
               </p>
               <p className="text-xs">
-                <span className="text-[#64748b]">Property </span>
+                <span className="text-[#64748b]">Listings </span>
                 <span className="font-semibold text-[#22c55e]">
                   {hoveredPoint.property.toLocaleString()}
                 </span>
