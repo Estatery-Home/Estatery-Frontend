@@ -37,6 +37,7 @@ const Analytics = lazy(() => import("@/screens/dashboard/Analytics"));
 const Agents = lazy(() => import("@/screens/dashboard/Agents"));
 const HelpCenter = lazy(() => import("@/screens/dashboard/HelpCenter"));
 const Feedback = lazy(() => import("@/screens/dashboard/Feedback"));
+const TermsPage = lazy(() => import("@/screens/legal/TermsPage"));
 const Welcome = lazy(() => import("@/screens/Welcome"));
 const NotFound = lazy(() => import("@/screens/NotFound"));
 
@@ -128,6 +129,7 @@ export default function App() {
                   </PublicRoute>
                 }
               />
+              <Route path="/legal/terms" element={<TermsPage />} />
 
               <Route
                 path="/dashboard"

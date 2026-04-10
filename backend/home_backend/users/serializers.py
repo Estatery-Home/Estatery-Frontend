@@ -7,8 +7,8 @@ from django.contrib.auth import authenticate
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'phone', 'avatar', 'user_type']
-        read_only_fields = ['id','user_type']
+        fields = ['id', 'username', 'email', 'phone', 'avatar', 'user_type', 'email_verified']
+        read_only_fields = ['id', 'user_type', 'email_verified']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

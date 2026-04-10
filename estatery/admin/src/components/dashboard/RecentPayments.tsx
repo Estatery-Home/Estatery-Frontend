@@ -16,14 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PaymentTypeApi, PaymentStatusApi } from "@/lib/api-types";
-// Note: Using standard string/number fallback types since api-types might vary.
+import { markHostPaymentPaid } from "@/lib/api-client";
 type LocalPaymentType = "deposit" | "rent" | "late_fee" | "utility" | "damage" | "refund" | string;
 type LocalPaymentStatus = "pending" | "paid" | "overdue" | "refunded" | "cancelled" | string;
 
 const PAGE_SIZE = 8;
 
-type PaymentDisplay = {
+export type PaymentDisplay = {
   id: number;
   booking: number;
   payment_type: LocalPaymentType;
@@ -45,21 +44,6 @@ const PAYMENT_TYPE_LABEL: Record<string, string> = {
   damage: "Damage",
   refund: "Refund",
 };
-
-const INITIAL_PAYMENTS: PaymentDisplay[] = [
-  { id: 23487, booking: 101, payment_type: "rent", month_number: 1, amount: "293.00", due_date: "2025-07-08", status: "pending", property_title: "Oak Grove Estates", customer: "David Martinez" },
-  { id: 23488, booking: 102, payment_type: "rent", month_number: 2, amount: "320.00", due_date: "2025-07-09", status: "cancelled", property_title: "Maple Heights", customer: "Sarah Johnson" },
-  { id: 23489, booking: 103, payment_type: "deposit", month_number: 0, amount: "15200.00", due_date: "2025-07-10", status: "paid", property_title: "Pine View", customer: "Mike Chen" },
-  { id: 23490, booking: 104, payment_type: "rent", month_number: 1, amount: "450.00", due_date: "2025-07-11", status: "pending", property_title: "Sunset Terrace", customer: "Emma Wilson" },
-  { id: 23491, booking: 105, payment_type: "deposit", month_number: 0, amount: "8500.00", due_date: "2025-07-12", status: "paid", property_title: "Lakeside Villa", customer: "James Brown" },
-  { id: 23492, booking: 106, payment_type: "rent", month_number: 3, amount: "380.00", due_date: "2025-07-13", status: "pending", property_title: "Urban Heights", customer: "Anna Davis" },
-  { id: 23493, booking: 107, payment_type: "rent", month_number: 2, amount: "520.00", due_date: "2025-07-14", status: "paid", property_title: "Green Valley", customer: "Chris Lee" },
-  { id: 23494, booking: 108, payment_type: "deposit", month_number: 0, amount: "12000.00", due_date: "2025-07-15", status: "cancelled", property_title: "Harbor View", customer: "Maria Garcia" },
-  { id: 23495, booking: 109, payment_type: "rent", month_number: 1, amount: "610.00", due_date: "2025-07-16", status: "pending", property_title: "Park Place", customer: "Tom Anderson" },
-  { id: 23496, booking: 110, payment_type: "rent", month_number: 4, amount: "295.00", due_date: "2025-07-17", status: "paid", property_title: "Riverside", customer: "Lisa Moore" },
-  { id: 23497, booking: 111, payment_type: "deposit", month_number: 0, amount: "9200.00", due_date: "2025-07-18", status: "pending", property_title: "Hilltop Manor", customer: "Paul Clark" },
-  { id: 23498, booking: 112, payment_type: "rent", month_number: 2, amount: "720.00", due_date: "2025-07-19", status: "paid", property_title: "Downtown Loft", customer: "Rachel Green" },
-];
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending", label: "Pending" },
@@ -95,6 +79,12 @@ const SORT_BY_OPTIONS = [
 
 type ConfirmState = { paymentId: number; fromStatus: string; toStatus: string } | null;
 
+export type RecentPaymentsProps = {
+  payments: PaymentDisplay[];
+  loading?: boolean;
+  onRefetch?: () => void;
+};
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -116,14 +106,17 @@ function getAvatarColors(name: string) {
   return colors[charCode % colors.length];
 }
 
-export function RecentPayments() {
+export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsProps) {
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<string>("Filter");
   const [sortBy, setSortBy] = React.useState<string>("All");
   const [page, setPage] = React.useState(1);
-  const [paymentsList, setPaymentsList] = React.useState<PaymentDisplay[]>(() =>
-    INITIAL_PAYMENTS.map((p) => ({ ...p }))
-  );
+  const [paymentsList, setPaymentsList] = React.useState<PaymentDisplay[]>(payments);
+  const [savingId, setSavingId] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setPaymentsList(payments);
+  }, [payments]);
   const [openMenuId, setOpenMenuId] = React.useState<number | null>(null);
   const [confirmState, setConfirmState] = React.useState<ConfirmState>(null);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
@@ -137,8 +130,20 @@ export function RecentPayments() {
     });
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!confirmState) return;
+    if (confirmState.toStatus === "paid") {
+      setSavingId(confirmState.paymentId);
+      const res = await markHostPaymentPaid(confirmState.paymentId);
+      setSavingId(null);
+      setConfirmState(null);
+      if (!res.ok) {
+        window.alert(res.message ?? "Could not update payment");
+        return;
+      }
+      onRefetch?.();
+      return;
+    }
     setPaymentsList((prev) =>
       prev.map((p) =>
         p.id === confirmState.paymentId ? { ...p, status: confirmState.toStatus } : p
@@ -191,7 +196,9 @@ export function RecentPayments() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent Payments</h3>
-          <p className="text-[13px] text-slate-500 mt-0.5">Manage and track your incoming transactions</p>
+          <p className="text-[13px] text-slate-500 mt-0.5">
+            {loading ? "Loading…" : "From your bookings (server)"}
+          </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -435,10 +442,11 @@ export function RecentPayments() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={handleConfirmStatusChange}
-                  className="flex-1 rounded-xl bg-indigo-600 font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/20 active:scale-[0.98] transition-all"
+                  onClick={() => void handleConfirmStatusChange()}
+                  disabled={savingId != null}
+                  className="flex-1 rounded-xl bg-indigo-600 font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-60"
                 >
-                  Confirm
+                  {savingId != null ? "Saving…" : "Confirm"}
                 </Button>
               </div>
             </div>

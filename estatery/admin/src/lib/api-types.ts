@@ -16,6 +16,7 @@ export type User = {
   phone: string;
   avatar: string | null;
   user_type: UserType;
+  email_verified?: boolean;
 };
 
 export type RegisterRequest = {
@@ -232,4 +233,273 @@ export type CheckAvailabilityResponse = {
 export type HostBookingConfirmRequest = {
   action: "confirm" | "reject";
   reason?: string;
+};
+
+/* ---- Messaging (1:1 conversations) ---- */
+
+export type MessageParticipant = {
+  id: number;
+  username: string;
+  email: string;
+  phone?: string;
+};
+
+export type ConversationLastMessage = {
+  body: string;
+  created_at: string;
+  sender_id: number;
+};
+
+export type ConversationSummary = {
+  id: number;
+  other_user: MessageParticipant | null;
+  last_message: ConversationLastMessage | null;
+  updated_at: string;
+};
+
+export type ThreadMessage = {
+  id: number;
+  conversation: number;
+  sender_id: number;
+  sender_username: string;
+  body: string;
+  created_at: string;
+};
+
+/* ---- Host dashboard (GET /api/dashboard/host/) ---- */
+
+export type HostDashboardProperties = {
+  total: number;
+  active: number;
+  rent_listings: number;
+  sale_listings: number;
+};
+
+export type HostDashboardBookings = {
+  total: number;
+  pending: number;
+  active: number;
+};
+
+export type HostDashboardRevenue = {
+  total: string;
+  upcoming: string;
+  last_30_days: string;
+  prior_30_days: string;
+};
+
+export type HostListingsChartPoint = {
+  label: string;
+  rent: number;
+  sale: number;
+};
+
+export type HostListingsChart = {
+  weekly: HostListingsChartPoint[];
+  monthly: HostListingsChartPoint[];
+  yearly: HostListingsChartPoint[];
+};
+
+export type HostActivityPoint = {
+  date: string;
+  dateLabel: string;
+  views: number;
+  property: number;
+};
+
+export type HostActivityChart = {
+  Daily: HostActivityPoint[];
+  Weekly: HostActivityPoint[];
+  Monthly: HostActivityPoint[];
+  Yearly: HostActivityPoint[];
+};
+
+export type HostDashboardComparison = {
+  revenue_pct: number | null;
+  rent_listings_pct: number | null;
+  sale_listings_pct: number | null;
+};
+
+export type HostRecentPaymentRow = {
+  id: number;
+  booking: number;
+  payment_type: string;
+  month_number: number;
+  amount: string;
+  due_date: string;
+  status: string;
+  paid_date?: string | null;
+  transaction_id?: string;
+  property_title?: string;
+  customer?: string;
+};
+
+export type HostPaymentsSummary = {
+  count: number;
+  paid: number;
+  pending: number;
+  overdue: number;
+  cancelled: number;
+  refunded: number;
+};
+
+export type HostPaymentsListResponse = {
+  payments: HostRecentPaymentRow[];
+  summary: HostPaymentsSummary;
+};
+
+/** Admin promo codes — GET/POST /api/admin/discounts/, PATCH/DELETE /api/admin/discounts/:id/ */
+export type PromoDiscountType = "percent" | "fixed";
+
+export type PromoCode = {
+  id: number;
+  code: string;
+  description: string;
+  discount_type: PromoDiscountType;
+  discount_value: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  max_redemptions: number | null;
+  times_redeemed: number;
+  is_active: boolean;
+  min_booking_months: number | null;
+  applies_to_property: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PromoCodeCreateInput = {
+  code: string;
+  description?: string;
+  discount_type: PromoDiscountType;
+  discount_value: string;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  max_redemptions?: number | null;
+  is_active?: boolean;
+  min_booking_months?: number | null;
+  applies_to_property?: number | null;
+};
+
+export type HostAnalyticsSummary = {
+  properties_total: number;
+  properties_available: number;
+  clients: number;
+  occupancy_rate: number;
+  active_discounts: number;
+};
+
+export type HostAnalyticsListingMix = {
+  rent: number;
+  sale: number;
+  reserved: number;
+  total: number;
+  percent: { rent: number; sale: number; reserved: number };
+};
+
+export type HostAnalyticsTopProperty = {
+  id: number;
+  title: string;
+  location: string;
+  bookings_in_period: number;
+  leads: number;
+  updated_at: string;
+};
+
+export type HostAnalyticsResponse = {
+  range: string;
+  summary: HostAnalyticsSummary;
+  traffic: {
+    metric: string;
+    labels: string[];
+    series: number[];
+  };
+  listing_mix: HostAnalyticsListingMix;
+  top_properties: HostAnalyticsTopProperty[];
+};
+
+export type HostCalendarEventApi = {
+  id: string;
+  booking_id: number;
+  title: string;
+  date: string;
+  status: string;
+  property_id: number;
+  property_title: string;
+  all_day: boolean;
+};
+
+export type HostCalendarResponse = {
+  events: HostCalendarEventApi[];
+};
+
+export type HostClientsSummary = {
+  total: number;
+  ongoing: number;
+  completed: number;
+};
+
+export type HostClientListRowApi = {
+  id: string;
+  clientId: string;
+  tenant_user_id: number;
+  name: string;
+  avatarInitials: string;
+  propertyName: string;
+  propertyAddress: string;
+  type: "Rent" | "Buy";
+  amount: string;
+  currency: string;
+  nextPayment: string;
+  status: "On Going" | "Completed" | "Overdue";
+  user_type: string;
+};
+
+export type HostClientsListResponse = {
+  summary: HostClientsSummary;
+  clients: HostClientListRowApi[];
+};
+
+export type HostClientDetailBlock = {
+  clientId: string;
+  tenantUserId: number;
+  name: string;
+  avatarInitials: string;
+  email: string;
+  phone: string;
+  bio: string;
+  user_type: string;
+  propertyName: string;
+  propertyAddress: string;
+  propertyType: string;
+  transactionDate: string;
+  transactionType: string;
+  rentDuration: string;
+};
+
+export type HostClientTransactionApi = {
+  id: string;
+  paymentType: string;
+  dueDate: string;
+  amount: number;
+  status: "Pending" | "Paid";
+};
+
+export type HostClientDetailResponse = {
+  tenant: User;
+  detail: HostClientDetailBlock;
+  bookings: unknown[];
+  transactions: HostClientTransactionApi[];
+};
+
+export type HostDashboardResponse = {
+  properties: HostDashboardProperties;
+  bookings: HostDashboardBookings;
+  revenue: HostDashboardRevenue;
+  recent_bookings: unknown[];
+  recent_payments: HostRecentPaymentRow[];
+  listings_chart: HostListingsChart;
+  activity_chart: HostActivityChart;
+  comparison: HostDashboardComparison;
+  currency: string;
 };

@@ -10,10 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -47,6 +52,7 @@ INSTALLED_APPS = [
     'users',
     'properties',
     'bookings',
+    'messaging',
 ]
 
 MIDDLEWARE = [
@@ -133,15 +139,48 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Email (OTP / password reset). Console backend logs messages in development.
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@estatery.local'
+# Email (OTP / password reset).
+# Without EMAIL_HOST: console backend — OTP prints in the runserver terminal only.
+# With EMAIL_HOST: SMTP. Put values in backend/home_backend/.env (see .env.example).
+#   Port 587 + STARTTLS: EMAIL_USE_TLS=true, EMAIL_USE_SSL=false (default).
+#   Port 465 + implicit SSL: EMAIL_USE_SSL=true, EMAIL_PORT=465, EMAIL_USE_TLS=false.
+_email_host = os.environ.get("EMAIL_HOST", "").strip()
+if _email_host:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = _email_host
+    EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if EMAIL_USE_SSL:
+        EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "465"))
+        EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+    else:
+        EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+        EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    DEFAULT_FROM_EMAIL = os.environ.get(
+        "DEFAULT_FROM_EMAIL",
+        EMAIL_HOST_USER or "noreply@estatery.local",
+    )
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = "noreply@estatery.local"
 
 # Default primary key field type to use custom user model
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # Create media folder
-import os
 os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 

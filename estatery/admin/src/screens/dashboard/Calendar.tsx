@@ -1,66 +1,126 @@
 "use client";
 
 /**
- * Calendar – month/week/day view, events by date, add event modal.
- * Uses date-fns for date math; events stored in local state.
+ * Calendar – month/week/day views; events from GET /api/host/calendar/.
  */
 import * as React from "react";
-import { addDays, addMonths, addWeeks, endOfMonth, format, getDate, getDay, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  endOfMonth,
+  format,
+  getDate,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { fetchHostCalendar } from "@/lib/api-client";
 
 type ViewMode = "month" | "week" | "day";
 
 type CalendarEvent = {
-  id: number;
+  id: string;
   title: string;
-  date: string; // yyyy-MM-dd
-  startTime?: string; // HH:mm
-  endTime?: string; // HH:mm
+  date: string;
+  allDay?: boolean;
+  startTime?: string;
+  endTime?: string;
+  status?: string;
 };
 
 function toKeyDate(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+/** Same grid bounds as the month grid renderer (partial leading/trailing weeks). */
+function monthGridDateRange(anchor: Date): { start: Date; end: Date } {
+  const gridStart = startOfWeek(startOfMonth(anchor), { weekStartsOn: 0 });
+  const monthEnd = endOfMonth(anchor);
+  const cells: Date[] = [];
+  let d = gridStart;
+  while (d <= monthEnd || cells.length < 35) {
+    cells.push(d);
+    d = addDays(d, 1);
+  }
+  return { start: cells[0], end: cells[cells.length - 1] };
+}
+
+function calendarRangeForView(view: ViewMode, currentDate: Date): { start: Date; end: Date } {
+  if (view === "month") return monthGridDateRange(currentDate);
+  if (view === "week") {
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+    return { start, end: addDays(start, 6) };
+  }
+  return { start: currentDate, end: currentDate };
+}
+
 export default function Calendar() {
   const [view, setView] = React.useState<ViewMode>("month");
-  const [currentDate, setCurrentDate] = React.useState<Date>(new Date(2025, 6, 11)); // July 11, 2025
-  const [events, setEvents] = React.useState<CalendarEvent[]>([
-    { id: 1, title: "Home Tour", date: "2025-07-02", startTime: "10:00", endTime: "12:00" },
-    { id: 2, title: "Home Tour", date: "2025-07-02", startTime: "13:00", endTime: "15:00" },
-    { id: 3, title: "Home Tour", date: "2025-07-11", startTime: "13:00", endTime: "14:00" },
-    { id: 4, title: "Home Tour", date: "2025-07-17", startTime: "13:00", endTime: "14:00" },
-    { id: 5, title: "Home Tour", date: "2025-07-19", startTime: "13:00", endTime: "14:00" },
-    { id: 6, title: "Home Tour", date: "2025-07-20", startTime: "13:00", endTime: "14:00" },
-    { id: 7, title: "Home Tour", date: "2025-07-29", startTime: "13:00", endTime: "14:00" },
-  ]);
+  const [currentDate, setCurrentDate] = React.useState<Date>(() => new Date());
+  const [events, setEvents] = React.useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [draftDate, setDraftDate] = React.useState<string>(toKeyDate(currentDate));
-  const [draftStart, setDraftStart] = React.useState<string>("13:00");
-  const [draftEnd, setDraftEnd] = React.useState<string>("14:00");
-  const [draftTitle, setDraftTitle] = React.useState<string>("Home Tour");
+  const { startStr, endStr } = React.useMemo(() => {
+    const { start, end } = calendarRangeForView(view, currentDate);
+    return { startStr: toKeyDate(start), endStr: toKeyDate(end) };
+  }, [view, currentDate]);
 
-  /* Navigate to previous month/week/day depending on view */
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void fetchHostCalendar(startStr, endStr).then((res) => {
+      if (cancelled) return;
+      if (!res) {
+        setError("Could not load calendar. Check your connection and try again.");
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+      setEvents(
+        res.events.map((ev) => ({
+          id: ev.id,
+          title: ev.title,
+          date: ev.date,
+          allDay: ev.all_day,
+          status: ev.status,
+        }))
+      );
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [startStr, endStr]);
+
   const handlePrev = () => {
     if (view === "month") setCurrentDate((d) => addMonths(d, -1));
     else if (view === "week") setCurrentDate((d) => addWeeks(d, -1));
     else setCurrentDate((d) => addDays(d, -1));
   };
 
-  /* Navigate to next period */
   const handleNext = () => {
     if (view === "month") setCurrentDate((d) => addMonths(d, 1));
     else if (view === "week") setCurrentDate((d) => addWeeks(d, 1));
     else setCurrentDate((d) => addDays(d, 1));
   };
 
-  const monthLabel = format(currentDate, "MMMM yyyy");
+  const goToday = () => setCurrentDate(new Date());
 
-  /* Map events to date key for quick lookup in calendar grid */
+  const monthLabel =
+    view === "month"
+      ? format(currentDate, "MMMM yyyy")
+      : view === "week"
+        ? `Week of ${format(startOfWeek(currentDate, { weekStartsOn: 0 }), "MMM d, yyyy")}`
+        : format(currentDate, "EEEE, MMMM d, yyyy");
+
   const eventsByDate = React.useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const ev of events) {
@@ -71,26 +131,9 @@ export default function Calendar() {
     return map;
   }, [events]);
 
-  /* Open add-event modal with date pre-filled */
-  const openAddModalFor = (date: Date) => {
-    setDraftDate(toKeyDate(date));
-    setModalOpen(true);
-  };
-
-  const handleSaveEvent = () => {
-    const title = draftTitle.trim();
-    if (!title || !draftDate) return;
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        title,
-        date: draftDate,
-        startTime: draftStart || undefined,
-        endTime: draftEnd || undefined,
-      },
-    ]);
-    setModalOpen(false);
+  const openDay = (date: Date) => {
+    setCurrentDate(date);
+    setView("day");
   };
 
   const renderMonthView = () => {
@@ -124,7 +167,7 @@ export default function Calendar() {
               <button
                 key={key}
                 type="button"
-                onClick={() => openAddModalFor(day)}
+                onClick={() => openDay(day)}
                 className={cn(
                   "flex min-h-[92px] flex-col items-start justify-start gap-1 bg-white px-3 py-2 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--logo)]/40",
                   !isCurrentMonth && "bg-[#f8fafc] text-[#cbd5e1]"
@@ -148,9 +191,7 @@ export default function Calendar() {
                     </span>
                   ))}
                   {dayEvents.length > 2 && (
-                    <span className="text-[10px] text-[#94a3b8]">
-                      +{dayEvents.length - 2} more
-                    </span>
+                    <span className="text-[10px] text-[#94a3b8]">+{dayEvents.length - 2} more</span>
                   )}
                 </div>
               </button>
@@ -162,10 +203,13 @@ export default function Calendar() {
   };
 
   const renderWeekView = () => {
-    const start = startOfWeek(currentDate, { weekStartsOn: 0 });
-    const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-    const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM – 7 PM
+    const hours = Array.from({ length: 12 }, (_, i) => i + 8);
+
+    const refHour = new Date();
+    refHour.setHours(8, 0, 0, 0);
 
     return (
       <div className="overflow-hidden rounded-2xl border border-[#e2e8f0]">
@@ -174,36 +218,59 @@ export default function Calendar() {
           {days.map((day) => (
             <div key={toKeyDate(day)} className="px-2 py-2 text-center">
               <div>{format(day, "EEE")}</div>
-              <div className="mt-0.5 text-sm font-semibold text-[#0f172a]">
-                {format(day, "d")}
-              </div>
+              <div className="mt-0.5 text-sm font-semibold text-[#0f172a]">{format(day, "d")}</div>
             </div>
           ))}
         </div>
+        <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b border-[#e2e8f0] bg-[#fffbeb]">
+          <div className="px-2 py-2 text-[10px] font-medium text-[#92400e]">All day</div>
+          {days.map((day) => {
+            const key = toKeyDate(day);
+            const dayEvents = eventsByDate.get(key) ?? [];
+            return (
+              <div key={key} className="flex min-h-[44px] flex-col gap-1 border-l border-[#fde68a]/60 px-1.5 py-1.5">
+                {dayEvents.map((ev) => (
+                  <span
+                    key={ev.id}
+                    className="truncate rounded-md bg-[#fef3c7] px-1.5 py-0.5 text-[10px] font-medium text-[#b45309]"
+                    title={ev.title}
+                  >
+                    {ev.title}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
+        </div>
         <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] text-xs">
           <div className="bg-white">
-            {hours.map((h) => (
-              <div
-                key={h}
-                className="h-12 border-b border-[#e2e8f0] px-2 text-right text-[10px] text-[#94a3b8]"
-              >
-                {format(new Date(2025, 0, 1, h), "h a")}
-              </div>
-            ))}
+            {hours.map((h) => {
+              const t = new Date(refHour);
+              t.setHours(h, 0, 0, 0);
+              return (
+                <div
+                  key={h}
+                  className="h-12 border-b border-[#e2e8f0] px-2 text-right text-[10px] text-[#94a3b8]"
+                >
+                  {format(t, "h a")}
+                </div>
+              );
+            })}
           </div>
           {days.map((day) => {
             const key = toKeyDate(day);
-            const dayEvents = (eventsByDate.get(key) ?? []).filter((ev) => ev.startTime);
+            const timed = (eventsByDate.get(key) ?? []).filter((ev) => ev.startTime && !ev.allDay);
             return (
               <div key={key} className="relative bg-white">
                 {hours.map((h) => (
                   <div
                     key={h}
                     className="h-12 border-b border-[#e2e8f0]"
-                    onDoubleClick={() => openAddModalFor(day)}
+                    onDoubleClick={() => openDay(day)}
+                    role="presentation"
                   />
                 ))}
-                {dayEvents.map((ev) => {
+                {timed.map((ev) => {
                   const startHour = ev.startTime ? parseInt(ev.startTime.split(":")[0], 10) : 8;
                   const endHour = ev.endTime ? parseInt(ev.endTime.split(":")[0], 10) : startHour + 1;
                   const top = (startHour - 8) * 48;
@@ -236,51 +303,80 @@ export default function Calendar() {
     const key = toKeyDate(day);
     const dayEvents = eventsByDate.get(key) ?? [];
     const hours = Array.from({ length: 12 }, (_, i) => i + 8);
+    const refHour = new Date();
+    refHour.setHours(8, 0, 0, 0);
 
     return (
       <div className="overflow-hidden rounded-2xl border border-[#e2e8f0]">
         <div className="border-b border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-sm font-semibold text-[#0f172a]">
-          {format(day, "EEEE dd")}
+          {format(day, "EEEE, MMMM d")}
         </div>
+        {dayEvents.length > 0 && (
+          <div className="border-b border-[#e2e8f0] bg-[#fffbeb] px-4 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-[#92400e]">Bookings (nights)</div>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {dayEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="rounded-lg bg-[#fef3c7] px-3 py-2 text-xs font-medium text-[#b45309]"
+                >
+                  {ev.title}
+                  {ev.status ? (
+                    <span className="mt-1 block text-[10px] font-normal capitalize text-[#a16207]">
+                      {ev.status.replace(/_/g, " ")}
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-[80px_minmax(0,1fr)] text-xs">
           <div className="bg-white">
-            {hours.map((h) => (
-              <div
-                key={h}
-                className="h-12 border-b border-[#e2e8f0] px-2 text-right text-[10px] text-[#94a3b8]"
-              >
-                {format(new Date(2025, 0, 1, h), "h a")}
-              </div>
-            ))}
+            {hours.map((h) => {
+              const t = new Date(refHour);
+              t.setHours(h, 0, 0, 0);
+              return (
+                <div
+                  key={h}
+                  className="h-12 border-b border-[#e2e8f0] px-2 text-right text-[10px] text-[#94a3b8]"
+                >
+                  {format(t, "h a")}
+                </div>
+              );
+            })}
           </div>
           <div className="relative bg-white">
             {hours.map((h) => (
               <div
                 key={h}
                 className="h-12 border-b border-[#e2e8f0]"
-                onDoubleClick={() => openAddModalFor(day)}
+                onDoubleClick={() => openDay(day)}
+                role="presentation"
               />
             ))}
-            {dayEvents.map((ev) => {
-              const startHour = ev.startTime ? parseInt(ev.startTime.split(":")[0], 10) : 8;
-              const endHour = ev.endTime ? parseInt(ev.endTime.split(":")[0], 10) : startHour + 1;
-              const top = (startHour - 8) * 48;
-              const height = Math.max(32, (endHour - startHour) * 48 - 8);
-              return (
-                <div
-                  key={ev.id}
-                  style={{ top, height }}
-                  className="absolute inset-x-2 rounded-md bg-[#fef3c7] px-3 py-1 text-[10px] font-medium text-[#b45309] shadow-sm"
-                >
-                  <div>{ev.title}</div>
-                  {ev.startTime && ev.endTime && (
-                    <div className="mt-0.5 text-[10px] text-[#a16207]">
-                      {ev.startTime} – {ev.endTime}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {dayEvents
+              .filter((ev) => ev.startTime && !ev.allDay)
+              .map((ev) => {
+                const startHour = ev.startTime ? parseInt(ev.startTime.split(":")[0], 10) : 8;
+                const endHour = ev.endTime ? parseInt(ev.endTime.split(":")[0], 10) : startHour + 1;
+                const top = (startHour - 8) * 48;
+                const height = Math.max(32, (endHour - startHour) * 48 - 8);
+                return (
+                  <div
+                    key={ev.id}
+                    style={{ top, height }}
+                    className="absolute inset-x-2 rounded-md bg-[#fef3c7] px-3 py-1 text-[10px] font-medium text-[#b45309] shadow-sm"
+                  >
+                    <div>{ev.title}</div>
+                    {ev.startTime && ev.endTime && (
+                      <div className="mt-0.5 text-[10px] text-[#a16207]">
+                        {ev.startTime} – {ev.endTime}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>
@@ -290,156 +386,85 @@ export default function Calendar() {
   return (
     <DashboardLayout>
       <>
-      <div className="mx-auto max-w-6xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
               <h1 className="text-xl font-bold text-[#1e293b]">{monthLabel}</h1>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 rounded-full border border-[#e2e8f0] bg-white p-1 text-xs font-medium text-[#64748b]">
-                  <button
-                    type="button"
-                    onClick={() => setView("month")}
-                    className={cn(
-                      "rounded-full px-3 py-1",
-                      view === "month" && "bg-[var(--logo-muted)] text-[#0f172a]"
-                    )}
-                  >
-                    Month
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("week")}
-                    className={cn(
-                      "rounded-full px-3 py-1",
-                      view === "week" && "bg-[var(--logo-muted)] text-[#0f172a]"
-                    )}
-                  >
-                    Week
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("day")}
-                    className={cn(
-                      "rounded-full px-3 py-1",
-                      view === "day" && "bg-[var(--logo-muted)] text-[#0f172a]"
-                    )}
-                  >
-                    Day
-                  </button>
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white">
-                  <button
-                    type="button"
-                    onClick={handlePrev}
-                    className="flex size-8 items-center justify-center text-[#64748b] hover:bg-[#f1f5f9]"
-                    aria-label="Previous"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="flex size-8 items-center justify-center text-[#64748b] hover:bg-[#f1f5f9]"
-                    aria-label="Next"
-                  >
-                    <ChevronRight className="size-4" />
-                  </button>
-                </div>
-                <Button
+              {loading ? (
+                <p className="mt-0.5 text-xs text-[#94a3b8]">Loading bookings…</p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 rounded-full border border-[#e2e8f0] bg-white p-1 text-xs font-medium text-[#64748b]">
+                <button
                   type="button"
-                  onClick={() => {
-                    setDraftDate(toKeyDate(currentDate));
-                    setModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 rounded-full bg-[var(--logo)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--logo-hover)]"
+                  onClick={() => setView("month")}
+                  className={cn(
+                    "rounded-full px-3 py-1",
+                    view === "month" && "bg-[var(--logo-muted)] text-[#0f172a]"
+                  )}
                 >
-                  <Plus className="size-4" />
-                  Add New Schedule
-                </Button>
+                  Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("week")}
+                  className={cn(
+                    "rounded-full px-3 py-1",
+                    view === "week" && "bg-[var(--logo-muted)] text-[#0f172a]"
+                  )}
+                >
+                  Week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("day")}
+                  className={cn(
+                    "rounded-full px-3 py-1",
+                    view === "day" && "bg-[var(--logo-muted)] text-[#0f172a]"
+                  )}
+                >
+                  Day
+                </button>
               </div>
-            </div>
-
-            {view === "month" && renderMonthView()}
-            {view === "week" && renderWeekView()}
-            {view === "day" && renderDayView()}
-      </div>
-
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold text-[#0f172a]">Add New Schedule</h3>
-            <div className="space-y-4 text-sm">
-              <div className="space-y-1">
-                <label htmlFor="schedule-title" className="text-xs font-medium text-[#64748b]">
-                  Title
-                </label>
-                <input
-                  id="schedule-title"
-                  value={draftTitle}
-                  onChange={(e) => setDraftTitle(e.target.value)}
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#0f172a] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                />
+              <div className="flex items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="flex size-8 items-center justify-center text-[#64748b] hover:bg-[#f1f5f9]"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex size-8 items-center justify-center text-[#64748b] hover:bg-[#f1f5f9]"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
               </div>
-              <div className="space-y-1">
-                <label htmlFor="schedule-date" className="text-xs font-medium text-[#64748b]">
-                  Date
-                </label>
-                <input
-                  id="schedule-date"
-                  type="date"
-                  value={draftDate}
-                  onChange={(e) => setDraftDate(e.target.value)}
-                  className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#0f172a] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label htmlFor="schedule-start" className="text-xs font-medium text-[#64748b]">
-                    Start time
-                  </label>
-                  <input
-                    id="schedule-start"
-                    type="time"
-                    value={draftStart}
-                    onChange={(e) => setDraftStart(e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#0f172a] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="schedule-end" className="text-xs font-medium text-[#64748b]">
-                    End time
-                  </label>
-                  <input
-                    id="schedule-end"
-                    type="time"
-                    value={draftEnd}
-                    onChange={(e) => setDraftEnd(e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#0f172a] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
               <Button
                 type="button"
                 variant="outline"
                 className="border-[#e2e8f0] bg-white text-[#1e293b] hover:bg-[#f8fafc]"
-                onClick={() => setModalOpen(false)}
+                onClick={goToday}
               >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
-                onClick={handleSaveEvent}
-              >
-                Save Schedule
+                Today
               </Button>
             </div>
           </div>
+
+          {error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          ) : null}
+
+          {view === "month" && renderMonthView()}
+          {view === "week" && renderWeekView()}
+          {view === "day" && renderDayView()}
         </div>
-      )}
       </>
     </DashboardLayout>
   );
 }
-

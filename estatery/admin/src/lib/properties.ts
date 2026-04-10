@@ -1,8 +1,109 @@
 /**
- * Property types – aligned with API Property object.
- * API: title, address, city, country, bedrooms, bathrooms, area, property_type, status, monthly_price.
+ * Property types – aligned with API Property object (PropertySerializer).
  */
 import type { PropertyTypeApi, PropertyStatusApi, ListingTypeApi } from "./api-types";
+
+const API_ORIGIN =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/i, "")
+    : "http://localhost:8000";
+
+/** Resolve relative media paths from Django (e.g. /media/...) for <img src>. */
+export function apiMediaUrl(path: string | undefined | null): string | undefined {
+  if (path == null || typeof path !== "string") return undefined;
+  const trimmed = path.trim();
+  if (!trimmed) return undefined;
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:")
+  ) {
+    return trimmed;
+  }
+  return trimmed.startsWith("/") ? `${API_ORIGIN}${trimmed}` : `${API_ORIGIN}/${trimmed}`;
+}
+
+function normalizePrimaryImage(raw: unknown): { image: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const url =
+    (typeof o.image_url === "string" && o.image_url) ||
+    apiMediaUrl(typeof o.image === "string" ? o.image : undefined);
+  return url ? { image: url } : null;
+}
+
+function normalizeImages(raw: unknown): Property["images"] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const o = item as Record<string, unknown>;
+      const url =
+        (typeof o.image_url === "string" && o.image_url) ||
+        apiMediaUrl(typeof o.image === "string" ? o.image : undefined);
+      if (!url) return null;
+      return {
+        id: typeof o.id === "number" ? o.id : undefined,
+        image: url,
+        is_primary: Boolean(o.is_primary),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
+}
+
+/** Map GET /api/properties/… JSON to local Property (shared by context + detail fetch). */
+export function propertyFromApiJson(raw: unknown): Property | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = typeof o.id === "number" ? o.id : Number(o.id);
+  if (Number.isNaN(id)) return null;
+  const listingRaw = o.listing_type;
+  const listing_type: ListingTypeApi =
+    listingRaw === "sale" || listingRaw === "rent" ? listingRaw : "rent";
+  const statusRaw = o.status;
+  const status: PropertyStatusApi =
+    statusRaw === "available" || statusRaw === "rented" || statusRaw === "maintenance"
+      ? statusRaw
+      : "available";
+  const ptype = String(o.property_type ?? "house");
+  const property_type = (
+    ["apartment", "house", "condo", "villa", "studio"].includes(ptype) ? ptype : "house"
+  ) as PropertyTypeApi;
+
+  return {
+    id,
+    title: String(o.title ?? ""),
+    address: String(o.address ?? ""),
+    city: String(o.city ?? ""),
+    state: o.state != null ? String(o.state) : undefined,
+    country: String(o.country ?? ""),
+    zip_code: o.zip_code != null ? String(o.zip_code) : undefined,
+    description: String(o.description ?? ""),
+    daily_price: String(o.daily_price ?? "0"),
+    monthly_price: o.monthly_price != null && o.monthly_price !== "" ? String(o.monthly_price) : "0",
+    currency: String(o.currency ?? "ghs"),
+    bedrooms: Number(o.bedrooms ?? 0),
+    bathrooms: Number(o.bathrooms ?? 0),
+    area: Number(o.area ?? 0),
+    property_type,
+    listing_type,
+    status,
+    has_wifi: Boolean(o.has_wifi),
+    has_parking: Boolean(o.has_parking),
+    has_pool: Boolean(o.has_pool),
+    has_gym: Boolean(o.has_gym),
+    is_furnished: Boolean(o.is_furnished),
+    has_kitchen: o.has_kitchen === undefined ? true : Boolean(o.has_kitchen),
+    min_stay_months: Number(o.min_stay_months ?? 12),
+    max_stay_months: o.max_stay_months != null ? Number(o.max_stay_months) : undefined,
+    monthly_cycle_start: o.monthly_cycle_start != null ? Number(o.monthly_cycle_start) : undefined,
+    security_deposit_months: o.security_deposit_months != null ? String(o.security_deposit_months) : undefined,
+    primary_image: normalizePrimaryImage(o.primary_image),
+    images: normalizeImages(o.images),
+    created_at: o.created_at ? String(o.created_at) : undefined,
+    updated_at: o.updated_at ? String(o.updated_at) : undefined,
+  };
+}
 
 /** Local property shape matching API – id can be number (from API) or string (local before sync) */
 export type Property = {
@@ -47,12 +148,19 @@ export function getPropertyLocation(p: Property): string {
 
 /** Display helper: primary image URL */
 export function getPropertyImage(p: Property): string {
-  return p.primary_image?.image ?? p.images?.[0]?.image ?? "/images/property-1.webp";
+  const primary = p.primary_image as { image?: string; image_url?: string } | null | undefined;
+  const fromPrimary = apiMediaUrl(primary?.image_url) ?? primary?.image;
+  if (fromPrimary) return fromPrimary;
+  const first = p.images?.[0] as { image?: string; image_url?: string } | undefined;
+  const fromFirst = apiMediaUrl(first?.image_url) ?? first?.image;
+  if (fromFirst) return fromFirst;
+  return "/images/property-1.webp";
 }
 
 /** Display helper: price with period (monthly for rent, one-time for sale) */
 export function getPropertyPriceDisplay(p: Property): string {
-  const prefix = p.currency === "ghs" ? "₵" : p.currency === "usd" ? "$" : "";
+  const prefix =
+    p.currency === "ghs" ? "₵" : p.currency === "usd" ? "$" : p.currency === "cfa" ? "CFA " : "";
   if (p.listing_type === "sale") return `${prefix}${p.monthly_price}`;
   return `${prefix}${p.monthly_price} / month`;
 }
@@ -92,206 +200,5 @@ export const PROPERTY_TYPES: PropertyTypeApi[] = ["apartment", "house", "condo",
 export const LISTING_TYPES: ListingTypeApi[] = ["rent", "sale"];
 export const PROPERTY_STATUSES: PropertyStatusApi[] = ["available", "rented", "maintenance"];
 
-/** Seed data – API-aligned shape for demo (API not ready yet) */
-export const properties: Property[] = [
-  {
-    id: "03483",
-    title: "Seaside Retreat",
-    address: "258 Coastline Dr",
-    city: "Springfield",
-    country: "USA",
-    description: "Stunning lakefront estate with panoramic views.",
-    daily_price: "19.17",
-    monthly_price: "575.00",
-    currency: "ghs",
-    bedrooms: 5,
-    bathrooms: 4,
-    area: 4200,
-    property_type: "house",
-    listing_type: "rent",
-    status: "available",
-    primary_image: { image: "/images/property-1.webp" },
-    min_stay_months: 12,
-    created_at: "2025-07-08T00:00:00Z",
-    updated_at: "2025-07-08T00:00:00Z",
-  },
-  {
-    id: "03484",
-    title: "Mountain Escape",
-    address: "123 Summit Ave",
-    city: "Denver",
-    country: "USA",
-    description: "Architectural masterpiece on the coast.",
-    daily_price: "40.00",
-    monthly_price: "1200.00",
-    currency: "ghs",
-    bedrooms: 6,
-    bathrooms: 5,
-    area: 6500,
-    property_type: "villa",
-    listing_type: "sale",
-    status: "available",
-    primary_image: { image: "/images/property-2.webp" },
-    min_stay_months: 6,
-    created_at: "2025-08-15T00:00:00Z",
-    updated_at: "2025-08-15T00:00:00Z",
-  },
-  {
-    id: "03485",
-    title: "Urban Loft",
-    address: "456 City Center",
-    city: "New York",
-    country: "USA",
-    description: "Luxury penthouse in the heart of the city.",
-    daily_price: "83.33",
-    monthly_price: "2500.00",
-    currency: "ghs",
-    bedrooms: 4,
-    bathrooms: 3,
-    area: 3800,
-    property_type: "apartment",
-    status: "available",
-    primary_image: { image: "/images/property-3.webp" },
-    min_stay_months: 24,
-    created_at: "2025-09-01T00:00:00Z",
-    updated_at: "2025-09-01T00:00:00Z",
-  },
-  {
-    id: "03486",
-    title: "Countryside Villa",
-    address: "789 Farm Rd",
-    city: "Austin",
-    country: "USA",
-    description: "Industrial-chic loft with exposed brick.",
-    daily_price: "28.33",
-    monthly_price: "850.00",
-    currency: "ghs",
-    bedrooms: 2,
-    bathrooms: 2,
-    area: 2100,
-    property_type: "studio",
-    status: "available",
-    primary_image: { image: "/images/property-4.webp" },
-    min_stay_months: 12,
-    created_at: "2025-07-20T00:00:00Z",
-    updated_at: "2025-07-20T00:00:00Z",
-  },
-  {
-    id: "03487",
-    title: "Cozy Cabin",
-    address: "321 Woodland Way",
-    city: "Seattle",
-    country: "USA",
-    description: "Desert oasis with red rock views.",
-    daily_price: "21.67",
-    monthly_price: "650.00",
-    currency: "ghs",
-    bedrooms: 4,
-    bathrooms: 4,
-    area: 3600,
-    property_type: "house",
-    status: "available",
-    primary_image: { image: "/images/property-5.webp" },
-    min_stay_months: 6,
-    created_at: "2025-06-30T00:00:00Z",
-    updated_at: "2025-06-30T00:00:00Z",
-  },
-  {
-    id: "6",
-    title: "Oceanfront Paradise",
-    address: "Miami Beach",
-    city: "Florida",
-    country: "USA",
-    description: "Direct oceanfront with private dock.",
-    daily_price: "4833.33",
-    monthly_price: "145000.00",
-    currency: "ghs",
-    bedrooms: 7,
-    bathrooms: 6,
-    area: 8200,
-    property_type: "villa",
-    status: "available",
-    primary_image: { image: "/images/property-6.webp" },
-    min_stay_months: 12,
-  },
-  {
-    id: "7",
-    title: "Mountain View Lodge",
-    address: "Aspen",
-    city: "Colorado",
-    country: "USA",
-    description: "Ski-in/ski-out luxury lodge.",
-    daily_price: "30666.67",
-    monthly_price: "920000.00",
-    currency: "ghs",
-    bedrooms: 5,
-    bathrooms: 5,
-    area: 5400,
-    property_type: "house",
-    status: "available",
-    primary_image: { image: "/images/property-7.webp" },
-    min_stay_months: 24,
-  },
-  {
-    id: "8",
-    title: "Garden District Home",
-    address: "New Orleans",
-    city: "LA",
-    country: "USA",
-    description: "Historic charm with modern updates.",
-    daily_price: "18833.33",
-    monthly_price: "565000.00",
-    currency: "ghs",
-    bedrooms: 4,
-    bathrooms: 3,
-    area: 3200,
-    property_type: "house",
-    status: "available",
-    primary_image: { image: "/images/property-8.webp" },
-    min_stay_months: 12,
-  },
-  {
-    id: "9",
-    title: "Desert Oasis Estate",
-    address: "Scottsdale",
-    city: "Arizona",
-    country: "USA",
-    description: "Contemporary desert estate.",
-    daily_price: "36666.67",
-    monthly_price: "1100000.00",
-    currency: "ghs",
-    bedrooms: 5,
-    bathrooms: 4,
-    area: 4800,
-    property_type: "villa",
-    status: "available",
-    primary_image: { image: "/images/property-9.webp" },
-    min_stay_months: 24,
-  },
-  {
-    id: "10",
-    title: "Historic Brownstone",
-    address: "Brooklyn",
-    city: "New York",
-    country: "USA",
-    description: "Restored brownstone with original details.",
-    daily_price: "24500.00",
-    monthly_price: "735000.00",
-    currency: "ghs",
-    bedrooms: 3,
-    bathrooms: 3,
-    area: 2800,
-    property_type: "condo",
-    status: "available",
-    primary_image: { image: "/images/property-10.webp" },
-    min_stay_months: 12,
-  },
-];
-
-export function getPropertyById(id: string | number): Property | undefined {
-  return properties.find((p) => String(p.id) === String(id));
-}
-
-export function getOtherProperties(excludeId: string | number, limit = 6): Property[] {
-  return properties.filter((p) => String(p.id) !== String(excludeId)).slice(0, limit);
-}
+export const PROPERTY_CURRENCIES = ["ghs", "usd", "cfa"] as const;
+export type PropertyCurrencyApi = (typeof PROPERTY_CURRENCIES)[number];

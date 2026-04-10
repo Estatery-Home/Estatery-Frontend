@@ -5,8 +5,9 @@
  * Premium visualization with gradients, glassmorphism, and animations.
  */
 import * as React from "react";
-import { RefreshCw, ChevronDown, TrendingUp } from "lucide-react";
+import { RefreshCw, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { HostListingsChart } from "@/lib/api-types";
 
 /** Time range for chart: weekly (7 days), monthly (6 buckets), or yearly (4 quarters) */
 type Range = "weekly" | "monthly" | "yearly";
@@ -49,21 +50,39 @@ function getData(range: Range) {
   }
 }
 
-const Y_LABELS = ["0", "200", "400", "600", "800", "1K"];
-const Y_SCALE_MAX = 1000; // Fixed scale so bar heights match Y-axis figures
-const AVG_AT = 600;       // Horizontal "Avg" line sits at this value on the Y-axis
+function getApiData(listingsChart: HostListingsChart | null, range: Range) {
+  if (listingsChart?.[range]?.length) return listingsChart[range];
+  return getData(range);
+}
 
-export function ListingsChart() {
+type ListingsChartProps = {
+  listingsChart: HostListingsChart | null;
+  loading?: boolean;
+  onRefresh?: () => void;
+};
+
+export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsChartProps) {
   const [range, setRange] = React.useState<Range>("monthly");
   const [animating, setAnimating] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
 
-  const data = getData(range);
-  const scaleMax = Y_SCALE_MAX;
+  const data = getApiData(listingsChart, range);
+  const maxVal = Math.max(1, ...data.flatMap((d) => [d.rent, d.sale]));
+  const scaleMax = Math.max(5, Math.ceil(maxVal / 5) * 5);
+  const yLabelCount = 5;
+  const yLabels = Array.from({ length: yLabelCount + 1 }, (_, i) =>
+    String(Math.round((scaleMax * (yLabelCount - i)) / yLabelCount))
+  );
+  const periodTotal = data.reduce((s, d) => s + d.rent + d.sale, 0);
+  const avgVal =
+    data.length > 0
+      ? data.reduce((s, d) => s + (d.rent + d.sale) / 2, 0) / data.length
+      : 0;
 
   const handleRefresh = () => {
     setAnimating(true);
-    setTimeout(() => setAnimating(false), 600);
+    onRefresh?.();
+    window.setTimeout(() => setAnimating(false), 600);
   };
 
   return (
@@ -102,13 +121,21 @@ export function ListingsChart() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-3">
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">834</span>
-            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-600 border border-emerald-100/50">
-              <TrendingUp className="w-3 h-3" />
-              10.5%
+            <span
+              className={cn(
+                "text-2xl font-extrabold text-slate-900 tracking-tight",
+                loading && "animate-pulse text-slate-400"
+              )}
+            >
+              {periodTotal}
+            </span>
+            <span className="rounded-full bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600 border border-slate-100">
+              new in period
             </span>
           </div>
-          <span className="text-xs font-medium text-slate-400">vs last period</span>
+          <span className="text-xs font-medium text-slate-400">
+            Listings created in selected window (rent + sale)
+          </span>
         </div>
         <div className="flex gap-5 px-1">
           <div className="flex items-center gap-2 group cursor-pointer">
@@ -131,7 +158,7 @@ export function ListingsChart() {
         <div className="flex flex-1 gap-4 pr-1">
           {/* Y-axis labels */}
           <div className="flex flex-col justify-between pb-8 pt-0 text-[11px] font-semibold text-slate-400 tabular-nums items-end">
-            {Y_LABELS.map((l) => (
+            {yLabels.map((l) => (
               <span key={l} className="translate-y-1/2">{l}</span>
             ))}
           </div>
@@ -148,14 +175,14 @@ export function ListingsChart() {
               ))}
             </div>
             
-            {/* Avg line at ₵600 on Y-axis (60% from bottom) */}
+            {/* Average (rent + sale) / 2 per bucket */}
             <div
               className="absolute left-0 right-0 z-0 flex items-center group"
-              style={{ bottom: `calc(${(AVG_AT / scaleMax) * 100}% + 32px)` }}
+              style={{ bottom: `calc(${Math.min(100, (avgVal / scaleMax) * 100)}% + 32px)` }}
             >
               <div className="w-full border-t border-dashed border-indigo-300/60" />
               <div className="absolute right-0 translate-x-3 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold tracking-wider text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 shadow-sm border border-indigo-100">
-                AVG {AVG_AT}
+                AVG {avgVal.toFixed(1)}
               </div>
             </div>
 
@@ -230,14 +257,14 @@ export function ListingsChart() {
                                 <span className="size-2 rounded-full bg-indigo-500 shadow-sm" />
                                 <span className="text-xs font-medium text-slate-500">Rentals</span>
                               </div>
-                              <span className="text-xs font-bold text-indigo-700">₵{d.rent}</span>
+                              <span className="text-xs font-bold text-indigo-700">{d.rent}</span>
                             </div>
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-1.5">
                                 <span className="size-2 rounded-full bg-emerald-500 shadow-sm" />
                                 <span className="text-xs font-medium text-slate-500">Sales</span>
                               </div>
-                              <span className="text-xs font-bold text-emerald-700">₵{d.sale}</span>
+                              <span className="text-xs font-bold text-emerald-700">{d.sale}</span>
                             </div>
                           </div>
                         </div>

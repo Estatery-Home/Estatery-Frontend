@@ -43,6 +43,21 @@ def _unsign_password_reset(token: str) -> int | None:
         return None
 
 
+def _ensure_verified_for_password_reset(email: str) -> Response | None:
+    """Block password-reset OTP when the account exists but email is not verified."""
+    email_norm = email.strip().lower()
+    user = CustomUser.objects.filter(email__iexact=email_norm).first()
+    if user is not None and not user.email_verified:
+        return Response(
+            {
+                "detail": "Please verify your email address before resetting your password.",
+                "code": "email_not_verified",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
 AuthTokenOut = inline_serializer(
     name='AuthTokenResponse',
     fields={
@@ -107,15 +122,28 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
+
+        otp_result = otp_service.issue_otp(
+            email=user.email,
+            purpose=OtpChallenge.Purpose.VERIFY_EMAIL,
+        )
+
         # Create JWT tokens for the user
         refresh = RefreshToken.for_user(user)
-        
+
+        if otp_result == "send_failed":
+            msg = (
+                "User created successfully, but the verification email could not be sent. "
+                "Try requesting a new code from account settings once email is configured."
+            )
+        else:
+            msg = "User created successfully. A verification code was sent to your email."
+
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'message': 'User created successfully'
+            'message': msg,
         }, status=status.HTTP_201_CREATED)
 
 @extend_schema(
@@ -188,20 +216,31 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     tags=['Auth'],
     summary='Request password reset (send OTP)',
     request=PasswordResetRequestSerializer,
-    responses={200: GenericMessageOut},
+    responses={200: GenericMessageOut, 400: AuthErrorDetailOut},
 )
 class PasswordResetRequestView(APIView):
-    """Send a one-time code to the user's email (if an account exists)."""
+    """Send a one-time code to the user's email (if an account exists and email is verified)."""
 
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        otp_service.issue_otp(
-            email=serializer.validated_data["email"],
+        email = serializer.validated_data["email"]
+        blocked = _ensure_verified_for_password_reset(email)
+        if blocked is not None:
+            return blocked
+        otp_result = otp_service.issue_otp(
+            email=email,
             purpose=OtpChallenge.Purpose.PASSWORD_RESET,
         )
+        if otp_result == "send_failed":
+            return Response(
+                {
+                    "detail": "Could not send email. Check server email settings and try again.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         return Response(
             {
                 "message": "If an account exists for this email, a verification code was sent.",
@@ -294,10 +333,23 @@ class OtpRequestView(APIView):
     def post(self, request):
         serializer = OtpRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        otp_service.issue_otp(
-            email=serializer.validated_data["email"],
-            purpose=_purpose_from_api(serializer.validated_data["purpose"]),
+        purpose = _purpose_from_api(serializer.validated_data["purpose"])
+        email = serializer.validated_data["email"]
+        if purpose == OtpChallenge.Purpose.PASSWORD_RESET:
+            blocked = _ensure_verified_for_password_reset(email)
+            if blocked is not None:
+                return blocked
+        otp_result = otp_service.issue_otp(
+            email=email,
+            purpose=purpose,
         )
+        if otp_result == "send_failed":
+            return Response(
+                {
+                    "detail": "Could not send email. Check server email settings and try again.",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         return Response(
             {"message": "If this email is eligible, a verification code was sent."}
         )

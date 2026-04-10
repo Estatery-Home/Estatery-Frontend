@@ -12,11 +12,11 @@ import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
 import { DashboardLayout } from "@/components/dashboard";
 import {
-  getClientDetail,
-  getClientTransactions,
+  type ClientDetail,
   type ClientTransaction,
   type ClientTransactionStatus,
 } from "@/lib/clients";
+import { fetchHostClientDetail } from "@/lib/api-client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
@@ -28,20 +28,86 @@ export default function ClientDetail() {
   const { clientId } = useParams<RouteParams>();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = React.useState(false);
-
-  const detail = clientId ? getClientDetail(clientId) : undefined;
-  const [transactions] = React.useState<ClientTransaction[]>(() =>
-    clientId ? getClientTransactions(clientId) : []
-  );
+  const [loading, setLoading] = React.useState(true);
+  const [detail, setDetail] = React.useState<ClientDetail | undefined>(undefined);
+  const [transactions, setTransactions] = React.useState<ClientTransaction[]>([]);
 
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | ClientTransactionStatus>("all");
   const [page, setPage] = React.useState(1);
   const [selectedTxIds, setSelectedTxIds] = React.useState<Set<string>>(new Set());
 
-  const [editName, setEditName] = React.useState(detail?.name ?? "");
-  const [editEmail, setEditEmail] = React.useState(detail?.email ?? "");
-  const [editBio, setEditBio] = React.useState(detail?.bio ?? "");
+  const [editName, setEditName] = React.useState("");
+  const [editEmail, setEditEmail] = React.useState("");
+  const [editBio, setEditBio] = React.useState("");
+
+  React.useEffect(() => {
+    if (!clientId || !/^\d+$/.test(clientId)) {
+      setLoading(false);
+      setDetail(undefined);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void fetchHostClientDetail(Number(clientId)).then((data) => {
+      if (cancelled) return;
+      if (!data?.detail) {
+        setDetail(undefined);
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
+      const d = data.detail;
+      setDetail({
+        clientId: d.clientId,
+        tenantUserId: d.tenantUserId,
+        name: d.name,
+        avatarInitials: d.avatarInitials,
+        email: d.email,
+        phone: d.phone,
+        bio: d.bio || "—",
+        propertyName: d.propertyName,
+        propertyAddress: d.propertyAddress,
+        propertyType: d.propertyType,
+        transactionDate: d.transactionDate,
+        transactionType: d.transactionType,
+        rentDuration: d.rentDuration,
+      });
+      setTransactions(
+        data.transactions.map((t) => ({
+          id: t.id,
+          paymentType: t.paymentType,
+          dueDate: t.dueDate,
+          amount: t.amount,
+          status: t.status,
+        }))
+      );
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  React.useEffect(() => {
+    if (!detail) return;
+    setEditName(detail.name);
+    setEditEmail(detail.email);
+    setEditBio(detail.bio === "—" ? "" : detail.bio);
+  }, [detail]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto flex max-w-6xl min-h-[50vh] items-center justify-center">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--logo)] border-t-transparent"
+            aria-hidden
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!detail) {
     return (
@@ -190,7 +256,13 @@ export default function ClientDetail() {
                       </a>
                       <button
                         type="button"
-                        onClick={() => navigate(`/dashboard/messages?clientId=${detail.clientId}`)}
+                        onClick={() =>
+                          navigate(
+                            detail.tenantUserId != null
+                              ? `/dashboard/messages?userId=${detail.tenantUserId}`
+                              : "/dashboard/messages"
+                          )
+                        }
                         className="flex size-9 items-center justify-center rounded-full border border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc]"
                         aria-label="Open messages"
                       >

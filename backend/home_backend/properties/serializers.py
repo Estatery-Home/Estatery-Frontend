@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, F
 from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
 from users.serializers import UserSerializer
@@ -212,6 +213,7 @@ class BookingSerializer(serializers.ModelSerializer):
     property_title = serializers.CharField(source='rented_property.title', read_only=True)
     property_address = serializers.CharField(source='rented_property.address', read_only=True)
     property_image = serializers.SerializerMethodField()
+    review_id = serializers.SerializerMethodField(read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -257,6 +259,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'property_title',
             'property_address',
             'property_image',
+            'review_id',
             'user_name',
             'user_email',
         )
@@ -282,6 +285,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'property_title',
             'property_address',
             'property_image',
+            'review_id',
             'user_name',
             'user_email',
             'applied_promo_code',
@@ -293,7 +297,13 @@ class BookingSerializer(serializers.ModelSerializer):
             if hasattr(primary, 'image') and primary.image:
                 return primary.image.url
         return None
-    
+
+    def get_review_id(self, obj):
+        try:
+            return obj.review.pk
+        except ObjectDoesNotExist:
+            return None
+
     def validate(self, attrs):
         request = self.context.get('request')
         
@@ -635,6 +645,11 @@ class HostDashboardSerializer(serializers.Serializer):
     bookings = serializers.JSONField()
     revenue = serializers.JSONField()
     recent_bookings = serializers.JSONField()
+    recent_payments = serializers.JSONField()
+    listings_chart = serializers.JSONField()
+    activity_chart = serializers.JSONField()
+    comparison = serializers.JSONField()
+    currency = serializers.CharField()
 
 
 class TenantDashboardSerializer(serializers.Serializer):

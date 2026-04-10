@@ -1,7 +1,9 @@
 import hashlib
 import hmac
+import logging
 import secrets
 from datetime import timedelta
+from typing import Literal
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -9,9 +11,13 @@ from django.utils import timezone
 
 from .models import CustomUser, OtpChallenge
 
+logger = logging.getLogger(__name__)
+
 OTP_LENGTH = 6
 OTP_TTL_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
+
+IssueOtpResult = Literal["sent", "no_user", "send_failed"]
 
 
 def _digest(email: str, code: str) -> str:
@@ -23,18 +29,19 @@ def _generate_code() -> str:
     return f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
 
 
-def issue_otp(*, email: str, purpose: str) -> bool:
+def issue_otp(*, email: str, purpose: str) -> IssueOtpResult:
     """
-    Create a new OTP for the email/purpose. Returns False if no account exists
-    for purposes that require an existing user.
+    Create a new OTP for the email/purpose.
+    Returns no_user if the purpose requires an account and none exists.
+    Returns send_failed if the message could not be delivered (SMTP error, etc.).
     """
     email_norm = email.strip().lower()
     if purpose == OtpChallenge.Purpose.PASSWORD_RESET:
         if not CustomUser.objects.filter(email__iexact=email_norm).exists():
-            return False
+            return "no_user"
     elif purpose == OtpChallenge.Purpose.VERIFY_EMAIL:
         if not CustomUser.objects.filter(email__iexact=email_norm).exists():
-            return False
+            return "no_user"
 
     OtpChallenge.objects.filter(
         email__iexact=email_norm,
@@ -44,7 +51,7 @@ def issue_otp(*, email: str, purpose: str) -> bool:
 
     code = _generate_code()
     now = timezone.now()
-    OtpChallenge.objects.create(
+    challenge = OtpChallenge.objects.create(
         email=email_norm,
         purpose=purpose,
         code_hash=_digest(email_norm, code),
@@ -56,8 +63,19 @@ def issue_otp(*, email: str, purpose: str) -> bool:
         f"Your code is {code}. It expires in {OTP_TTL_MINUTES} minutes.\n"
         f"If you did not request this, you can ignore this message."
     )
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [email_norm], fail_silently=True)
-    return True
+    try:
+        send_mail(
+            subject,
+            body,
+            settings.DEFAULT_FROM_EMAIL,
+            [email_norm],
+            fail_silently=False,
+        )
+    except Exception:
+        challenge.delete()
+        logger.exception("Failed to send OTP email to %s", email_norm)
+        return "send_failed"
+    return "sent"
 
 
 def verify_otp(*, email: str, code: str, purpose: str):
@@ -90,4 +108,8 @@ def verify_otp(*, email: str, code: str, purpose: str):
     challenge.save(update_fields=["consumed_at"])
 
     user = CustomUser.objects.filter(email__iexact=email_norm).first()
+    if user is not None and purpose == OtpChallenge.Purpose.VERIFY_EMAIL:
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=["email_verified"])
     return True, user

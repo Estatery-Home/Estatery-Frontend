@@ -1,14 +1,12 @@
 "use client";
 
 /**
- * Add Property step 3 – Property details (beds, baths, sqft, land area, etc.).
- * Calls onBedsChange, onBathsChange, onSqftChange when provided.
+ * Add Property step 3 – bedrooms, bathrooms, area (Property model).
  */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-/** API-aligned: bedrooms, bathrooms, area (m² or sqft) */
 type AddPropertyDetailsStepProps = {
   bedrooms?: number;
   bathrooms?: number;
@@ -19,48 +17,37 @@ type AddPropertyDetailsStepProps = {
 };
 
 export function AddPropertyDetailsStep({
-  bedrooms = 0,
-  bathrooms = 0,
+  bedrooms = 1,
+  bathrooms = 1,
   area = 0,
   onBedroomsChange,
   onBathroomsChange,
   onAreaChange,
-}: AddPropertyDetailsStepProps = {}) {
-  const [landArea, setLandArea] = React.useState("");
+}: AddPropertyDetailsStepProps) {
   const [buildingArea, setBuildingArea] = React.useState(area ? String(area) : "");
   const [bedroomsVal, setBedroomsVal] = React.useState(bedrooms ? String(bedrooms) : "");
   const [bathroomsVal, setBathroomsVal] = React.useState(bathrooms ? String(bathrooms) : "");
-  const [floors, setFloors] = React.useState("");
-  const [yearBuilt, setYearBuilt] = React.useState("");
-  const [furnishing, setFurnishing] = React.useState("");
-  const [parkingSpaces, setParkingSpaces] = React.useState("");
+
+  React.useEffect(() => {
+    setBedroomsVal(bedrooms ? String(bedrooms) : "");
+    setBathroomsVal(bathrooms ? String(bathrooms) : "");
+    setBuildingArea(area ? String(area) : "");
+  }, [bedrooms, bathrooms, area]);
 
   return (
     <div className="space-y-5">
       <h3 className="text-lg font-semibold text-[#1e293b]">Property Details</h3>
+      <p className=" text-sm text-[#64748b]">Area is stored in square feet (backend field).</p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="land-area" className="text-[#1e293b]">
-            Land Area (m²) <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="land-area"
-            value={landArea}
-            onChange={(e) => setLandArea(e.target.value)}
-            placeholder="Placeholder"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="building-area" className="text-[#1e293b]">
-            Area (m² / sq ft) <span className="text-red-500">*</span>
+            Area (sq ft) <span className="text-red-500">*</span>
           </Label>
           <Input
             id="building-area"
             type="number"
+            min={1}
             value={buildingArea}
             onChange={(e) => {
               const v = e.target.value;
@@ -81,12 +68,13 @@ export function AddPropertyDetailsStep({
           <Input
             id="bedrooms"
             type="number"
+            min={1}
             value={bedroomsVal}
             onChange={(e) => {
               const v = e.target.value;
               setBedroomsVal(v);
               const n = parseInt(v, 10);
-              onBedroomsChange?.(isNaN(n) ? 0 : n);
+              onBedroomsChange?.(isNaN(n) ? 1 : n);
             }}
             placeholder="e.g. 3"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
@@ -101,70 +89,15 @@ export function AddPropertyDetailsStep({
           <Input
             id="bathrooms"
             type="number"
+            min={1}
             value={bathroomsVal}
             onChange={(e) => {
               const v = e.target.value;
               setBathroomsVal(v);
               const n = parseInt(v, 10);
-              onBathroomsChange?.(isNaN(n) ? 0 : n);
+              onBathroomsChange?.(isNaN(n) ? 1 : n);
             }}
             placeholder="e.g. 2"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="floors" className="text-[#1e293b]">
-            Floors <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="floors"
-            value={floors}
-            onChange={(e) => setFloors(e.target.value)}
-            placeholder="Placeholder"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="year-built" className="text-[#1e293b]">
-            Year Built <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="year-built"
-            value={yearBuilt}
-            onChange={(e) => setYearBuilt(e.target.value)}
-            placeholder="Placeholder"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="furnishing" className="text-[#1e293b]">
-            Furnishing <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="furnishing"
-            value={furnishing}
-            onChange={(e) => setFurnishing(e.target.value)}
-            placeholder="Placeholder"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="parking-spaces" className="text-[#1e293b]">
-            Parking Spaces <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="parking-spaces"
-            value={parkingSpaces}
-            onChange={(e) => setParkingSpaces(e.target.value)}
-            placeholder="Placeholder"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
             required
           />
