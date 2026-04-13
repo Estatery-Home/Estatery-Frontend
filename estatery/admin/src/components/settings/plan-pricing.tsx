@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type PlanActionVariant = "default" | "outline";
+
 const PLANS = [
   {
     name: "Basic Plan",
@@ -16,7 +18,7 @@ const PLANS = [
       "Professional reports",
     ],
     action: "Downgrade",
-    actionVariant: "outline",
+    actionVariant: "outline" as PlanActionVariant,
   },
   {
     name: "Pro Plan",
@@ -29,7 +31,7 @@ const PLANS = [
       "Professional reports",
     ],
     action: "Current Plan",
-    actionVariant: "outline",
+    actionVariant: "outline" as PlanActionVariant,
     isCurrent: true,
   },
   {
@@ -43,7 +45,7 @@ const PLANS = [
       "Professional reports",
     ],
     action: "Free Trial - 30 Days",
-    actionVariant: "default",
+    actionVariant: "default" as PlanActionVariant,
   },
 ];
 
