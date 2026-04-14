@@ -1,9 +1,26 @@
 from decimal import Decimal
 
+from django.db.models import F, Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from .models import PromoCode
+
+
+def active_promos_for_property(property_obj, ref_date=None):
+    """
+    Promo codes the customer may use for this listing today: active, in validity window,
+    not exhausted, global or scoped to this property.
+    """
+    ref_date = ref_date or timezone.now().date()
+    return (
+        PromoCode.objects.filter(is_active=True)
+        .filter(Q(applies_to_property__isnull=True) | Q(applies_to_property_id=property_obj.id))
+        .filter(Q(valid_from__isnull=True) | Q(valid_from__lte=ref_date))
+        .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=ref_date))
+        .filter(Q(max_redemptions__isnull=True) | Q(times_redeemed__lt=F("max_redemptions")))
+        .order_by("-created_at")
+    )
 
 
 def get_promo_by_code(code):

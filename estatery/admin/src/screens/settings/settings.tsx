@@ -113,13 +113,13 @@ export default function Settings() {
       }
       // if (activeSection === "payment-billing") savePayment(); // TEMP: no payment for now
       if (activeSection === "tax-duties") saveTax();
-      if (activeSection === "link-account") saveLinks();
+      if (activeSection === "link-account") await saveLinks();
       if (activeSection === "time-language") saveTimeLang();
       if (activeSection === "password") {
         await changePassword(passwordDraft.currentPassword, passwordDraft.newPassword);
         setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
       }
-      if (activeSection === "notifications") saveNotifications();
+      if (activeSection === "notifications") await saveNotifications();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
       setSaveConfirmOpen(false);

@@ -5,9 +5,23 @@ from django.contrib.auth import authenticate
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Profile fields for GET/PATCH /api/auth/profile/. Social URLs apply to all properties owned by this user."""
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'phone', 'avatar', 'user_type', 'email_verified']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'phone',
+            'avatar',
+            'user_type',
+            'email_verified',
+            'instagram_url',
+            'facebook_url',
+            'twitter_url',
+            'youtube_url',
+        ]
         read_only_fields = ['id', 'user_type', 'email_verified']
 
 class RegisterSerializer(serializers.ModelSerializer):

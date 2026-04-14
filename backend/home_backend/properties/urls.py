@@ -9,6 +9,8 @@ urlpatterns = [
     path('discounts/validate/', views.PromoCodeValidateView.as_view(), name='discount-validate'),
     path('admin/discounts/', views.AdminPromoCodeListCreateView.as_view(), name='admin-discount-list'),
     path('admin/discounts/<int:pk>/', views.AdminPromoCodeDetailView.as_view(), name='admin-discount-detail'),
+    path('admin/bookings/', views.AdminAllBookingsListView.as_view(), name='admin-bookings-list'),
+    path('admin/calendar/', views.AdminCalendarView.as_view(), name='admin-calendar'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
@@ -18,6 +20,11 @@ urlpatterns = [
     path('timezones/', views.TimeZoneListView.as_view(), name='timezone-list'),
     
     # === AVAILABILITY ===
+    path(
+        'properties/<int:pk>/discounts/',
+        views.PropertyActiveDiscountsView.as_view(),
+        name='property-active-discounts',
+    ),
     path('properties/<int:pk>/check-availability/', 
          views.PropertyAvailabilityCheckView.as_view(), 
          name='property-availability-check'),
@@ -29,6 +36,7 @@ urlpatterns = [
     path('bookings/', views.BookingCreateView.as_view(), name='booking-create'),
     path('bookings/my/', views.MyBookingsView.as_view(), name='my-bookings'),
     path('bookings/<int:pk>/', views.BookingDetailView.as_view(), name='booking-detail'),
+    path('bookings/<int:pk>/reschedule/', views.BookingRescheduleView.as_view(), name='booking-reschedule'),
     
     # === HOST BOOKINGS ===
     path('host/bookings/', views.HostBookingsView.as_view(), name='host-bookings'),

@@ -4,7 +4,7 @@ export { default as Calendar } from "./Calendar";
 export { default as Discounts } from "./Discounts";
 export { default as Feedback } from "./Feedback";
 export { default as HelpCenter } from "./HelpCenter";
-export { default as Leads } from "./Leads";
+export { default as Bookings } from "./Bookings";
 export { default as Messages } from "./Messages";
 export { default as NotificationDetail } from "./NotificationDetail";
 export { default as Notifications } from "./Notifications";

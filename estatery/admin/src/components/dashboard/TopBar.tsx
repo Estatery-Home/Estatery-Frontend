@@ -13,6 +13,7 @@ import { LogoutConfirmDialog } from "./LogoutConfirmDialog";
 import { AddPropertyFab } from "./AddPropertyFab";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
 import { useNavigate } from "react-router-dom";
 
 export function TopBar() {
@@ -22,6 +23,7 @@ export function TopBar() {
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const { profile, updateProfile } = useUserProfile();
   const { logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   
   const profileRef = React.useRef<HTMLDivElement>(null);
@@ -91,7 +93,14 @@ export function TopBar() {
             aria-label="Notifications"
           >
             <Bell className="size-4" />
-            <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-rose-500 ring-2 ring-white" aria-hidden />
+            {unreadCount > 0 ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
+                aria-label={`${unreadCount} unread`}
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
           </button>
           
           <div className="h-6 w-px bg-slate-100" />

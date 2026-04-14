@@ -11,9 +11,11 @@ import type {
   HostClientsListResponse,
   HostDashboardResponse,
   HostPaymentsListResponse,
+  PaginatedAdminBookings,
   PromoCode,
   PromoCodeCreateInput,
   ThreadMessage,
+  User,
 } from "@/lib/api-types";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 const AUTH_BASE = `${API_BASE.replace(/\/api\/?$/, "")}/api/auth`;
@@ -59,6 +61,10 @@ export const api = {
       `${API_BASE}/host/analytics/?range=${encodeURIComponent(range)}`,
     hostCalendar: (start: string, end: string) =>
       `${API_BASE}/host/calendar/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    /** Platform-wide booking nights (user_type admin or staff) */
+    adminCalendar: (start: string, end: string) =>
+      `${API_BASE}/admin/calendar/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    bookingReschedule: (id: number) => `${API_BASE}/bookings/${id}/reschedule/`,
     hostPayments: (limit: number) => `${API_BASE}/host/payments/?limit=${limit}`,
     /** Payments */
     markPaymentPaid: (id: number) => `${API_BASE}/payments/${id}/mark-paid/`,
@@ -70,6 +76,8 @@ export const api = {
     /** Promo / discounts (admin: staff or user_type admin) */
     adminDiscounts: `${API_BASE}/admin/discounts/`,
     adminDiscountDetail: (id: number) => `${API_BASE}/admin/discounts/${id}/`,
+    /** All tenant bookings across the platform (admin/staff only) */
+    adminBookings: `${API_BASE}/admin/bookings/`,
     discountsValidate: `${API_BASE}/discounts/validate/`,
     countries: `${API_BASE}/countries/`,
     customerProperties: `${API_BASE}/customer/properties/`,
@@ -78,6 +86,14 @@ export const api = {
     messagesOpenConversation: `${API_BASE}/messages/conversations/open/`,
     messagesInConversation: (conversationId: number) =>
       `${API_BASE}/messages/conversations/${conversationId}/messages/`,
+    /** In-app notifications (authenticated) */
+    notifications: `${API_BASE}/notifications/`,
+    notificationsUnreadCount: `${API_BASE}/notifications/unread-count/`,
+    notificationsMarkAllRead: `${API_BASE}/notifications/mark-all-read/`,
+    notificationDetail: (id: number) => `${API_BASE}/notifications/${id}/`,
+    notificationMarkRead: (id: number) => `${API_BASE}/notifications/${id}/read/`,
+    /** GET/PATCH Settings → Notifications toggles (transaction / payment alerts) */
+    notificationsPreferences: `${API_BASE}/notifications/preferences/`,
   },
 };
 
@@ -98,6 +114,27 @@ export function apiHeaders(includeAuth = true): HeadersInit {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
+}
+
+/** GET /api/auth/profile/ — current user (includes social URLs for owners/admins). */
+export async function fetchProfile(): Promise<User | null> {
+  const res = await fetch(api.endpoints.profile, { headers: apiHeaders(true) });
+  if (!res.ok) return null;
+  return res.json() as Promise<User>;
+}
+
+/** PATCH /api/auth/profile/ — partial update (e.g. social URLs). */
+export async function patchProfile(body: Partial<User>): Promise<User> {
+  const res = await fetch(api.endpoints.profile, {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Profile update failed (${res.status})`));
+  }
+  return data as User;
 }
 
 /** Parse DRF-style `detail` string (or first validation message) from JSON error body. */
@@ -300,6 +337,35 @@ export async function fetchHostCalendar(
   return res.json() as Promise<HostCalendarResponse>;
 }
 
+/** GET /api/admin/calendar/?start=&end= — all booking nights (platform admin). */
+export async function fetchAdminCalendar(
+  start: string,
+  end: string
+): Promise<HostCalendarResponse | null> {
+  const res = await fetch(api.endpoints.adminCalendar(start, end), {
+    headers: apiHeaders(true),
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<HostCalendarResponse>;
+}
+
+/** PATCH /api/bookings/:id/reschedule/ — host (listing owner) or platform admin. */
+export async function patchBookingReschedule(
+  bookingId: number,
+  body: { check_in: string; check_out: string; guests?: number }
+): Promise<{ message: string }> {
+  const res = await fetch(api.endpoints.bookingReschedule(bookingId), {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Reschedule failed (${res.status})`));
+  }
+  return { message: typeof data.message === "string" ? data.message : "Rescheduled" };
+}
+
 /** GET /api/host/clients/ — tenant customers with bookings on your properties */
 export async function fetchHostClients(): Promise<HostClientsListResponse | null> {
   const res = await fetch(api.endpoints.hostClients, { headers: apiHeaders(true) });
@@ -455,4 +521,96 @@ export async function postConversationMessage(
   const msg = (data as { message_obj?: ThreadMessage }).message_obj;
   if (!msg) throw new Error("Invalid response from server");
   return msg;
+}
+
+/** Matches Settings UI notification toggles (same keys as SettingsContext NotificationSettings). */
+export type NotificationPreferencesClient = {
+  transactionConfirmation: boolean;
+  transactionEdited: boolean;
+  transactionInvoice: boolean;
+  transactionCancelled: boolean;
+  transactionRefund: boolean;
+  paymentError: boolean;
+};
+
+export function notificationPreferencesToApiBody(
+  s: NotificationPreferencesClient
+): Record<string, boolean> {
+  return {
+    transaction_confirmation: s.transactionConfirmation,
+    transaction_edited: s.transactionEdited,
+    transaction_invoice: s.transactionInvoice,
+    transaction_cancelled: s.transactionCancelled,
+    transaction_refund: s.transactionRefund,
+    payment_error: s.paymentError,
+  };
+}
+
+export function notificationPreferencesFromApi(
+  data: Record<string, unknown>
+): NotificationPreferencesClient {
+  return {
+    transactionConfirmation: Boolean(data.transaction_confirmation),
+    transactionEdited: Boolean(data.transaction_edited),
+    transactionInvoice: Boolean(data.transaction_invoice),
+    transactionCancelled: Boolean(data.transaction_cancelled),
+    transactionRefund: Boolean(data.transaction_refund),
+    paymentError: Boolean(data.payment_error),
+  };
+}
+
+/** GET /api/notifications/preferences/ — returns null if unauthenticated or request fails. */
+export async function fetchNotificationPreferences(): Promise<NotificationPreferencesClient | null> {
+  const res = await fetch(api.endpoints.notificationsPreferences, { headers: apiHeaders(true) });
+  if (!res.ok) return null;
+  const data = (await res.json()) as Record<string, unknown>;
+  return notificationPreferencesFromApi(data);
+}
+
+/** PATCH /api/notifications/preferences/ — persists toggles for the current user. */
+export async function patchNotificationPreferences(
+  s: NotificationPreferencesClient
+): Promise<NotificationPreferencesClient> {
+  const res = await fetch(api.endpoints.notificationsPreferences, {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(notificationPreferencesToApiBody(s)),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Failed to save notification settings (${res.status})`));
+  }
+  return notificationPreferencesFromApi(data as Record<string, unknown>);
+}
+
+/** GET /api/admin/bookings/ — paginated, filter by status, search guest/property. */
+export async function fetchAdminBookings(params: {
+  page?: number;
+  page_size?: number;
+  status?: string;
+  search?: string;
+  ordering?: string;
+}): Promise<PaginatedAdminBookings> {
+  const url = new URL(api.endpoints.adminBookings);
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.page_size) url.searchParams.set("page_size", String(params.page_size));
+  if (params.status) url.searchParams.set("status", params.status);
+  if (params.search?.trim()) url.searchParams.set("search", params.search.trim());
+  if (params.ordering) url.searchParams.set("ordering", params.ordering);
+  const res = await fetch(url.toString(), { headers: apiHeaders(true) });
+  const data = (await res.json().catch(() => ({}))) as PaginatedAdminBookings & { detail?: string };
+  if (res.status === 403) {
+    throw new Error("Admin access required to view all bookings.");
+  }
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === "string" ? data.detail : `Failed to load bookings (${res.status})`
+    );
+  }
+  return {
+    count: data.count ?? 0,
+    next: data.next ?? null,
+    previous: data.previous ?? null,
+    results: Array.isArray(data.results) ? data.results : [],
+  };
 }

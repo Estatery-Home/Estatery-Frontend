@@ -17,6 +17,11 @@ export type User = {
   avatar: string | null;
   user_type: UserType;
   email_verified?: boolean;
+  /** Profile social links — shown on all properties this user owns (customer site). */
+  instagram_url?: string;
+  facebook_url?: string;
+  twitter_url?: string;
+  youtube_url?: string;
 };
 
 export type RegisterRequest = {
@@ -186,6 +191,38 @@ export type BookingPayment = {
   is_overdue?: boolean;
   created_at?: string;
   updated_at?: string;
+};
+
+/** GET /api/admin/bookings/ — platform-wide row (staff or user_type admin). */
+export type AdminBookingRow = {
+  id: number;
+  property: number;
+  user?: number;
+  check_in: string;
+  check_out: string;
+  guests: number;
+  status: string;
+  total_price: string;
+  agreed_monthly_rate?: string;
+  months_booked?: number;
+  discount_applied?: string;
+  applied_promo_code?: string | null;
+  property_title?: string;
+  property_address?: string;
+  property_city?: string;
+  property_image?: string | null;
+  user_name?: string;
+  user_email?: string;
+  host_name?: string;
+  host_email?: string;
+  created_at?: string;
+};
+
+export type PaginatedAdminBookings = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AdminBookingRow[];
 };
 
 /* ---- Review ---- */
@@ -427,6 +464,10 @@ export type HostCalendarEventApi = {
   property_id: number;
   property_title: string;
   all_day: boolean;
+  /** ISO date strings — same on every night row for this booking */
+  check_in?: string;
+  check_out?: string;
+  guests?: number;
 };
 
 export type HostCalendarResponse = {

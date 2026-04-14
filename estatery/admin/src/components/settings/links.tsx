@@ -18,7 +18,8 @@ export function Links() {
         <div className="shrink-0 md:w-56 lg:w-64">
           <h3 className="text-lg font-bold text-[#1e293b]">Link Account</h3>
           <p className="mt-1 text-sm text-[#64748b]">
-            Your customers will use this information to contact you.
+            Full profile URLs (or @handles for Instagram). Saved to your account and shown on every listing you
+            own on the customer site.
           </p>
         </div>
         <div className="min-w-0 flex-1 grid grid-cols-1 gap-4 ">
@@ -30,6 +31,7 @@ export function Links() {
               id="instagram"
               value={links.instagram}
               onChange={(e) => setLinks((p) => ({ ...p, instagram: e.target.value }))}
+              placeholder="https://instagram.com/yourpage or @yourpage"
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
@@ -42,6 +44,7 @@ export function Links() {
               id="facebook"
               value={links.facebook}
               onChange={(e) => setLinks((p) => ({ ...p, facebook: e.target.value }))}
+              placeholder="https://facebook.com/..."
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
@@ -54,6 +57,7 @@ export function Links() {
               id="twitter"
               value={links.twitter}
               onChange={(e) => setLinks((p) => ({ ...p, twitter: e.target.value }))}
+              placeholder="https://x.com/..."
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
@@ -66,6 +70,7 @@ export function Links() {
               id="youtube"
               value={links.youtube}
               onChange={(e) => setLinks((p) => ({ ...p, youtube: e.target.value }))}
+              placeholder="https://youtube.com/@..."
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
