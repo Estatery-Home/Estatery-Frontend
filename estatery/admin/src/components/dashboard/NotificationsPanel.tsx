@@ -1,15 +1,14 @@
 "use client";
 
 /**
- * Notifications slide-out panel – list from lib/notifications, mark all read.
- * Renders via portal when TopBar opens it.
+ * Notifications slide-out panel – data from /api/notifications/, mark-all-read.
  */
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { Users, BarChart3, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { notifications, markAllNotificationsRead } from "@/lib/notifications";
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 const iconMap = {
   agent: Users,
@@ -23,14 +22,20 @@ type NotificationsPanelProps = {
 };
 
 export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
-  const [localUnread, setLocalUnread] = React.useState<Record<string, boolean>>({});
+  const {
+    notifications,
+    isLoadingList,
+    refreshNotifications,
+    markAllNotificationsRead,
+  } = useNotifications();
 
-  const markAllRead = () => {
-    markAllNotificationsRead();
-    setLocalUnread({});
+  React.useEffect(() => {
+    if (open) void refreshNotifications();
+  }, [open, refreshNotifications]);
+
+  const handleMarkAllRead = () => {
+    void markAllNotificationsRead();
   };
-
-  const isUnread = (id: string) => localUnread[id] !== false && notifications.find((n) => n.id === id)?.unread;
 
   if (!open) return null;
 
@@ -47,40 +52,46 @@ export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
           <h2 className="text-lg font-semibold text-[#1e293b]">Notifications</h2>
           <button
             type="button"
-            onClick={markAllRead}
+            onClick={handleMarkAllRead}
             className="text-sm font-medium text-[var(--logo)] hover:underline"
           >
             Mark all as read
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {notifications.map((n) => {
-            const Icon = iconMap[n.type];
-            return (
-              <Link
-                key={n.id}
-                to={`/dashboard/notifications/${n.id}`}
-                onClick={onClose}
-                className={cn(
-                  "flex gap-3 border-b border-[#e2e8f0] px-5 py-4 transition-colors hover:bg-[#f8fafc]",
-                  n.unread && "bg-[#f0f9ff]"
-                )}
-              >
-                <div className="relative shrink-0">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[var(--logo)]">
-                    <Icon className="size-5" />
-                  </div>
-                  {n.unread && (
-                    <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-[#ef4444]" aria-hidden />
+          {isLoadingList && notifications.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-[#64748b]">Loading…</p>
+          ) : notifications.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-[#64748b]">No notifications yet.</p>
+          ) : (
+            notifications.map((n) => {
+              const Icon = iconMap[n.type];
+              return (
+                <Link
+                  key={n.id}
+                  to={`/dashboard/notifications/${n.id}`}
+                  onClick={onClose}
+                  className={cn(
+                    "flex gap-3 border-b border-[#e2e8f0] px-5 py-4 transition-colors hover:bg-[#f8fafc]",
+                    n.unread && "bg-[#f0f9ff]"
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#1e293b]">{n.title}</p>
-                  <p className="mt-1 text-xs text-[#64748b]">{n.time}</p>
-                </div>
-              </Link>
-            );
-          })}
+                >
+                  <div className="relative shrink-0">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[var(--logo)]">
+                      <Icon className="size-5" />
+                    </div>
+                    {n.unread && (
+                      <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-[#ef4444]" aria-hidden />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-[#1e293b]">{n.title}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{n.time}</p>
+                  </div>
+                </Link>
+              );
+            })
+          )}
         </div>
         <div className="shrink-0 border-t border-[#e2e8f0] px-5 py-4">
           <Link

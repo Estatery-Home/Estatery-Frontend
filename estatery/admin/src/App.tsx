@@ -7,6 +7,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { PropertiesProvider } from "@/contexts/PropertiesContext";
@@ -66,6 +67,7 @@ export default function App() {
   // Then BrowserRouter for routing, Suspense for lazy-load fallback, Routes for path matching
   return (
     <AuthProvider>
+      <NotificationsProvider>
       <UserProfileProvider>
         <SettingsProvider>
         <PropertiesProvider>
@@ -286,6 +288,7 @@ export default function App() {
         </PropertiesProvider>
         </SettingsProvider>
       </UserProfileProvider>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

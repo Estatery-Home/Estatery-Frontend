@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'properties',
     'bookings',
     'messaging',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -236,6 +237,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Payments', 'description': 'Booking payments and mark-paid'},
         {'name': 'Reviews', 'description': 'Property reviews and host responses'},
         {'name': 'Dashboards', 'description': 'Host and tenant summaries'},
+        {'name': 'Notifications', 'description': 'In-app notifications (badge, list, mark read)'},
     ],
     'SECURITY': [{'bearerAuth': []}],
     'APPEND_COMPONENTS': {

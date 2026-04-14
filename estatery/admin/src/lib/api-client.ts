@@ -78,6 +78,12 @@ export const api = {
     messagesOpenConversation: `${API_BASE}/messages/conversations/open/`,
     messagesInConversation: (conversationId: number) =>
       `${API_BASE}/messages/conversations/${conversationId}/messages/`,
+    /** In-app notifications (authenticated) */
+    notifications: `${API_BASE}/notifications/`,
+    notificationsUnreadCount: `${API_BASE}/notifications/unread-count/`,
+    notificationsMarkAllRead: `${API_BASE}/notifications/mark-all-read/`,
+    notificationDetail: (id: number) => `${API_BASE}/notifications/${id}/`,
+    notificationMarkRead: (id: number) => `${API_BASE}/notifications/${id}/read/`,
   },
 };
 

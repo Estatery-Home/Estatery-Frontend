@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * Notification detail – full body, action link.
- * Loads from getNotificationById by route param.
+ * Notification detail – loads from GET /api/notifications/:id/, marks read on open.
  */
 import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, BarChart3, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/dashboard";
-import { getNotificationById } from "@/lib/notifications";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { api, apiHeaders } from "@/lib/api-client";
+import { mapApiNotification } from "@/lib/notifications";
+import type { Notification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
@@ -21,9 +23,62 @@ const iconMap = {
 export default function NotificationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const notification = id ? getNotificationById(id) : undefined;
+  const { markNotificationRead, refreshNotifications } = useNotifications();
+  const [notification, setNotification] = React.useState<Notification | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
 
-  if (!notification) {
+  React.useEffect(() => {
+    let cancelled = false;
+    const parsedId = id ? parseInt(id, 10) : NaN;
+    if (!id || Number.isNaN(parsedId)) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
+    (async () => {
+      setLoading(true);
+      setError(false);
+      const res = await fetch(api.endpoints.notificationDetail(parsedId), {
+        headers: apiHeaders(true),
+      });
+      if (cancelled) return;
+      if (!res.ok) {
+        setNotification(null);
+        setError(true);
+        setLoading(false);
+        return;
+      }
+      const raw = (await res.json()) as Record<string, unknown>;
+      const n = mapApiNotification(raw);
+      setNotification(n);
+      setLoading(false);
+      if (n.unread) {
+        void markNotificationRead(parsedId).then(() => {
+          if (!cancelled) {
+            setNotification((prev) =>
+              prev && prev.id === parsedId ? { ...prev, unread: false } : prev
+            );
+          }
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, markNotificationRead]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-2xl rounded-xl border border-[#e2e8f0] bg-white p-8 text-center shadow-sm">
+          <p className="text-[#64748b]">Loading…</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !notification) {
     return (
       <DashboardLayout>
         <div className="mx-auto max-w-2xl rounded-xl border border-[#e2e8f0] bg-white p-8 text-center shadow-sm">
@@ -65,9 +120,9 @@ export default function NotificationDetail() {
           </div>
           <div className="mt-6 border-t border-[#e2e8f0] pt-6">
             <p className="text-[#64748b] leading-relaxed">{notification.body}</p>
-            {notification.actionHref && notification.actionLabel && (
+            {notification.action_href && notification.action_label && (
               <Button asChild className="mt-4">
-                <Link to={notification.actionHref}>{notification.actionLabel}</Link>
+                <Link to={notification.action_href}>{notification.action_label}</Link>
               </Button>
             )}
           </div>
