@@ -113,7 +113,7 @@ export default function Settings() {
       }
       // if (activeSection === "payment-billing") savePayment(); // TEMP: no payment for now
       if (activeSection === "tax-duties") saveTax();
-      if (activeSection === "link-account") saveLinks();
+      if (activeSection === "link-account") await saveLinks();
       if (activeSection === "time-language") saveTimeLang();
       if (activeSection === "password") {
         await changePassword(passwordDraft.currentPassword, passwordDraft.newPassword);

@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchNotificationPreferences,
   patchNotificationPreferences,
+  fetchProfile,
+  patchProfile,
   type NotificationPreferencesClient,
 } from "@/lib/api-client";
 
@@ -71,10 +73,10 @@ const DEFAULT_GENERAL: GeneralSettings = {
 };
 
 const DEFAULT_LINKS: LinksSettings = {
-  instagram: "https://www.instagram.com/luxeyline",
-  facebook: "https://www.facebook.com/luxeyline",
-  twitter: "https://www.twitter.com/luxeyline",
-  youtube: "https://www.youtube.com/luxeyline",
+  instagram: "",
+  facebook: "",
+  twitter: "",
+  youtube: "",
 };
 
 const DEFAULT_TIME_LANG: TimeLangSettings = {
@@ -130,7 +132,7 @@ type SettingsContextValue = {
   saveGeneral: () => void;
   links: LinksSettings;
   setLinks: React.Dispatch<React.SetStateAction<LinksSettings>>;
-  saveLinks: () => void;
+  saveLinks: () => Promise<void>;
   timeLang: TimeLangSettings;
   setTimeLang: React.Dispatch<React.SetStateAction<TimeLangSettings>>;
   saveTimeLang: () => void;
@@ -144,8 +146,22 @@ type SettingsContextValue = {
 
 const SettingsContext = React.createContext<SettingsContextValue | null>(null);
 
+function userToLinks(u: {
+  instagram_url?: string;
+  facebook_url?: string;
+  twitter_url?: string;
+  youtube_url?: string;
+}): LinksSettings {
+  return {
+    instagram: u.instagram_url ?? "",
+    facebook: u.facebook_url ?? "",
+    twitter: u.twitter_url ?? "",
+    youtube: u.youtube_url ?? "",
+  };
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshUser } = useAuth();
   const [notifications, setNotifications] = React.useState<NotificationSettings>(loadNotifications);
   const savedRef = React.useRef<NotificationSettings>(loadNotifications());
   const notificationsRef = React.useRef<NotificationSettings>(loadNotifications());
@@ -178,9 +194,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isAuthenticated]);
 
+  /* Load social link handles from API when logged in (same values apply to all owned listings). */
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      const u = await fetchProfile();
+      if (cancelled || !u) return;
+      const next = userToLinks(u);
+      setLinks(next);
+      save("links", next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   /* Initialize each section from localStorage or defaults */
   const [general, setGeneral] = React.useState<GeneralSettings>(() => load("general", DEFAULT_GENERAL));
   const [links, setLinks] = React.useState<LinksSettings>(() => load("links", DEFAULT_LINKS));
+  const linksRef = React.useRef(links);
+  React.useEffect(() => {
+    linksRef.current = links;
+  }, [links]);
   const [timeLang, setTimeLang] = React.useState<TimeLangSettings>(() => load("timeLang", DEFAULT_TIME_LANG));
   const [payment, setPayment] = React.useState<PaymentSettings>(() => load("payment", DEFAULT_PAYMENT));
   const [tax, setTax] = React.useState<TaxSettings>(() => load("tax", DEFAULT_TAX));
@@ -215,12 +251,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const saveLinksToStorage = React.useCallback(() => {
-    setLinks((prev) => {
-      save("links", prev);
-      return prev;
+  const saveLinksToStorage = React.useCallback(async () => {
+    const current = linksRef.current;
+    await patchProfile({
+      instagram_url: current.instagram.trim(),
+      facebook_url: current.facebook.trim(),
+      twitter_url: current.twitter.trim(),
+      youtube_url: current.youtube.trim(),
     });
-  }, []);
+    save("links", current);
+    await refreshUser();
+  }, [refreshUser]);
 
   const saveTimeLangToStorage = React.useCallback(() => {
     setTimeLang((prev) => {

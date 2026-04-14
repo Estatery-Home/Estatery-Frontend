@@ -15,6 +15,7 @@ import type {
   PromoCode,
   PromoCodeCreateInput,
   ThreadMessage,
+  User,
 } from "@/lib/api-types";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 const AUTH_BASE = `${API_BASE.replace(/\/api\/?$/, "")}/api/auth`;
@@ -109,6 +110,27 @@ export function apiHeaders(includeAuth = true): HeadersInit {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
+}
+
+/** GET /api/auth/profile/ — current user (includes social URLs for owners/admins). */
+export async function fetchProfile(): Promise<User | null> {
+  const res = await fetch(api.endpoints.profile, { headers: apiHeaders(true) });
+  if (!res.ok) return null;
+  return res.json() as Promise<User>;
+}
+
+/** PATCH /api/auth/profile/ — partial update (e.g. social URLs). */
+export async function patchProfile(body: Partial<User>): Promise<User> {
+  const res = await fetch(api.endpoints.profile, {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Profile update failed (${res.status})`));
+  }
+  return data as User;
 }
 
 /** Parse DRF-style `detail` string (or first validation message) from JSON error body. */

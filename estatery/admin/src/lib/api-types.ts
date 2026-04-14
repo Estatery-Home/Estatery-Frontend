@@ -17,6 +17,11 @@ export type User = {
   avatar: string | null;
   user_type: UserType;
   email_verified?: boolean;
+  /** Profile social links — shown on all properties this user owns (customer site). */
+  instagram_url?: string;
+  facebook_url?: string;
+  twitter_url?: string;
+  youtube_url?: string;
 };
 
 export type RegisterRequest = {

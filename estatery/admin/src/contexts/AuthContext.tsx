@@ -6,7 +6,7 @@
  * via POST /api/auth/token/refresh/ so expired access or long idle sends users to login.
  */
 import * as React from "react";
-import { api, apiHeaders, getAccessToken } from "@/lib/api-client";
+import { api, apiHeaders, fetchProfile, getAccessToken } from "@/lib/api-client";
 import type { User, AuthResponse } from "@/lib/api-types";
 import {
   AUTH_ACCESS_KEY,
@@ -35,6 +35,8 @@ type AuthContextValue = {
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Reload user from GET /api/auth/profile/ (e.g. after updating social links). */
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -250,6 +252,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const refreshUser = React.useCallback(async () => {
+    try {
+      const u = await fetchProfile();
+      if (!u) return;
+      setUser(u);
+      try {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* keep existing user */
+    }
+  }, []);
+
   const logout = React.useCallback(async () => {
     try {
       if (typeof window !== "undefined" && getAccessToken()) {
@@ -286,8 +303,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       changePassword,
+      refreshUser,
     }),
-    [user, isLoading, login, register, logout, changePassword]
+    [user, isLoading, login, register, logout, changePassword, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

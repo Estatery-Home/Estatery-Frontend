@@ -21,6 +21,12 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
     email_verified = models.BooleanField(default=False)
 
+    # Public contact links for property owners — shown on listings (same for all properties they own)
+    instagram_url = models.CharField(blank=True, default="", max_length=500)
+    facebook_url = models.CharField(blank=True, default="", max_length=500)
+    twitter_url = models.CharField(blank=True, default="", max_length=500)
+    youtube_url = models.CharField(blank=True, default="", max_length=500)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
