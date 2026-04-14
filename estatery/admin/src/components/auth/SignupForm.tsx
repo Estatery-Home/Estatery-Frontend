@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Signup form – username, email, password, phone (API-aligned).
- * Estatery web app is admin-only; user_type is always "admin".
+ * Signup form – username, email, password, phone, account type (API-aligned).
+ * Admin app can register admin or property owner accounts.
  * API: POST /api/auth/register/ with username, email, password, user_type, optional phone.
  */
 import * as React from "react";
@@ -39,6 +39,7 @@ function isWrongEmail(email: string): boolean {
 export function SignupForm() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const [userType, setUserType] = React.useState<"admin" | "owner">("admin");
   const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -97,7 +98,7 @@ export function SignupForm() {
       username: username.trim(),
       email: email.trim(),
       password,
-      user_type: "admin",
+      user_type: userType,
       phone: phone.trim() || undefined,
     });
     setLoading(false);
@@ -229,6 +230,21 @@ export function SignupForm() {
                 {emailError}
               </p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="userType" className="text-black">
+              Account Type <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="userType"
+              value={userType}
+              onChange={(e) => setUserType(e.target.value as "admin" | "owner")}
+              className="w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[var(--logo)]"
+            >
+              <option value="admin">Admin</option>
+              <option value="owner">Property Owner</option>
+            </select>
           </div>
 
           <div className="space-y-2">
