@@ -42,10 +42,15 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart", "scroll", "click"] as const;
 const ACTIVITY_THROTTLE_MS = 30_000;
 const IDLE_CHECK_INTERVAL_MS = 60_000;
+const ADMIN_ALLOWED_ROLES = new Set(["admin", "owner"]);
 
 async function restoreSession(): Promise<User | null> {
   const stored = readStoredAuth();
   if (!stored) return null;
+  if (!ADMIN_ALLOWED_ROLES.has(stored.user?.user_type)) {
+    clearAuthStorage();
+    return null;
+  }
 
   const idleMs = getSessionIdleMs();
   if (isIdleExceeded(stored.lastActivity, idleMs)) {
@@ -168,6 +173,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: msg };
         }
         const auth = data as AuthResponse;
+        if (!ADMIN_ALLOWED_ROLES.has(auth.user.user_type)) {
+          clearAuthStorage();
+          return {
+            success: false,
+            error: "This account is customer-only. Please use the customer login portal.",
+          };
+        }
         setUser(auth.user);
         try {
           localStorage.setItem(AUTH_ACCESS_KEY, auth.access);
