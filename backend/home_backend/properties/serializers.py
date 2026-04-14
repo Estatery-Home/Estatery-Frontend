@@ -510,6 +510,22 @@ class HostBookingSerializer(BookingSerializer):
         return BookingPaymentSerializer(payments, many=True).data
 
 
+class AdminBookingListSerializer(BookingSerializer):
+    """Platform-wide booking row for staff / admin dashboard (no nested payments)."""
+
+    property = serializers.PrimaryKeyRelatedField(source='rented_property', read_only=True)
+    host_name = serializers.SerializerMethodField()
+    host_email = serializers.EmailField(source='rented_property.owner.email', read_only=True)
+    property_city = serializers.CharField(source='rented_property.city', read_only=True)
+
+    class Meta(BookingSerializer.Meta):
+        fields = BookingSerializer.Meta.fields + ('host_name', 'host_email', 'property_city')
+
+    def get_host_name(self, obj):
+        owner = obj.rented_property.owner
+        return (owner.get_full_name() or '').strip() or owner.username
+
+
 # ============ BOOKING PAYMENT SERIALIZER ============
 class BookingPaymentSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)

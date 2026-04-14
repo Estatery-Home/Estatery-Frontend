@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions, filters, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -7,7 +8,7 @@ from decimal import Decimal
 from .models import Property, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
-    BookingSerializer, HostBookingSerializer, BookingPaymentSerializer,
+    BookingSerializer, AdminBookingListSerializer, HostBookingSerializer, BookingPaymentSerializer,
     PropertyReviewSerializer, HostResponseSerializer,
     PromoCodeSerializer, PromoCodePublicSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
@@ -160,6 +161,49 @@ class AdminPromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PromoCode.objects.all()
     serializer_class = PromoCodeSerializer
     permission_classes = [IsAdminUserType]
+
+
+class AdminBookingPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+@extend_schema(
+    tags=["Bookings"],
+    summary="List all bookings (admin)",
+    description=(
+        "Staff or `user_type=admin` only. All tenant bookings across properties with "
+        "tenant, property, and host fields. Filter by `status`, search by guest email/name or property title."
+    ),
+)
+class AdminAllBookingsListView(generics.ListAPIView):
+    serializer_class = AdminBookingListSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
+    pagination_class = AdminBookingPagination
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["status"]
+    search_fields = [
+        "user__username",
+        "user__email",
+        "rented_property__title",
+        "rented_property__city",
+    ]
+    ordering_fields = ["created_at", "check_in", "check_out", "total_price", "status"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Booking.objects.none()
+        return (
+            Booking.objects.all()
+            .select_related("user", "rented_property", "rented_property__owner", "promo")
+            .order_by("-created_at")
+        )
 
 
 @extend_schema(tags=['Properties'], summary='List or create properties')

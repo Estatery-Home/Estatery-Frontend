@@ -11,6 +11,7 @@ import type {
   HostClientsListResponse,
   HostDashboardResponse,
   HostPaymentsListResponse,
+  PaginatedAdminBookings,
   PromoCode,
   PromoCodeCreateInput,
   ThreadMessage,
@@ -70,6 +71,8 @@ export const api = {
     /** Promo / discounts (admin: staff or user_type admin) */
     adminDiscounts: `${API_BASE}/admin/discounts/`,
     adminDiscountDetail: (id: number) => `${API_BASE}/admin/discounts/${id}/`,
+    /** All tenant bookings across the platform (admin/staff only) */
+    adminBookings: `${API_BASE}/admin/bookings/`,
     discountsValidate: `${API_BASE}/discounts/validate/`,
     countries: `${API_BASE}/countries/`,
     customerProperties: `${API_BASE}/customer/properties/`,
@@ -523,4 +526,36 @@ export async function patchNotificationPreferences(
     throw new Error(apiFirstErrorMessage(data, `Failed to save notification settings (${res.status})`));
   }
   return notificationPreferencesFromApi(data as Record<string, unknown>);
+}
+
+/** GET /api/admin/bookings/ — paginated, filter by status, search guest/property. */
+export async function fetchAdminBookings(params: {
+  page?: number;
+  page_size?: number;
+  status?: string;
+  search?: string;
+  ordering?: string;
+}): Promise<PaginatedAdminBookings> {
+  const url = new URL(api.endpoints.adminBookings);
+  if (params.page) url.searchParams.set("page", String(params.page));
+  if (params.page_size) url.searchParams.set("page_size", String(params.page_size));
+  if (params.status) url.searchParams.set("status", params.status);
+  if (params.search?.trim()) url.searchParams.set("search", params.search.trim());
+  if (params.ordering) url.searchParams.set("ordering", params.ordering);
+  const res = await fetch(url.toString(), { headers: apiHeaders(true) });
+  const data = (await res.json().catch(() => ({}))) as PaginatedAdminBookings & { detail?: string };
+  if (res.status === 403) {
+    throw new Error("Admin access required to view all bookings.");
+  }
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === "string" ? data.detail : `Failed to load bookings (${res.status})`
+    );
+  }
+  return {
+    count: data.count ?? 0,
+    next: data.next ?? null,
+    previous: data.previous ?? null,
+    results: Array.isArray(data.results) ? data.results : [],
+  };
 }

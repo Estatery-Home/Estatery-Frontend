@@ -14,7 +14,7 @@ import {
   Calendar,
   MessageSquare,
   Building2,
-  TrendingUp,
+  CalendarCheck,
   CircleDollarSign,
   Tag,
   Settings,
@@ -41,7 +41,7 @@ const mainNav = [
 
 const salesNav = [
   { to: "/dashboard/properties", label: "Properties", icon: Building2 },
-  { to: "/dashboard/leads", label: "Leads", icon: TrendingUp },
+  { to: "/dashboard/bookings", label: "Bookings", icon: CalendarCheck },
   { to: "/dashboard/transactions", label: "Transactions", icon: CircleDollarSign },
   { to: "/dashboard/discounts", label: "Discounts", icon: Tag },
 ];

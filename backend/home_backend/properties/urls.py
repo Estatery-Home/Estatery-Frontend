@@ -9,6 +9,7 @@ urlpatterns = [
     path('discounts/validate/', views.PromoCodeValidateView.as_view(), name='discount-validate'),
     path('admin/discounts/', views.AdminPromoCodeListCreateView.as_view(), name='admin-discount-list'),
     path('admin/discounts/<int:pk>/', views.AdminPromoCodeDetailView.as_view(), name='admin-discount-detail'),
+    path('admin/bookings/', views.AdminAllBookingsListView.as_view(), name='admin-bookings-list'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),

@@ -5,7 +5,7 @@
  * Public routes (welcome, login, signup) vs protected routes (dashboard, etc.).
  */
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
@@ -31,7 +31,7 @@ const Clients = lazy(() => import("@/screens/clients").then((m) => ({ default: m
 const ClientDetail = lazy(() => import("@/screens/clients").then((m) => ({ default: m.ClientDetail })));
 const Messages = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Messages })));
 const Calendar = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Calendar })));
-const Leads = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Leads })));
+const Bookings = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Bookings })));
 const Discounts = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Discounts })));
 const Transactions = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Transactions })));
 const Analytics = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Analytics })));
@@ -221,13 +221,14 @@ export default function App() {
                 }
               />
               <Route
-                path="/dashboard/leads"
+                path="/dashboard/bookings"
                 element={
                   <ProtectedRoute>
-                    <Leads />
+                    <Bookings />
                   </ProtectedRoute>
                 }
               />
+              <Route path="/dashboard/leads" element={<Navigate to="/dashboard/bookings" replace />} />
               <Route
                 path="/dashboard/transactions"
                 element={
