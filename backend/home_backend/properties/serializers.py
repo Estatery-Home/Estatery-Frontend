@@ -4,7 +4,7 @@ from django.db.models import Avg, F
 from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
 from users.serializers import UserSerializer
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 
 from .promo import (
@@ -428,6 +428,14 @@ class BookingSerializer(serializers.ModelSerializer):
         total_price = self.context.get('calculated_total')
         discount = self.context.get('calculated_discount', 0)
         deposit = self.context.get('calculated_deposit', monthly_rate * 2)
+
+        # Match DB DecimalField(scale=2) before model full_clean() runs.
+        def _money(v):
+            return Decimal(v).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        monthly_rate = _money(monthly_rate)
+        total_price = _money(total_price)
+        deposit = _money(deposit)
 
         booking = Booking.objects.create(
             rented_property=validated_data['rented_property'],
