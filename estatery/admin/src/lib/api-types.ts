@@ -464,6 +464,10 @@ export type HostCalendarEventApi = {
   property_id: number;
   property_title: string;
   all_day: boolean;
+  /** ISO date strings — same on every night row for this booking */
+  check_in?: string;
+  check_out?: string;
+  guests?: number;
 };
 
 export type HostCalendarResponse = {

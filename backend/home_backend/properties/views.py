@@ -9,6 +9,7 @@ from .models import Property, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, AdminBookingListSerializer, HostBookingSerializer, BookingPaymentSerializer,
+    BookingRescheduleSerializer,
     PropertyReviewSerializer, HostResponseSerializer,
     PromoCodeSerializer, PromoCodePublicSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
@@ -22,6 +23,7 @@ from .promo import (
     combined_discount_percent,
     final_total_with_promo,
     long_stay_fraction_off,
+    validate_promo_for_booking,
 )
 from .permissions import IsAdminUserType
 from users.serializers import UserSerializer
@@ -1087,10 +1089,178 @@ class HostCalendarView(APIView):
                     'property_id': b.rented_property_id,
                     'property_title': b.rented_property.title,
                     'all_day': True,
+                    'check_in': b.check_in.isoformat(),
+                    'check_out': b.check_out.isoformat(),
+                    'guests': b.guests,
                 })
                 d += timedelta(days=1)
 
         return Response({'events': events})
+
+
+@extend_schema(
+    tags=['Admin'],
+    summary='Admin calendar — all booking nights (platform admin)',
+    description='Same shape as GET /api/host/calendar/; staff or user_type=admin only.',
+)
+class AdminCalendarView(APIView):
+    """Platform-wide booking nights for the admin dashboard calendar."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
+
+    def get(self, request):
+        start_s = request.query_params.get('start')
+        end_s = request.query_params.get('end')
+        if not start_s or not end_s:
+            return Response(
+                {'detail': 'Query params "start" and "end" are required (YYYY-MM-DD).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            start_date = datetime.strptime(start_s, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_s, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+        if end_date < start_date:
+            return Response({'detail': '"end" must be >= "start".'}, status=status.HTTP_400_BAD_REQUEST)
+
+        bookings = (
+            Booking.objects.filter(
+                status__in=['pending', 'confirmed', 'active', 'completed'],
+                check_in__lte=end_date,
+                check_out__gt=start_date,
+            )
+            .select_related('rented_property', 'user')
+            .order_by('check_in', 'id')
+        )
+
+        events = []
+        for b in bookings:
+            tenant_label = (b.user.get_full_name() or '').strip() or b.user.username
+            title = f'{b.rented_property.title} · {tenant_label}'
+            d = max(b.check_in, start_date)
+            while d < b.check_out and d <= end_date:
+                events.append({
+                    'id': f'{b.id}-{d.isoformat()}',
+                    'booking_id': b.id,
+                    'title': title,
+                    'date': d.isoformat(),
+                    'status': b.status,
+                    'property_id': b.rented_property_id,
+                    'property_title': b.rented_property.title,
+                    'all_day': True,
+                    'check_in': b.check_in.isoformat(),
+                    'check_out': b.check_out.isoformat(),
+                    'guests': b.guests,
+                })
+                d += timedelta(days=1)
+
+        return Response({'events': events})
+
+
+@extend_schema(tags=['Bookings'], summary='Reschedule booking (listing owner or platform admin)')
+class BookingRescheduleView(APIView):
+    """
+    Update check-in / check-out (and optionally guests) for a booking.
+    Listing owner or staff / user_type=admin. Blocks if any payment is already marked paid.
+    Recalculates months, total price, deposit, and regenerates pending payment schedule.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        serializer = BookingRescheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        check_in = serializer.validated_data['check_in']
+        check_out = serializer.validated_data['check_out']
+        guests_in = serializer.validated_data.get('guests')
+
+        booking = get_object_or_404(
+            Booking.objects.select_related('rented_property', 'user', 'promo'),
+            pk=pk,
+        )
+
+        user = request.user
+        is_admin = IsAdminUserType().has_permission(request, self)
+        is_owner = booking.rented_property.owner_id == user.id
+        if not (is_admin or is_owner):
+            raise PermissionDenied('You do not have permission to reschedule this booking.')
+
+        if booking.status not in ('pending', 'confirmed', 'active'):
+            raise ValidationError(
+                {'detail': 'Only pending, confirmed, or active bookings can be rescheduled.'}
+            )
+
+        if booking.payments.filter(status='paid').exists():
+            raise ValidationError(
+                {'detail': 'Cannot reschedule after one or more payments have been recorded as paid.'}
+            )
+
+        prop = booking.rented_property
+        today = timezone.now().date()
+
+        if check_in < today:
+            raise ValidationError({'check_in': 'Check-in date cannot be in the past.'})
+        if check_out <= check_in:
+            raise ValidationError({'check_out': 'Check-out must be after check-in.'})
+        if check_in.day != prop.monthly_cycle_start:
+            raise ValidationError({
+                'check_in': f'Monthly bookings must start on day {prop.monthly_cycle_start} of the month.',
+            })
+
+        months = prop.calculate_total_months(check_in, check_out)
+        if prop.max_stay_months and months > prop.max_stay_months:
+            raise ValidationError({
+                'check_out': f'Maximum stay is {prop.max_stay_months} months for this property.',
+            })
+
+        if prop.has_booking_conflict(check_in, check_out, exclude_booking_id=booking.id):
+            raise ValidationError(
+                {'detail': 'Those dates overlap another booking for this property.'}
+            )
+
+        promo = booking.promo
+        if promo:
+            try:
+                validate_promo_for_booking(promo, prop, months, check_in)
+            except ValidationError:
+                raise ValidationError(
+                    {'detail': 'The applied promotion is not valid for the new dates.'}
+                )
+
+        monthly_rate = prop.effective_monthly_price
+        total_price = final_total_with_promo(prop, months, promo)
+        discount_pct = combined_discount_percent(prop, months, promo)
+        deposit = prop.security_deposit_amount
+        if deposit is None:
+            deposit = Decimal('0')
+
+        guests_val = guests_in if guests_in is not None else booking.guests
+
+        with transaction.atomic():
+            locked = Booking.objects.select_for_update().get(pk=booking.pk)
+            if locked.payments.filter(status='paid').exists():
+                raise ValidationError(
+                    {'detail': 'Cannot reschedule after one or more payments have been recorded as paid.'}
+                )
+            Booking.objects.filter(pk=locked.pk).update(
+                check_in=check_in,
+                check_out=check_out,
+                guests=guests_val,
+                months_booked=months,
+                agreed_monthly_rate=monthly_rate,
+                total_price=total_price,
+                security_deposit=deposit,
+                discount_applied=discount_pct,
+            )
+
+        booking.refresh_from_db()
+        booking.generate_payment_schedule()
+
+        return Response({
+            'message': 'Booking rescheduled successfully.',
+            'booking': HostBookingSerializer(booking, context={'request': request}).data,
+        })
 
 
 @extend_schema(

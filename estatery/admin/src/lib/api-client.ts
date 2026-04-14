@@ -61,6 +61,10 @@ export const api = {
       `${API_BASE}/host/analytics/?range=${encodeURIComponent(range)}`,
     hostCalendar: (start: string, end: string) =>
       `${API_BASE}/host/calendar/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    /** Platform-wide booking nights (user_type admin or staff) */
+    adminCalendar: (start: string, end: string) =>
+      `${API_BASE}/admin/calendar/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    bookingReschedule: (id: number) => `${API_BASE}/bookings/${id}/reschedule/`,
     hostPayments: (limit: number) => `${API_BASE}/host/payments/?limit=${limit}`,
     /** Payments */
     markPaymentPaid: (id: number) => `${API_BASE}/payments/${id}/mark-paid/`,
@@ -331,6 +335,35 @@ export async function fetchHostCalendar(
   });
   if (!res.ok) return null;
   return res.json() as Promise<HostCalendarResponse>;
+}
+
+/** GET /api/admin/calendar/?start=&end= — all booking nights (platform admin). */
+export async function fetchAdminCalendar(
+  start: string,
+  end: string
+): Promise<HostCalendarResponse | null> {
+  const res = await fetch(api.endpoints.adminCalendar(start, end), {
+    headers: apiHeaders(true),
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<HostCalendarResponse>;
+}
+
+/** PATCH /api/bookings/:id/reschedule/ — host (listing owner) or platform admin. */
+export async function patchBookingReschedule(
+  bookingId: number,
+  body: { check_in: string; check_out: string; guests?: number }
+): Promise<{ message: string }> {
+  const res = await fetch(api.endpoints.bookingReschedule(bookingId), {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Reschedule failed (${res.status})`));
+  }
+  return { message: typeof data.message === "string" ? data.message : "Rescheduled" };
 }
 
 /** GET /api/host/clients/ — tenant customers with bookings on your properties */

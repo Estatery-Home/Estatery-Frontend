@@ -464,6 +464,14 @@ class BookingSerializer(serializers.ModelSerializer):
         return instance
 
 
+class BookingRescheduleSerializer(serializers.Serializer):
+    """PATCH body for host/admin booking reschedule."""
+
+    check_in = serializers.DateField()
+    check_out = serializers.DateField()
+    guests = serializers.IntegerField(required=False, min_value=1, max_value=50)
+
+
 # ============ BOOKING CALENDAR SERIALIZER ============
 class BookingCalendarSerializer(serializers.ModelSerializer):
     """Minimal booking info for calendar display"""

@@ -195,6 +195,17 @@ class Property(models.Model):
         if exclude_booking_id:
             qs = qs.exclude(id=exclude_booking_id)
         return not qs.exists()
+
+    def has_booking_conflict(self, check_in, check_out, exclude_booking_id=None):
+        """True if another pending/confirmed/active booking overlaps this window (exclusive of exclude_booking_id)."""
+        qs = self.bookings.filter(
+            status__in=['pending', 'confirmed', 'active'],
+            check_out__gt=check_in,
+            check_in__lt=check_out,
+        )
+        if exclude_booking_id:
+            qs = qs.exclude(id=exclude_booking_id)
+        return qs.exists()
     
     def calculate_total_months(self, check_in, check_out):
         """Calculate total months between dates"""
