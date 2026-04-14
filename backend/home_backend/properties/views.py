@@ -9,13 +9,19 @@ from .serializers import (
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, HostBookingSerializer, BookingPaymentSerializer,
     PropertyReviewSerializer, HostResponseSerializer,
-    PromoCodeSerializer, PromoCodeValidateSerializer,
+    PromoCodeSerializer, PromoCodePublicSerializer, PromoCodeValidateSerializer,
     CountryRowSerializer, PromoValidateResponseSerializer,
     HostDashboardSerializer, TenantDashboardSerializer,
     LocaleChoiceSerializer,
 )
 from .locale_data import LANGUAGE_CHOICES, TIMEZONE_CHOICES
-from .promo import amount_after_long_stay, combined_discount_percent, final_total_with_promo, long_stay_fraction_off
+from .promo import (
+    active_promos_for_property,
+    amount_after_long_stay,
+    combined_discount_percent,
+    final_total_with_promo,
+    long_stay_fraction_off,
+)
 from .permissions import IsAdminUserType
 from users.serializers import UserSerializer
 import calendar
@@ -94,6 +100,24 @@ class CountryListView(APIView):
     request=PromoCodeValidateSerializer,
     responses={200: PromoValidateResponseSerializer},
 )
+@extend_schema(
+    tags=['Discounts'],
+    summary='List active discounts for a property',
+    description=(
+        'Public promos that apply to this listing (or all listings): active, in date range, '
+        'and not exhausted. Same data is embedded as `active_discounts` on GET /properties/<id>/.'
+    ),
+    responses={200: PromoCodePublicSerializer(many=True)},
+)
+class PropertyActiveDiscountsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        qs = active_promos_for_property(prop)
+        return Response(PromoCodePublicSerializer(qs, many=True).data)
+
+
 class PromoCodeValidateView(APIView):
     permission_classes = [permissions.AllowAny]
 

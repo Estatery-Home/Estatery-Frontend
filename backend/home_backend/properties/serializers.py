@@ -8,6 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 
 from .promo import (
+    active_promos_for_property,
     combined_discount_percent,
     final_total_with_promo,
     get_promo_by_code,
@@ -140,10 +141,11 @@ class PropertyDetailSerializer(PropertySerializer):
     reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
+    active_discounts = serializers.SerializerMethodField()
     
     class Meta(PropertySerializer.Meta):
         fields = PropertySerializer.Meta.fields + (
-            'bookings', 'reviews', 'average_rating', 'review_count',
+            'bookings', 'reviews', 'average_rating', 'review_count', 'active_discounts',
         )
     
     def get_bookings(self, obj):
@@ -166,8 +168,31 @@ class PropertyDetailSerializer(PropertySerializer):
     def get_review_count(self, obj):
         return obj.reviews.count()
 
+    def get_active_discounts(self, obj):
+        qs = active_promos_for_property(obj)
+        return PromoCodePublicSerializer(qs, many=True).data
+
 
 # ============ PROMO CODE (admin + validate) ============
+class PromoCodePublicSerializer(serializers.ModelSerializer):
+    """Public promo listing for a property (no redemption stats)."""
+
+    class Meta:
+        model = PromoCode
+        fields = (
+            'id',
+            'code',
+            'description',
+            'discount_type',
+            'discount_value',
+            'valid_from',
+            'valid_until',
+            'min_booking_months',
+            'applies_to_property',
+        )
+        read_only_fields = fields
+
+
 class PromoCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromoCode

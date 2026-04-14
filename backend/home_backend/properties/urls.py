@@ -18,6 +18,11 @@ urlpatterns = [
     path('timezones/', views.TimeZoneListView.as_view(), name='timezone-list'),
     
     # === AVAILABILITY ===
+    path(
+        'properties/<int:pk>/discounts/',
+        views.PropertyActiveDiscountsView.as_view(),
+        name='property-active-discounts',
+    ),
     path('properties/<int:pk>/check-availability/', 
          views.PropertyAvailabilityCheckView.as_view(), 
          name='property-availability-check'),
