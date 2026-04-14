@@ -4,18 +4,17 @@
  * SettingsContext – User and app settings persisted in localStorage.
  *
  * Sections: notifications, general, links, time/lang, payment, tax.
- * Each section has state, setter, save, and (where applicable) revert.
+ * Notification toggles sync with GET/PATCH /api/notifications/preferences/ when logged in.
  */
 import * as React from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  fetchNotificationPreferences,
+  patchNotificationPreferences,
+  type NotificationPreferencesClient,
+} from "@/lib/api-client";
 
-export type NotificationSettings = {
-  transactionConfirmation: boolean;
-  transactionEdited: boolean;
-  transactionInvoice: boolean;
-  transactionCancelled: boolean;
-  transactionRefund: boolean;
-  paymentError: boolean;
-};
+export type NotificationSettings = NotificationPreferencesClient;
 
 export type GeneralSettings = {
   companyName: string;
@@ -121,15 +120,11 @@ function loadNotifications(): NotificationSettings {
   return load("notifications", DEFAULT_NOTIFICATIONS);
 }
 
-function saveNotifications(n: NotificationSettings) {
-  save("notifications", n);
-}
-
 type SettingsContextValue = {
   notifications: NotificationSettings;
   setNotifications: React.Dispatch<React.SetStateAction<NotificationSettings>>;
-  saveNotifications: () => void;
-  revertNotifications: () => void;
+  saveNotifications: () => Promise<void>;
+  revertNotifications: () => Promise<void>;
   general: GeneralSettings;
   setGeneral: React.Dispatch<React.SetStateAction<GeneralSettings>>;
   saveGeneral: () => void;
@@ -150,8 +145,38 @@ type SettingsContextValue = {
 const SettingsContext = React.createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = React.useState<NotificationSettings>(loadNotifications);
   const savedRef = React.useRef<NotificationSettings>(loadNotifications());
+  const notificationsRef = React.useRef<NotificationSettings>(loadNotifications());
+
+  React.useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
+  /* Logged out: show cached local defaults only (avoid showing another user's toggles). */
+  React.useEffect(() => {
+    if (isAuthenticated) return;
+    const local = loadNotifications();
+    setNotifications(local);
+    savedRef.current = local;
+  }, [isAuthenticated]);
+
+  /* Load notification preferences from API when logged in (overrides local cache). */
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      const prefs = await fetchNotificationPreferences();
+      if (cancelled || !prefs) return;
+      setNotifications(prefs);
+      savedRef.current = prefs;
+      save("notifications", prefs);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   /* Initialize each section from localStorage or defaults */
   const [general, setGeneral] = React.useState<GeneralSettings>(() => load("general", DEFAULT_GENERAL));
@@ -160,20 +185,27 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [payment, setPayment] = React.useState<PaymentSettings>(() => load("payment", DEFAULT_PAYMENT));
   const [tax, setTax] = React.useState<TaxSettings>(() => load("tax", DEFAULT_TAX));
 
-  /* Save each section to localStorage when user clicks Save */
-  const saveNotificationsToStorage = React.useCallback(() => {
-    setNotifications((prev) => {
-      saveNotifications(prev);
-      savedRef.current = prev;
-      return prev;
-    });
-  }, []);
-
-  /* Reload notifications from storage, discarding unsaved changes */
-  const revertNotifications = React.useCallback(() => {
-    const saved = loadNotifications();
+  /* Save notification toggles to API and mirror to localStorage */
+  const saveNotificationsToStorage = React.useCallback(async () => {
+    const prefs = notificationsRef.current;
+    const saved = await patchNotificationPreferences(prefs);
+    save("notifications", saved);
     savedRef.current = saved;
     setNotifications(saved);
+  }, []);
+
+  /* Reload from API, or localStorage if offline */
+  const revertNotifications = React.useCallback(async () => {
+    const fromApi = await fetchNotificationPreferences();
+    if (fromApi) {
+      savedRef.current = fromApi;
+      setNotifications(fromApi);
+      save("notifications", fromApi);
+      return;
+    }
+    const local = loadNotifications();
+    savedRef.current = local;
+    setNotifications(local);
   }, []);
 
   const saveGeneralToStorage = React.useCallback(() => {

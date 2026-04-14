@@ -119,7 +119,7 @@ export default function Settings() {
         await changePassword(passwordDraft.currentPassword, passwordDraft.newPassword);
         setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
       }
-      if (activeSection === "notifications") saveNotifications();
+      if (activeSection === "notifications") await saveNotifications();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
       setSaveConfirmOpen(false);

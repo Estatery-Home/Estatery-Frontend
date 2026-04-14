@@ -3,6 +3,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path(
+        "preferences/",
+        views.NotificationPreferencesView.as_view(),
+        name="notification-preferences",
+    ),
     path("", views.NotificationListView.as_view(), name="notification-list"),
     path(
         "unread-count/",

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Notification
+from .models import Notification, NotificationPreferences
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -41,3 +41,20 @@ class UnreadCountSerializer(serializers.Serializer):
 class MarkAllReadOutSerializer(serializers.Serializer):
     updated = serializers.IntegerField()
     unread_count = serializers.IntegerField()
+
+
+class NotificationPreferencesSerializer(serializers.ModelSerializer):
+    """Settings → Notifications toggles (transaction / payment alerts)."""
+
+    class Meta:
+        model = NotificationPreferences
+        fields = (
+            "transaction_confirmation",
+            "transaction_edited",
+            "transaction_invoice",
+            "transaction_cancelled",
+            "transaction_refund",
+            "payment_error",
+            "updated_at",
+        )
+        read_only_fields = ("updated_at",)

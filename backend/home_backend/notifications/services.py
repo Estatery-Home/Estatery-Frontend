@@ -5,9 +5,27 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import Notification
+from .models import Notification, NotificationPreferences
 
 User = get_user_model()
+
+DEFAULT_NOTIFICATION_PREFERENCE_FIELDS = {
+    "transaction_confirmation": True,
+    "transaction_edited": False,
+    "transaction_invoice": True,
+    "transaction_cancelled": True,
+    "transaction_refund": True,
+    "payment_error": False,
+}
+
+
+def get_or_create_notification_preferences(user: User) -> NotificationPreferences:
+    """Row for Settings → Notifications; used by API and future transactional email logic."""
+    obj, _ = NotificationPreferences.objects.get_or_create(
+        user=user,
+        defaults=DEFAULT_NOTIFICATION_PREFERENCE_FIELDS,
+    )
+    return obj
 
 
 def create_notification(

@@ -139,9 +139,12 @@ class PropertyDetailSerializer(PropertySerializer):
     bookings = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
     
     class Meta(PropertySerializer.Meta):
-        fields = PropertySerializer.Meta.fields + ('bookings', 'reviews', 'average_rating')
+        fields = PropertySerializer.Meta.fields + (
+            'bookings', 'reviews', 'average_rating', 'review_count',
+        )
     
     def get_bookings(self, obj):
         # Only show future bookings for availability
@@ -159,6 +162,9 @@ class PropertyDetailSerializer(PropertySerializer):
     def get_average_rating(self, obj):
         avg = obj.reviews.aggregate(avg=Avg('rating'))['avg']
         return round(avg, 1) if avg else None
+
+    def get_review_count(self, obj):
+        return obj.reviews.count()
 
 
 # ============ PROMO CODE (admin + validate) ============
@@ -214,6 +220,7 @@ class BookingSerializer(serializers.ModelSerializer):
     property_address = serializers.CharField(source='rented_property.address', read_only=True)
     property_image = serializers.SerializerMethodField()
     review_id = serializers.SerializerMethodField(read_only=True)
+    can_review = serializers.SerializerMethodField(read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -260,6 +267,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'property_address',
             'property_image',
             'review_id',
+            'can_review',
             'user_name',
             'user_email',
         )
@@ -286,6 +294,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'property_address',
             'property_image',
             'review_id',
+            'can_review',
             'user_name',
             'user_email',
             'applied_promo_code',
@@ -303,6 +312,11 @@ class BookingSerializer(serializers.ModelSerializer):
             return obj.review.pk
         except ObjectDoesNotExist:
             return None
+
+    def get_can_review(self, obj):
+        if obj.status != 'completed':
+            return False
+        return self.get_review_id(obj) is None
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -493,47 +507,61 @@ class BookingPaymentSerializer(serializers.ModelSerializer):
 # ============ PROPERTY REVIEW SERIALIZER ============
 class PropertyReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
-    user_avatar = serializers.ImageField(source='user.avatar', read_only=True)
-    
+    user_avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = PropertyReview
-        fields = '__all__'
-        read_only_fields = ('user', 'property', 'booking', 'created_at', 'updated_at', 'host_responded_at')
-    
-    def validate(self, attrs):
-        request = self.context.get('request')
-        
-        # For CREATE operations
-        if request and request.method == 'POST':
-            booking_id = self.context.get('booking_id')
-            
-            if not booking_id:
-                raise serializers.ValidationError("Booking ID is required")
-            
-            try:
-                booking = Booking.objects.get(id=booking_id)
-            except Booking.DoesNotExist:
-                raise serializers.ValidationError("Booking not found")
-            
-            # Check if user is the tenant
-            if booking.user != request.user:
-                raise serializers.ValidationError("You can only review your own bookings")
-            
-            # Check if booking is completed
-            if booking.status != 'completed':
-                raise serializers.ValidationError("You can only review completed stays")
-            
-            # Check if already reviewed
-            if hasattr(booking, 'review'):
-                raise serializers.ValidationError("This booking has already been reviewed")
-            
-            attrs['user'] = request.user
-            attrs['property'] = booking.rented_property
-            attrs['booking'] = booking
-        
-        return attrs
-    
+        fields = (
+            'id',
+            'rating',
+            'comment',
+            'user_name',
+            'user_avatar',
+            'host_response',
+            'host_responded_at',
+            'created_at',
+            'updated_at',
+            'user',
+            'property',
+            'booking',
+        )
+        read_only_fields = (
+            'id',
+            'user_name',
+            'user_avatar',
+            'host_response',
+            'host_responded_at',
+            'created_at',
+            'updated_at',
+            'user',
+            'property',
+            'booking',
+        )
+
+    def get_user_avatar(self, obj):
+        user = obj.user
+        if user.avatar:
+            return user.avatar.url
+        return None
+
     def create(self, validated_data):
+        request = self.context.get('request')
+        booking_id = self.context.get('booking_id')
+        if not booking_id:
+            raise serializers.ValidationError({"detail": "Booking ID is required"})
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Booking not found"})
+        if booking.user != request.user:
+            raise serializers.ValidationError({"detail": "You can only review your own bookings"})
+        if booking.status != 'completed':
+            raise serializers.ValidationError({"detail": "You can only review completed stays"})
+        if PropertyReview.objects.filter(booking=booking).exists():
+            raise serializers.ValidationError({"detail": "This booking has already been reviewed"})
+        validated_data['user'] = request.user
+        validated_data['property'] = booking.rented_property
+        validated_data['booking'] = booking
         return super().create(validated_data)
 
 

@@ -2,6 +2,32 @@ from django.conf import settings
 from django.db import models
 
 
+class NotificationPreferences(models.Model):
+    """
+    Email/push-style toggles for transaction-related alerts (Settings → Notifications).
+    Matches admin UI keys via API snake_case field names.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+    )
+    transaction_confirmation = models.BooleanField(default=True)
+    transaction_edited = models.BooleanField(default=False)
+    transaction_invoice = models.BooleanField(default=True)
+    transaction_cancelled = models.BooleanField(default=True)
+    transaction_refund = models.BooleanField(default=True)
+    payment_error = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Notification preferences"
+
+    def __str__(self):
+        return f"NotificationPreferences({self.user_id})"
+
+
 class Notification(models.Model):
     class NotificationType(models.TextChoices):
         AGENT = "agent", "Agent"

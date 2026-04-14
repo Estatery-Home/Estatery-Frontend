@@ -84,6 +84,8 @@ export const api = {
     notificationsMarkAllRead: `${API_BASE}/notifications/mark-all-read/`,
     notificationDetail: (id: number) => `${API_BASE}/notifications/${id}/`,
     notificationMarkRead: (id: number) => `${API_BASE}/notifications/${id}/read/`,
+    /** GET/PATCH Settings → Notifications toggles (transaction / payment alerts) */
+    notificationsPreferences: `${API_BASE}/notifications/preferences/`,
   },
 };
 
@@ -461,4 +463,64 @@ export async function postConversationMessage(
   const msg = (data as { message_obj?: ThreadMessage }).message_obj;
   if (!msg) throw new Error("Invalid response from server");
   return msg;
+}
+
+/** Matches Settings UI notification toggles (same keys as SettingsContext NotificationSettings). */
+export type NotificationPreferencesClient = {
+  transactionConfirmation: boolean;
+  transactionEdited: boolean;
+  transactionInvoice: boolean;
+  transactionCancelled: boolean;
+  transactionRefund: boolean;
+  paymentError: boolean;
+};
+
+export function notificationPreferencesToApiBody(
+  s: NotificationPreferencesClient
+): Record<string, boolean> {
+  return {
+    transaction_confirmation: s.transactionConfirmation,
+    transaction_edited: s.transactionEdited,
+    transaction_invoice: s.transactionInvoice,
+    transaction_cancelled: s.transactionCancelled,
+    transaction_refund: s.transactionRefund,
+    payment_error: s.paymentError,
+  };
+}
+
+export function notificationPreferencesFromApi(
+  data: Record<string, unknown>
+): NotificationPreferencesClient {
+  return {
+    transactionConfirmation: Boolean(data.transaction_confirmation),
+    transactionEdited: Boolean(data.transaction_edited),
+    transactionInvoice: Boolean(data.transaction_invoice),
+    transactionCancelled: Boolean(data.transaction_cancelled),
+    transactionRefund: Boolean(data.transaction_refund),
+    paymentError: Boolean(data.payment_error),
+  };
+}
+
+/** GET /api/notifications/preferences/ — returns null if unauthenticated or request fails. */
+export async function fetchNotificationPreferences(): Promise<NotificationPreferencesClient | null> {
+  const res = await fetch(api.endpoints.notificationsPreferences, { headers: apiHeaders(true) });
+  if (!res.ok) return null;
+  const data = (await res.json()) as Record<string, unknown>;
+  return notificationPreferencesFromApi(data);
+}
+
+/** PATCH /api/notifications/preferences/ — persists toggles for the current user. */
+export async function patchNotificationPreferences(
+  s: NotificationPreferencesClient
+): Promise<NotificationPreferencesClient> {
+  const res = await fetch(api.endpoints.notificationsPreferences, {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(notificationPreferencesToApiBody(s)),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(apiFirstErrorMessage(data, `Failed to save notification settings (${res.status})`));
+  }
+  return notificationPreferencesFromApi(data as Record<string, unknown>);
 }

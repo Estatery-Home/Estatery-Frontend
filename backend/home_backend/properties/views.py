@@ -522,7 +522,9 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         """Users can only access their own bookings"""
         if getattr(self, 'swagger_fake_view', False):
             return Booking.objects.none()
-        return Booking.objects.filter(user=self.request.user)
+        return Booking.objects.filter(user=self.request.user).select_related(
+            'rented_property', 'user', 'review'
+        )
     
     def perform_update(self, serializer):
         """Only allow updates to specific fields"""

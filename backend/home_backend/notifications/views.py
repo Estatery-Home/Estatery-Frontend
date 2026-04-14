@@ -1,5 +1,5 @@
 from django.utils import timezone
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -9,10 +9,39 @@ from rest_framework.views import APIView
 from .models import Notification
 from .serializers import (
     MarkAllReadOutSerializer,
+    NotificationPreferencesSerializer,
     NotificationSerializer,
     UnreadCountSerializer,
 )
-from .services import mark_all_read_for_user
+from .services import get_or_create_notification_preferences, mark_all_read_for_user
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Notifications"],
+        summary="Get notification preferences",
+        responses={200: NotificationPreferencesSerializer},
+    ),
+    patch=extend_schema(
+        tags=["Notifications"],
+        summary="Update notification preferences",
+        request=NotificationPreferencesSerializer,
+        responses={200: NotificationPreferencesSerializer},
+    ),
+)
+class NotificationPreferencesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        obj = get_or_create_notification_preferences(request.user)
+        return Response(NotificationPreferencesSerializer(obj).data)
+
+    def patch(self, request):
+        obj = get_or_create_notification_preferences(request.user)
+        serializer = NotificationPreferencesSerializer(obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class NotificationPagination(PageNumberPagination):
