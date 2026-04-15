@@ -41,6 +41,9 @@ from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from collections import Counter
+import logging
+
+logger = logging.getLogger(__name__)
 
 _HOST_PAYMENT_STATUS_CODES = frozenset(c[0] for c in BookingPayment.STATUS_CHOICES)
 
@@ -469,19 +472,13 @@ class BookingCreateView(generics.CreateAPIView):
             
             # Save the booking (validation happens in serializer)
             booking = serializer.save()
-            
+
             # Update property status if this is the first booking
             # (Optional - depends on your business logic)
             # if property_obj.bookings.filter(status__in=['confirmed', 'active']).count() == 1:
             #     property_obj.status = 'rented'
             #     property_obj.save()
-            
-            # Create payment schedule for monthly payments
-            self.create_payment_schedule(booking)
-            
-            # Send confirmation email
-            self.send_booking_notification(booking)
-            
+
             return booking
     
     def create_payment_schedule(self, booking):
@@ -546,7 +543,27 @@ class BookingCreateView(generics.CreateAPIView):
         """Custom create response"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        booking = self.perform_create(serializer)
+        try:
+            booking = self.perform_create(serializer)
+        except ValidationError:
+            raise
+        except Exception:
+            logger.exception("Booking creation failed")
+            return Response(
+                {"detail": "Booking could not be created due to a server error. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Non-critical side-effects should not block booking creation.
+        try:
+            self.create_payment_schedule(booking)
+        except Exception:
+            logger.exception("Failed creating payment schedule for booking_id=%s", booking.id)
+
+        try:
+            self.send_booking_notification(booking)
+        except Exception:
+            logger.exception("Failed sending booking notifications for booking_id=%s", booking.id)
         
         return Response({
             'message': 'Booking request submitted successfully',
