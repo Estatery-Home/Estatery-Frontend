@@ -5,7 +5,7 @@
  */
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Users, BarChart3, AlertTriangle } from "lucide-react";
+import { Users, BarChart3, AlertTriangle, MessageCircle } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { cn } from "@/lib/utils";
@@ -14,19 +14,33 @@ const iconMap = {
   agent: Users,
   property_alert: BarChart3,
   expired: AlertTriangle,
+  message: MessageCircle,
 };
 
 export default function Notifications() {
-  const { notifications, isLoadingList, refreshNotifications } = useNotifications();
+  const { notifications, isLoadingList, refreshNotifications, clearAllNotifications } =
+    useNotifications();
 
   React.useEffect(() => {
     void refreshNotifications();
   }, [refreshNotifications]);
 
+  const canClear = notifications.length > 0 && !isLoadingList;
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-xl font-bold text-[#1e293b]">Notifications</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-bold text-[#1e293b]">Notifications</h1>
+          <button
+            type="button"
+            onClick={() => void clearAllNotifications()}
+            disabled={!canClear}
+            className="shrink-0 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-medium text-[#64748b] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Clear notifications
+          </button>
+        </div>
         <div className="space-y-0 rounded-xl border border-[#e2e8f0] bg-white shadow-sm overflow-hidden">
           {isLoadingList && notifications.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-[#64748b]">Loading…</p>

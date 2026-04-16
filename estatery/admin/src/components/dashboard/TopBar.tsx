@@ -23,7 +23,7 @@ export function TopBar() {
   const [logoutDialogOpen, setLogoutDialogOpen] = React.useState(false);
   const { profile, updateProfile } = useUserProfile();
   const { logout } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, refreshUnreadCount } = useNotifications();
   const navigate = useNavigate();
   
   const profileRef = React.useRef<HTMLDivElement>(null);
@@ -88,17 +88,30 @@ export function TopBar() {
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <button
             type="button"
-            onClick={() => setNotificationsOpen(true)}
-            className="relative flex size-[38px] items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800 active:scale-95 outline-none focus:ring-4 focus:ring-slate-100"
-            aria-label="Notifications"
+            onClick={() => {
+              void refreshUnreadCount();
+              setNotificationsOpen(true);
+            }}
+            className="relative flex size-[38px] items-center justify-center overflow-visible rounded-xl border border-slate-100 bg-white text-slate-400 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800 active:scale-95 outline-none focus:ring-4 focus:ring-slate-100"
+            aria-label={
+              unreadCount > 0
+                ? `Notifications, ${unreadCount} unread`
+                : "Notifications"
+            }
           >
             <Bell className="size-4" />
             {unreadCount > 0 ? (
               <span
-                className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white"
-                aria-label={`${unreadCount} unread`}
+                className="absolute -right-0.5 -top-0.5 z-10 flex items-center gap-0.5"
+                aria-hidden
               >
-                {unreadCount > 99 ? "99+" : unreadCount}
+                <span className="relative flex size-2.5 shrink-0 items-center justify-center">
+                  <span className="absolute inline-flex size-2.5 animate-ping rounded-full bg-red-400 opacity-70" />
+                  <span className="relative size-2.5 rounded-full bg-red-600 ring-2 ring-white" />
+                </span>
+                <span className="flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
               </span>
             ) : null}
           </button>
