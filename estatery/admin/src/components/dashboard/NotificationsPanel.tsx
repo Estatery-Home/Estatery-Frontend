@@ -6,7 +6,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { Users, BarChart3, AlertTriangle } from "lucide-react";
+import { Users, BarChart3, AlertTriangle, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
@@ -14,6 +14,7 @@ const iconMap = {
   agent: Users,
   property_alert: BarChart3,
   expired: AlertTriangle,
+  message: MessageCircle,
 };
 
 type NotificationsPanelProps = {
@@ -26,16 +27,18 @@ export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
     notifications,
     isLoadingList,
     refreshNotifications,
-    markAllNotificationsRead,
+    clearAllNotifications,
   } = useNotifications();
 
   React.useEffect(() => {
     if (open) void refreshNotifications();
   }, [open, refreshNotifications]);
 
-  const handleMarkAllRead = () => {
-    void markAllNotificationsRead();
+  const handleClearNotifications = () => {
+    void clearAllNotifications();
   };
+
+  const canClear = notifications.length > 0 && !isLoadingList;
 
   if (!open) return null;
 
@@ -52,10 +55,11 @@ export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
           <h2 className="text-lg font-semibold text-[#1e293b]">Notifications</h2>
           <button
             type="button"
-            onClick={handleMarkAllRead}
-            className="text-sm font-medium text-[var(--logo)] hover:underline"
+            onClick={handleClearNotifications}
+            disabled={!canClear}
+            className="text-sm font-medium text-[var(--logo)] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Mark all as read
+            Clear notifications
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -93,14 +97,22 @@ export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
             })
           )}
         </div>
-        <div className="shrink-0 border-t border-[#e2e8f0] px-5 py-4">
+        <div className="shrink-0 space-y-3 border-t border-[#e2e8f0] px-5 py-4">
           <Link
             to="/dashboard/notifications"
             onClick={onClose}
-            className="text-sm font-medium text-[var(--logo)] hover:underline"
+            className="block text-sm font-medium text-[var(--logo)] hover:underline"
           >
             View all notifications
           </Link>
+          <button
+            type="button"
+            onClick={handleClearNotifications}
+            disabled={!canClear}
+            className="text-sm font-medium text-[#64748b] hover:text-[#1e293b] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Clear notifications
+          </button>
         </div>
       </div>
     </>

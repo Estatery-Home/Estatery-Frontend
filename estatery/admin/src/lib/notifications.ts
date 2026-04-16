@@ -1,7 +1,7 @@
 /**
  * Notification types and API mapping for the admin panel (bell, list, detail).
  */
-export type NotificationType = "agent" | "property_alert" | "expired";
+export type NotificationType = "agent" | "property_alert" | "expired" | "message";
 
 export type Notification = {
   id: number;
@@ -15,7 +15,7 @@ export type Notification = {
   created_at?: string;
 };
 
-const TYPE_SET = new Set<string>(["agent", "property_alert", "expired"]);
+const TYPE_SET = new Set<string>(["agent", "property_alert", "expired", "message"]);
 
 export function mapApiNotification(raw: Record<string, unknown>): Notification {
   const id = typeof raw.id === "number" ? raw.id : Number(raw.id);

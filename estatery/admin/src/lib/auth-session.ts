@@ -112,3 +112,39 @@ export async function refreshAccessToken(
     return null;
   }
 }
+
+function mergeRequestHeaders(
+  base: HeadersInit,
+  extra?: HeadersInit
+): Headers {
+  const h = new Headers(base);
+  if (extra) {
+    new Headers(extra).forEach((v, k) => {
+      h.set(k, v);
+    });
+  }
+  return h;
+}
+
+/**
+ * Authenticated fetch: retries once after refreshing the access token on 401.
+ * Use for notification polling and other authenticated reads so the bell stays in sync after JWT expiry.
+ */
+export async function fetchWithAuthRetry(url: string, init: RequestInit = {}): Promise<Response> {
+  const headers = mergeRequestHeaders(apiHeaders(true), init.headers);
+  let res = await fetch(url, { ...init, headers });
+  if (res.status !== 401) return res;
+  if (typeof window === "undefined") return res;
+  const refresh = localStorage.getItem(AUTH_REFRESH_KEY);
+  if (!refresh) return res;
+  const next = await refreshAccessToken(refresh);
+  if (!next?.access) return res;
+  try {
+    localStorage.setItem(AUTH_ACCESS_KEY, next.access);
+    if (next.refresh) localStorage.setItem(AUTH_REFRESH_KEY, next.refresh);
+  } catch {
+    return res;
+  }
+  const retryHeaders = mergeRequestHeaders(apiHeaders(true), init.headers);
+  return fetch(url, { ...init, headers: retryHeaders });
+}

@@ -17,7 +17,29 @@ import type {
   ThreadMessage,
   User,
 } from "@/lib/api-types";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+/**
+ * Ensures notification/property requests hit Django, not the Next dev server.
+ * - Empty env → local backend
+ * - Relative paths like `/api` → would otherwise resolve to http://localhost:3000/api (wrong)
+ * - `//host/api` → http://host/api
+ */
+const DEFAULT_DEV_API = "http://127.0.0.1:8000/api";
+
+function normalizeApiBase(raw: string | undefined): string {
+  let t = (raw ?? "").trim().replace(/\/+$/, "");
+  if (!t) return DEFAULT_DEV_API;
+  if (t.startsWith("//")) {
+    t = `http:${t}`;
+  }
+  if (t.startsWith("/") && !t.startsWith("//")) {
+    return `http://127.0.0.1:8000${t}`;
+  }
+  if (/\/api$/i.test(t)) return t;
+  return `${t}/api`;
+}
+
+const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
 const AUTH_BASE = `${API_BASE.replace(/\/api\/?$/, "")}/api/auth`;
 
 /** All API endpoint URLs – auth, properties, bookings, payments, reviews, dashboards */
@@ -90,6 +112,7 @@ export const api = {
     notifications: `${API_BASE}/notifications/`,
     notificationsUnreadCount: `${API_BASE}/notifications/unread-count/`,
     notificationsMarkAllRead: `${API_BASE}/notifications/mark-all-read/`,
+    notificationsClearAll: `${API_BASE}/notifications/clear-all/`,
     notificationDetail: (id: number) => `${API_BASE}/notifications/${id}/`,
     notificationMarkRead: (id: number) => `${API_BASE}/notifications/${id}/read/`,
     /** GET/PATCH Settings → Notifications toggles (transaction / payment alerts) */

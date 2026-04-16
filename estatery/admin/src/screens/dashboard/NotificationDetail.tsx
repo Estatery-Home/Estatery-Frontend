@@ -5,11 +5,12 @@
  */
 import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, BarChart3, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, BarChart3, AlertTriangle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout } from "@/components/dashboard";
 import { useNotifications } from "@/contexts/NotificationsContext";
-import { api, apiHeaders } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
+import { fetchWithAuthRetry } from "@/lib/auth-session";
 import { mapApiNotification } from "@/lib/notifications";
 import type { Notification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,13 @@ const iconMap = {
   agent: Users,
   property_alert: BarChart3,
   expired: AlertTriangle,
+  message: MessageCircle,
 };
 
 export default function NotificationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { markNotificationRead, refreshNotifications } = useNotifications();
+  const { markNotificationRead } = useNotifications();
   const [notification, setNotification] = React.useState<Notification | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -39,9 +41,7 @@ export default function NotificationDetail() {
     (async () => {
       setLoading(true);
       setError(false);
-      const res = await fetch(api.endpoints.notificationDetail(parsedId), {
-        headers: apiHeaders(true),
-      });
+      const res = await fetchWithAuthRetry(api.endpoints.notificationDetail(parsedId));
       if (cancelled) return;
       if (!res.ok) {
         setNotification(null);
