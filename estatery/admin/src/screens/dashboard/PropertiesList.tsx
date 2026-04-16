@@ -15,36 +15,52 @@ import {
   PropertyListingTable,
 } from "@/components/dashboard/properties";
 import { useProperties } from "@/contexts/PropertiesContext";
-import type { Property } from "@/lib/properties";
+import { fetchHostDashboard } from "@/lib/api-client";
+import type { HostDashboardResponse } from "@/lib/api-types";
 
 export default function PropertiesList() {
   const [addModalOpen, setAddModalOpen] = React.useState(false);
-  const { properties, addProperty } = useProperties();
+  const { properties, loading, refetchProperties } = useProperties();
+  const [hostDash, setHostDash] = React.useState<HostDashboardResponse | null>(null);
 
-  // Prefer properties with updated_at for table; fallback to first 5+ if none have it
-  const tableProperties = properties.filter((p) => p.updated_at != null);
-  const displayProperties: Property[] =
-    tableProperties.length > 0 ? tableProperties : properties.slice(0, Math.max(5, properties.length));
+  React.useEffect(() => {
+    let cancelled = false;
+    void fetchHostDashboard().then((d) => {
+      if (!cancelled) setHostDash(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  /** Called when AddPropertyModal saves a new property – adds it to PropertiesContext */
-  const handlePropertyAdded = React.useCallback(
-    (property: Omit<Property, "id">) => {
-      addProperty(property);
-    },
-    [addProperty]
-  );
+  const refreshHostDash = React.useCallback(() => {
+    void fetchHostDashboard().then(setHostDash);
+  }, []);
+
+  const handlePropertyAdded = React.useCallback(async () => {
+    await refetchProperties();
+    const d = await fetchHostDashboard();
+    setHostDash(d);
+  }, [refetchProperties]);
 
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-6">
         <PropertiesPageHeader onAddProperty={() => setAddModalOpen(true)} />
 
+        {loading ? (
+          <p className="text-sm text-[#64748b]">Loading your properties…</p>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <ListingViewsChart />
+          <ListingViewsChart
+            activityChart={hostDash?.activity_chart}
+            onRefresh={refreshHostDash}
+          />
           <PropertyListedDonut />
         </div>
 
-        <PropertyListingTable properties={displayProperties} />
+        <PropertyListingTable properties={properties} />
       </div>
       <AddPropertyModal
         open={addModalOpen}

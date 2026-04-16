@@ -1,0 +1,3719 @@
+openapi: 3.0.3
+info:
+  title: Estatery / Home Backend API
+  version: 1.0.0
+  description: 'REST API for the Estatery property rental platform: authentication
+    (JWT, refresh), password reset with OTP, generic OTP, listings, bookings, payments,
+    reviews, host/tenant dashboards, promo codes, and public/customer catalog endpoints.'
+  contact:
+    name: API Support
+  license:
+    name: Proprietary
+paths:
+  /api/admin/discounts/:
+    get:
+      operationId: admin_discounts_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Discounts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PromoCode'
+          description: ''
+    post:
+      operationId: admin_discounts_create
+      tags:
+      - Discounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoCode'
+          description: ''
+  /api/admin/discounts/{id}/:
+    get:
+      operationId: admin_discounts_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Discounts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoCode'
+          description: ''
+    put:
+      operationId: admin_discounts_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Discounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PromoCodeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoCode'
+          description: ''
+    patch:
+      operationId: admin_discounts_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Discounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPromoCodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPromoCodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPromoCodeRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoCode'
+          description: ''
+    delete:
+      operationId: admin_discounts_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Discounts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      summary: Login
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      summary: Logout
+      tags:
+      - Auth
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
+  /api/auth/otp/request/:
+    post:
+      operationId: auth_otp_request_create
+      description: Request an OTP for password_reset or verify_email (requires existing
+        account).
+      summary: Request OTP (password_reset or verify_email)
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericAuthMessage'
+          description: ''
+  /api/auth/otp/verify/:
+    post:
+      operationId: auth_otp_verify_create
+      description: Verify an OTP. For password_reset, returns reset_token (same flow
+        as dedicated verify endpoint).
+      summary: Verify OTP (includes reset_token when purpose is password_reset)
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerifySuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerifyFailure'
+          description: ''
+  /api/auth/password-reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Set a new password using reset_token from verify-otp.
+      summary: Confirm password reset (set new password)
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericAuthMessage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorDetail'
+          description: ''
+  /api/auth/password-reset/request/:
+    post:
+      operationId: auth_password_reset_request_create
+      description: Send a one-time code to the user's email (if an account exists).
+      summary: Request password reset (send OTP)
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericAuthMessage'
+          description: ''
+  /api/auth/password-reset/verify-otp/:
+    post:
+      operationId: auth_password_reset_verify_otp_create
+      description: Exchange email + OTP for a short-lived signed reset_token.
+      summary: Verify password-reset OTP
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyOtpRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyOtpRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyOtpRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetVerifyResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorDetail'
+          description: ''
+  /api/auth/profile/:
+    get:
+      operationId: auth_profile_retrieve
+      summary: Profile
+      tags:
+      - Auth
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: auth_profile_update
+      summary: Profile
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: auth_profile_partial_update
+      summary: Profile
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      summary: Register
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+          description: ''
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      summary: Refresh JWT access token
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefreshResponse'
+          description: ''
+  /api/bookings/:
+    post:
+      operationId: bookings_create
+      description: Create a new booking
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/{booking_id}/review/:
+    post:
+      operationId: bookings_review_create
+      description: Create a review for a completed booking
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyReviewRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropertyReviewRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropertyReviewRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyReview'
+          description: ''
+  /api/bookings/{id}/:
+    get:
+      operationId: bookings_retrieve
+      description: Retrieve, update or cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    put:
+      operationId: bookings_update
+      description: Retrieve, update or cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    patch:
+      operationId: bookings_partial_update
+      description: Retrieve, update or cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    delete:
+      operationId: bookings_destroy
+      description: Retrieve, update or cancel a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/{id}/payments/:
+    get:
+      operationId: bookings_payments_list
+      description: List all payments for a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Payments
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingPayment'
+          description: ''
+  /api/bookings/my/:
+    get:
+      operationId: bookings_my_list
+      description: List all bookings for current user
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Bookings
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/countries/:
+    get:
+      operationId: countries_list
+      summary: List countries
+      tags:
+      - Geography
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryRow'
+          description: ''
+  /api/currencies/:
+    get:
+      operationId: currencies_list
+      description: Get available currency choices
+      summary: Property currency choices
+      tags:
+      - Reference
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CurrencyChoice'
+          description: ''
+  /api/customer/properties/:
+    get:
+      operationId: customer_properties_list
+      description: 'Customer-facing catalog: GET only (same data as public list, explicit
+        route for the website app).'
+      summary: List properties (customer)
+      parameters:
+      - in: query
+        name: bathrooms
+        schema:
+          type: integer
+      - in: query
+        name: bedrooms
+        schema:
+          type: integer
+      - in: query
+        name: city
+        schema:
+          type: string
+      - in: query
+        name: country
+        schema:
+          type: string
+      - in: query
+        name: listing_type
+        schema:
+          type: string
+          enum:
+          - rent
+          - sale
+        description: |-
+          Whether the property is for rent or for sale
+
+          * `rent` - For Rent
+          * `sale` - For Sale
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: property_type
+        schema:
+          type: string
+          enum:
+          - apartment
+          - condo
+          - house
+          - studio
+          - villa
+        description: |-
+          * `apartment` - Apartment
+          * `house` - House
+          * `condo` - Condo
+          * `villa` - Villa
+          * `studio` - Studio
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - available
+          - maintenance
+          - rented
+        description: |-
+          * `available` - Available
+          * `rented` - Rented
+          * `maintenance` - Under Maintenance
+      tags:
+      - Customer catalog
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+          description: ''
+  /api/dashboard/host/:
+    get:
+      operationId: dashboard_host_retrieve
+      description: Dashboard statistics for hosts
+      summary: Host dashboard
+      tags:
+      - Dashboards
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostDashboard'
+          description: ''
+  /api/dashboard/tenant/:
+    get:
+      operationId: dashboard_tenant_retrieve
+      description: Dashboard statistics for tenants
+      summary: Tenant dashboard
+      tags:
+      - Dashboards
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDashboard'
+          description: ''
+  /api/discounts/validate/:
+    post:
+      operationId: discounts_validate_create
+      summary: Validate promo code
+      tags:
+      - Discounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoCodeValidateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PromoCodeValidateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PromoCodeValidateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoValidateResponse'
+          description: ''
+  /api/host/bookings/:
+    get:
+      operationId: host_bookings_list
+      description: List all bookings for host's properties
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Host
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HostBooking'
+          description: ''
+  /api/host/bookings/{id}/confirm/:
+    put:
+      operationId: host_bookings_confirm_update
+      description: Host confirms or rejects a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Host
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    patch:
+      operationId: host_bookings_confirm_partial_update
+      description: Host confirms or rejects a booking
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Host
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/payments/{id}/mark-paid/:
+    put:
+      operationId: payments_mark_paid_update
+      description: Mark a payment as paid (host or admin only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingPaymentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingPayment'
+          description: ''
+    patch:
+      operationId: payments_mark_paid_partial_update
+      description: Mark a payment as paid (host or admin only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingPaymentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingPaymentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBookingPaymentRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingPayment'
+          description: ''
+  /api/properties/:
+    get:
+      operationId: properties_list
+      description: List all available properties or create a new property
+      summary: List or create properties
+      parameters:
+      - in: query
+        name: bathrooms
+        schema:
+          type: integer
+      - in: query
+        name: bedrooms
+        schema:
+          type: integer
+      - in: query
+        name: city
+        schema:
+          type: string
+      - in: query
+        name: country
+        schema:
+          type: string
+      - in: query
+        name: listing_type
+        schema:
+          type: string
+          enum:
+          - rent
+          - sale
+        description: |-
+          Whether the property is for rent or for sale
+
+          * `rent` - For Rent
+          * `sale` - For Sale
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: property_type
+        schema:
+          type: string
+          enum:
+          - apartment
+          - condo
+          - house
+          - studio
+          - villa
+        description: |-
+          * `apartment` - Apartment
+          * `house` - House
+          * `condo` - Condo
+          * `villa` - Villa
+          * `studio` - Studio
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - available
+          - maintenance
+          - rented
+        description: |-
+          * `available` - Available
+          * `rented` - Rented
+          * `maintenance` - Under Maintenance
+      tags:
+      - Properties
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+          description: ''
+    post:
+      operationId: properties_create
+      description: List all available properties or create a new property
+      summary: List or create properties
+      tags:
+      - Properties
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+          description: ''
+  /api/properties/{id}/:
+    get:
+      operationId: properties_retrieve
+      description: Retrieve, update or delete a property
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - properties
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyDetail'
+          description: ''
+    put:
+      operationId: properties_update
+      description: Retrieve, update or delete a property
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - properties
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+          description: ''
+    patch:
+      operationId: properties_partial_update
+      description: Retrieve, update or delete a property
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - properties
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPropertyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPropertyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPropertyRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+          description: ''
+    delete:
+      operationId: properties_destroy
+      description: Retrieve, update or delete a property
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - properties
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/properties/{id}/calendar/:
+    get:
+      operationId: properties_calendar_retrieve
+      description: Get availability calendar for a property
+      summary: Monthly availability calendar
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Availability
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/properties/{id}/check-availability/:
+    get:
+      operationId: properties_check_availability_retrieve
+      description: Quick availability check for the next 12 months
+      summary: Property availability snapshot
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Availability
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: properties_check_availability_create
+      description: Check if property is available for specific dates
+      summary: Check property availability for dates
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Availability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyAvailabilityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropertyAvailabilityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropertyAvailabilityRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/properties/{id}/reviews/:
+    get:
+      operationId: properties_reviews_list
+      description: List all reviews for a property
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - properties
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PropertyReview'
+          description: ''
+  /api/properties/my/:
+    get:
+      operationId: properties_my_list
+      description: List all properties owned by current user
+      summary: List my properties (host)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Properties
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+          description: ''
+  /api/reviews/{id}/respond/:
+    put:
+      operationId: reviews_respond_update
+      description: Host responds to a review
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - reviews
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HostResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HostResponseRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostResponse'
+          description: ''
+    patch:
+      operationId: reviews_respond_partial_update
+      description: Host responds to a review
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - reviews
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedHostResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedHostResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedHostResponseRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostResponse'
+          description: ''
+components:
+  schemas:
+    AuthErrorDetail:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    AuthTokenResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        refresh:
+          type: string
+        access:
+          type: string
+        message:
+          type: string
+      required:
+      - access
+      - message
+      - refresh
+      - user
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        property:
+          type: integer
+        user:
+          type: integer
+          readOnly: true
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        booking_type:
+          allOf:
+          - $ref: '#/components/schemas/BookingTypeEnum'
+          readOnly: true
+        applied_promo_code:
+          type: string
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusF3dEnum'
+          readOnly: true
+        rejection_reason:
+          type: string
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        agreed_monthly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Monthly rate at time of booking
+        months_booked:
+          type: integer
+          readOnly: true
+          description: Number of months booked
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        security_deposit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Security deposit amount
+        discount_applied:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Discount percentage applied
+        emergency_contact:
+          type: string
+          maxLength: 100
+        occupation:
+          type: string
+          maxLength: 100
+        special_requests:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deposit_paid:
+          type: boolean
+          readOnly: true
+        deposit_paid_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        deposit_refunded:
+          type: boolean
+          readOnly: true
+        deposit_refunded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        property_title:
+          type: string
+          readOnly: true
+        property_address:
+          type: string
+          readOnly: true
+        property_image:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+      required:
+      - agreed_monthly_rate
+      - applied_promo_code
+      - booking_type
+      - cancelled_at
+      - check_in
+      - check_out
+      - completed_at
+      - confirmed_at
+      - created_at
+      - deposit_paid
+      - deposit_paid_at
+      - deposit_refunded
+      - deposit_refunded_at
+      - discount_applied
+      - id
+      - months_booked
+      - property
+      - property_address
+      - property_image
+      - property_title
+      - rejection_reason
+      - security_deposit
+      - status
+      - total_price
+      - updated_at
+      - user
+      - user_email
+      - user_name
+    BookingPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        is_overdue:
+          type: boolean
+          readOnly: true
+        payment_type:
+          allOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          default: rent
+        month_number:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Month number (0 for deposit, 1-12 for rent)
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        due_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/BookingPaymentStatusEnum'
+        paid_date:
+          type: string
+          format: date
+          nullable: true
+        transaction_id:
+          type: string
+          maxLength: 100
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        booking:
+          type: integer
+          readOnly: true
+      required:
+      - amount
+      - booking
+      - created_at
+      - due_date
+      - id
+      - is_overdue
+      - month_number
+      - updated_at
+    BookingPaymentRequest:
+      type: object
+      properties:
+        payment_type:
+          allOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          default: rent
+        month_number:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Month number (0 for deposit, 1-12 for rent)
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        due_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/BookingPaymentStatusEnum'
+        paid_date:
+          type: string
+          format: date
+          nullable: true
+        transaction_id:
+          type: string
+          maxLength: 100
+        notes:
+          type: string
+      required:
+      - amount
+      - due_date
+      - month_number
+    BookingPaymentStatusEnum:
+      enum:
+      - pending
+      - paid
+      - overdue
+      - refunded
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `paid` - Paid
+        * `overdue` - Overdue
+        * `refunded` - Refunded
+        * `cancelled` - Cancelled
+    BookingRequest:
+      type: object
+      properties:
+        property:
+          type: integer
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        promo_code:
+          type: string
+          writeOnly: true
+        emergency_contact:
+          type: string
+          maxLength: 100
+        occupation:
+          type: string
+          maxLength: 100
+        special_requests:
+          type: string
+      required:
+      - check_in
+      - check_out
+      - property
+    BookingTypeEnum:
+      enum:
+      - monthly
+      - weekly
+      - daily
+      type: string
+      description: |-
+        * `monthly` - Monthly
+        * `weekly` - Weekly
+        * `daily` - Daily
+    CountryRow:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+      - name
+    CurrencyChoice:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
+    CurrencyEnum:
+      enum:
+      - ghs
+      - usd
+      - cfa
+      type: string
+      description: |-
+        * `ghs` - GHS
+        * `usd` - USD
+        * `cfa` - CFA
+    DiscountTypeEnum:
+      enum:
+      - percent
+      - fixed
+      type: string
+      description: |-
+        * `percent` - Percentage
+        * `fixed` - Fixed amount
+    GenericAuthMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    HostBooking:
+      type: object
+      description: Extended booking serializer for property owners
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        property:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        booking_type:
+          allOf:
+          - $ref: '#/components/schemas/BookingTypeEnum'
+          readOnly: true
+        applied_promo_code:
+          type: string
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusF3dEnum'
+          readOnly: true
+        rejection_reason:
+          type: string
+          readOnly: true
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        agreed_monthly_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Monthly rate at time of booking
+        months_booked:
+          type: integer
+          readOnly: true
+          description: Number of months booked
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        security_deposit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Security deposit amount
+        discount_applied:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Discount percentage applied
+        emergency_contact:
+          type: string
+          maxLength: 100
+        occupation:
+          type: string
+          maxLength: 100
+        special_requests:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        deposit_paid:
+          type: boolean
+          readOnly: true
+        deposit_paid_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        deposit_refunded:
+          type: boolean
+          readOnly: true
+        deposit_refunded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        property_title:
+          type: string
+          readOnly: true
+        property_address:
+          type: string
+          readOnly: true
+        property_image:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        user_email:
+          type: string
+          format: email
+          readOnly: true
+        tenant_name:
+          type: string
+          readOnly: true
+        tenant_email:
+          type: string
+          format: email
+          readOnly: true
+        tenant_phone:
+          type: string
+          readOnly: true
+        payments:
+          type: string
+          readOnly: true
+      required:
+      - agreed_monthly_rate
+      - applied_promo_code
+      - booking_type
+      - cancelled_at
+      - check_in
+      - check_out
+      - completed_at
+      - confirmed_at
+      - created_at
+      - deposit_paid
+      - deposit_paid_at
+      - deposit_refunded
+      - deposit_refunded_at
+      - discount_applied
+      - id
+      - months_booked
+      - payments
+      - property
+      - property_address
+      - property_image
+      - property_title
+      - rejection_reason
+      - security_deposit
+      - status
+      - tenant_email
+      - tenant_name
+      - tenant_phone
+      - total_price
+      - updated_at
+      - user
+      - user_email
+      - user_name
+    HostDashboard:
+      type: object
+      properties:
+        properties: {}
+        bookings: {}
+        revenue: {}
+        recent_bookings: {}
+      required:
+      - bookings
+      - properties
+      - recent_bookings
+      - revenue
+    HostResponse:
+      type: object
+      description: Serializer for host to respond to reviews
+      properties:
+        host_response:
+          type: string
+    HostResponseRequest:
+      type: object
+      description: Serializer for host to respond to reviews
+      properties:
+        host_response:
+          type: string
+    ListingTypeEnum:
+      enum:
+      - rent
+      - sale
+      type: string
+      description: |-
+        * `rent` - For Rent
+        * `sale` - For Sale
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    LogoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    MonthlyCycleStartEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+      - 11
+      - 12
+      - 13
+      - 14
+      - 15
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 21
+      - 22
+      - 23
+      - 24
+      - 25
+      - 26
+      - 27
+      - 28
+      type: integer
+      description: |-
+        * `1` - 1
+        * `2` - 2
+        * `3` - 3
+        * `4` - 4
+        * `5` - 5
+        * `6` - 6
+        * `7` - 7
+        * `8` - 8
+        * `9` - 9
+        * `10` - 10
+        * `11` - 11
+        * `12` - 12
+        * `13` - 13
+        * `14` - 14
+        * `15` - 15
+        * `16` - 16
+        * `17` - 17
+        * `18` - 18
+        * `19` - 19
+        * `20` - 20
+        * `21` - 21
+        * `22` - 22
+        * `23` - 23
+        * `24` - 24
+        * `25` - 25
+        * `26` - 26
+        * `27` - 27
+        * `28` - 28
+    OtpRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          default: password_reset
+      required:
+      - email
+    OtpVerifyFailure:
+      type: object
+      properties:
+        detail:
+          type: string
+        verified:
+          type: boolean
+      required:
+      - detail
+      - verified
+    OtpVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        otp:
+          type: string
+          minLength: 4
+          maxLength: 12
+        purpose:
+          $ref: '#/components/schemas/PurposeEnum'
+      required:
+      - email
+      - otp
+      - purpose
+    OtpVerifySuccess:
+      type: object
+      properties:
+        verified:
+          type: boolean
+        reset_token:
+          type: string
+          nullable: true
+      required:
+      - verified
+    PasswordResetConfirmRequest:
+      type: object
+      properties:
+        reset_token:
+          type: string
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 6
+      required:
+      - new_password
+      - reset_token
+    PasswordResetRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    PasswordResetVerifyOtpRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        otp:
+          type: string
+          minLength: 4
+          maxLength: 12
+      required:
+      - email
+      - otp
+    PasswordResetVerifyResponse:
+      type: object
+      properties:
+        reset_token:
+          type: string
+        message:
+          type: string
+      required:
+      - message
+      - reset_token
+    PatchedBookingPaymentRequest:
+      type: object
+      properties:
+        payment_type:
+          allOf:
+          - $ref: '#/components/schemas/PaymentTypeEnum'
+          default: rent
+        month_number:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Month number (0 for deposit, 1-12 for rent)
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        due_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/BookingPaymentStatusEnum'
+        paid_date:
+          type: string
+          format: date
+          nullable: true
+        transaction_id:
+          type: string
+          maxLength: 100
+        notes:
+          type: string
+    PatchedBookingRequest:
+      type: object
+      properties:
+        property:
+          type: integer
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+        guests:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        promo_code:
+          type: string
+          writeOnly: true
+        emergency_contact:
+          type: string
+          maxLength: 100
+        occupation:
+          type: string
+          maxLength: 100
+        special_requests:
+          type: string
+    PatchedHostResponseRequest:
+      type: object
+      description: Serializer for host to respond to reviews
+      properties:
+        host_response:
+          type: string
+    PatchedPromoCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+        discount_type:
+          $ref: '#/components/schemas/DiscountTypeEnum'
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Percent (0–100) or fixed amount in listing currency
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+        max_redemptions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Leave empty for unlimited uses
+        is_active:
+          type: boolean
+        min_booking_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum months booked to use this code
+        applies_to_property:
+          type: integer
+          nullable: true
+          description: Limit to one property; leave empty for all listings
+    PatchedPropertyRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        state:
+          type: string
+          minLength: 1
+          maxLength: 100
+        country:
+          type: string
+          minLength: 1
+          maxLength: 100
+        zip_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        description:
+          type: string
+          minLength: 1
+        daily_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Price per night
+        monthly_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Price per month (optional - will auto-calculate from daily
+            if blank)
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        bedrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        bathrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        area:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          title: Area (sq ft)
+        property_type:
+          $ref: '#/components/schemas/PropertyTypeEnum'
+        listing_type:
+          allOf:
+          - $ref: '#/components/schemas/ListingTypeEnum'
+          description: |-
+            Whether the property is for rent or for sale
+
+            * `rent` - For Rent
+            * `sale` - For Sale
+        status:
+          $ref: '#/components/schemas/StatusD05Enum'
+        has_wifi:
+          type: boolean
+          title: WiFi
+        has_parking:
+          type: boolean
+          title: Parking
+        has_pool:
+          type: boolean
+          title: Pool
+        has_gym:
+          type: boolean
+          title: Gym
+        is_furnished:
+          type: boolean
+          title: Furnished
+        has_kitchen:
+          type: boolean
+          title: Kitchen
+        min_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          title: Minimum stay (months)
+          description: Minimum booking period in months
+        max_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Maximum stay (months)
+          description: Maximum booking period in months (optional)
+        monthly_cycle_start:
+          allOf:
+          - $ref: '#/components/schemas/MonthlyCycleStartEnum'
+          title: Monthly cycle start day
+          description: |-
+            Day of month when rentals start (1-28)
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+            * `12` - 12
+            * `13` - 13
+            * `14` - 14
+            * `15` - 15
+            * `16` - 16
+            * `17` - 17
+            * `18` - 18
+            * `19` - 19
+            * `20` - 20
+            * `21` - 21
+            * `22` - 22
+            * `23` - 23
+            * `24` - 24
+            * `25` - 25
+            * `26` - 26
+            * `27` - 27
+            * `28` - 28
+          minimum: 0
+          maximum: 9223372036854775807
+        security_deposit_months:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          title: Security deposit (months)
+          description: Number of months rent required as deposit
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+    PatchedUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          title: Email address
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 20
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+    PaymentTypeEnum:
+      enum:
+      - deposit
+      - rent
+      - late_fee
+      - utility
+      - damage
+      - refund
+      type: string
+      description: |-
+        * `deposit` - Security Deposit
+        * `rent` - Monthly Rent
+        * `late_fee` - Late Fee
+        * `utility` - Utilities
+        * `damage` - Damage Fee
+        * `refund` - Refund
+    PromoCode:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+        discount_type:
+          $ref: '#/components/schemas/DiscountTypeEnum'
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Percent (0–100) or fixed amount in listing currency
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+        max_redemptions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Leave empty for unlimited uses
+        times_redeemed:
+          type: integer
+          readOnly: true
+        is_active:
+          type: boolean
+        min_booking_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum months booked to use this code
+        applies_to_property:
+          type: integer
+          nullable: true
+          description: Limit to one property; leave empty for all listings
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - discount_value
+      - id
+      - times_redeemed
+      - updated_at
+    PromoCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+        discount_type:
+          $ref: '#/components/schemas/DiscountTypeEnum'
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Percent (0–100) or fixed amount in listing currency
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+        max_redemptions:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Leave empty for unlimited uses
+        is_active:
+          type: boolean
+        min_booking_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum months booked to use this code
+        applies_to_property:
+          type: integer
+          nullable: true
+          description: Limit to one property; leave empty for all listings
+      required:
+      - code
+      - discount_value
+    PromoCodeValidateRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        property_id:
+          type: integer
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+      required:
+      - check_in
+      - check_out
+      - code
+      - property_id
+    PromoValidateNested:
+      type: object
+      properties:
+        discount_type:
+          type: string
+        discount_value:
+          type: string
+      required:
+      - discount_type
+      - discount_value
+    PromoValidateResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        code:
+          type: string
+        months:
+          type: integer
+        currency:
+          type: string
+        monthly_rate:
+          type: string
+        base_subtotal:
+          type: string
+        subtotal_after_long_stay:
+          type: string
+        long_stay_discount_percent:
+          type: string
+        promo:
+          $ref: '#/components/schemas/PromoValidateNested'
+        total_price:
+          type: string
+        combined_discount_percent:
+          type: string
+      required:
+      - base_subtotal
+      - code
+      - combined_discount_percent
+      - currency
+      - long_stay_discount_percent
+      - monthly_rate
+      - months
+      - promo
+      - subtotal_after_long_stay
+      - total_price
+      - valid
+    Property:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        address:
+          type: string
+          maxLength: 255
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 100
+        country:
+          type: string
+          maxLength: 100
+        zip_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        description:
+          type: string
+        daily_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Price per night
+        monthly_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Price per month (optional - will auto-calculate from daily
+            if blank)
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        bedrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        bathrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        area:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          title: Area (sq ft)
+        property_type:
+          $ref: '#/components/schemas/PropertyTypeEnum'
+        listing_type:
+          allOf:
+          - $ref: '#/components/schemas/ListingTypeEnum'
+          description: |-
+            Whether the property is for rent or for sale
+
+            * `rent` - For Rent
+            * `sale` - For Sale
+        status:
+          $ref: '#/components/schemas/StatusD05Enum'
+        has_wifi:
+          type: boolean
+          title: WiFi
+        has_parking:
+          type: boolean
+          title: Parking
+        has_pool:
+          type: boolean
+          title: Pool
+        has_gym:
+          type: boolean
+          title: Gym
+        is_furnished:
+          type: boolean
+          title: Furnished
+        has_kitchen:
+          type: boolean
+          title: Kitchen
+        min_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          title: Minimum stay (months)
+          description: Minimum booking period in months
+        max_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Maximum stay (months)
+          description: Maximum booking period in months (optional)
+        monthly_cycle_start:
+          allOf:
+          - $ref: '#/components/schemas/MonthlyCycleStartEnum'
+          title: Monthly cycle start day
+          description: |-
+            Day of month when rentals start (1-28)
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+            * `12` - 12
+            * `13` - 13
+            * `14` - 14
+            * `15` - 15
+            * `16` - 16
+            * `17` - 17
+            * `18` - 18
+            * `19` - 19
+            * `20` - 20
+            * `21` - 21
+            * `22` - 22
+            * `23` - 23
+            * `24` - 24
+            * `25` - 25
+            * `26` - 26
+            * `27` - 27
+            * `28` - 28
+          minimum: 0
+          maximum: 9223372036854775807
+        security_deposit_months:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          title: Security deposit (months)
+          description: Number of months rent required as deposit
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyImage'
+          readOnly: true
+        owner:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        primary_image:
+          type: string
+          readOnly: true
+        monthly_price_display:
+          type: string
+          readOnly: true
+        security_deposit_display:
+          type: string
+          readOnly: true
+        amenities:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - address
+      - amenities
+      - area
+      - city
+      - country
+      - created_at
+      - daily_price
+      - description
+      - id
+      - images
+      - monthly_price_display
+      - owner
+      - primary_image
+      - property_type
+      - security_deposit_display
+      - title
+      - updated_at
+    PropertyAvailabilityRequest:
+      type: object
+      description: Serializer for checking property availability
+      properties:
+        check_in:
+          type: string
+          format: date
+        check_out:
+          type: string
+          format: date
+      required:
+      - check_in
+      - check_out
+    PropertyDetail:
+      type: object
+      description: Extended property serializer with bookings and reviews
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        address:
+          type: string
+          maxLength: 255
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          maxLength: 100
+        country:
+          type: string
+          maxLength: 100
+        zip_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        description:
+          type: string
+        daily_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Price per night
+        monthly_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Price per month (optional - will auto-calculate from daily
+            if blank)
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        bedrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        bathrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        area:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          title: Area (sq ft)
+        property_type:
+          $ref: '#/components/schemas/PropertyTypeEnum'
+        listing_type:
+          allOf:
+          - $ref: '#/components/schemas/ListingTypeEnum'
+          description: |-
+            Whether the property is for rent or for sale
+
+            * `rent` - For Rent
+            * `sale` - For Sale
+        status:
+          $ref: '#/components/schemas/StatusD05Enum'
+        has_wifi:
+          type: boolean
+          title: WiFi
+        has_parking:
+          type: boolean
+          title: Parking
+        has_pool:
+          type: boolean
+          title: Pool
+        has_gym:
+          type: boolean
+          title: Gym
+        is_furnished:
+          type: boolean
+          title: Furnished
+        has_kitchen:
+          type: boolean
+          title: Kitchen
+        min_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          title: Minimum stay (months)
+          description: Minimum booking period in months
+        max_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Maximum stay (months)
+          description: Maximum booking period in months (optional)
+        monthly_cycle_start:
+          allOf:
+          - $ref: '#/components/schemas/MonthlyCycleStartEnum'
+          title: Monthly cycle start day
+          description: |-
+            Day of month when rentals start (1-28)
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+            * `12` - 12
+            * `13` - 13
+            * `14` - 14
+            * `15` - 15
+            * `16` - 16
+            * `17` - 17
+            * `18` - 18
+            * `19` - 19
+            * `20` - 20
+            * `21` - 21
+            * `22` - 22
+            * `23` - 23
+            * `24` - 24
+            * `25` - 25
+            * `26` - 26
+            * `27` - 27
+            * `28` - 28
+          minimum: 0
+          maximum: 9223372036854775807
+        security_deposit_months:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          title: Security deposit (months)
+          description: Number of months rent required as deposit
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyImage'
+          readOnly: true
+        owner:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+        primary_image:
+          type: string
+          readOnly: true
+        monthly_price_display:
+          type: string
+          readOnly: true
+        security_deposit_display:
+          type: string
+          readOnly: true
+        amenities:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        bookings:
+          type: string
+          readOnly: true
+        reviews:
+          type: string
+          readOnly: true
+        average_rating:
+          type: string
+          readOnly: true
+      required:
+      - address
+      - amenities
+      - area
+      - average_rating
+      - bookings
+      - city
+      - country
+      - created_at
+      - daily_price
+      - description
+      - id
+      - images
+      - monthly_price_display
+      - owner
+      - primary_image
+      - property_type
+      - reviews
+      - security_deposit_display
+      - title
+      - updated_at
+    PropertyImage:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        image_url:
+          type: string
+          readOnly: true
+        is_primary:
+          type: boolean
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - image
+      - image_url
+      - uploaded_at
+    PropertyImageRequest:
+      type: object
+      properties:
+        image:
+          type: string
+          format: binary
+        is_primary:
+          type: boolean
+      required:
+      - image
+    PropertyRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        address:
+          type: string
+          minLength: 1
+          maxLength: 255
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        state:
+          type: string
+          minLength: 1
+          maxLength: 100
+        country:
+          type: string
+          minLength: 1
+          maxLength: 100
+        zip_code:
+          type: string
+          nullable: true
+          maxLength: 20
+        description:
+          type: string
+          minLength: 1
+        daily_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Price per night
+        monthly_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Price per month (optional - will auto-calculate from daily
+            if blank)
+        currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+        bedrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        bathrooms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        area:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          title: Area (sq ft)
+        property_type:
+          $ref: '#/components/schemas/PropertyTypeEnum'
+        listing_type:
+          allOf:
+          - $ref: '#/components/schemas/ListingTypeEnum'
+          description: |-
+            Whether the property is for rent or for sale
+
+            * `rent` - For Rent
+            * `sale` - For Sale
+        status:
+          $ref: '#/components/schemas/StatusD05Enum'
+        has_wifi:
+          type: boolean
+          title: WiFi
+        has_parking:
+          type: boolean
+          title: Parking
+        has_pool:
+          type: boolean
+          title: Pool
+        has_gym:
+          type: boolean
+          title: Gym
+        is_furnished:
+          type: boolean
+          title: Furnished
+        has_kitchen:
+          type: boolean
+          title: Kitchen
+        min_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          title: Minimum stay (months)
+          description: Minimum booking period in months
+        max_stay_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Maximum stay (months)
+          description: Maximum booking period in months (optional)
+        monthly_cycle_start:
+          allOf:
+          - $ref: '#/components/schemas/MonthlyCycleStartEnum'
+          title: Monthly cycle start day
+          description: |-
+            Day of month when rentals start (1-28)
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+            * `12` - 12
+            * `13` - 13
+            * `14` - 14
+            * `15` - 15
+            * `16` - 16
+            * `17` - 17
+            * `18` - 18
+            * `19` - 19
+            * `20` - 20
+            * `21` - 21
+            * `22` - 22
+            * `23` - 23
+            * `24` - 24
+            * `25` - 25
+            * `26` - 26
+            * `27` - 27
+            * `28` - 28
+          minimum: 0
+          maximum: 9223372036854775807
+        security_deposit_months:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          title: Security deposit (months)
+          description: Number of months rent required as deposit
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - address
+      - area
+      - city
+      - country
+      - daily_price
+      - description
+      - property_type
+      - title
+    PropertyReview:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        user_avatar:
+          type: string
+          format: uri
+          readOnly: true
+        rating:
+          allOf:
+          - $ref: '#/components/schemas/RatingEnum'
+          description: |-
+            Rating from 1-5
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+          minimum: 0
+          maximum: 9223372036854775807
+        comment:
+          type: string
+        host_response:
+          type: string
+        host_responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        booking:
+          type: integer
+          readOnly: true
+        property:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+      required:
+      - booking
+      - comment
+      - created_at
+      - host_responded_at
+      - id
+      - property
+      - rating
+      - updated_at
+      - user
+      - user_avatar
+      - user_name
+    PropertyReviewRequest:
+      type: object
+      properties:
+        rating:
+          allOf:
+          - $ref: '#/components/schemas/RatingEnum'
+          description: |-
+            Rating from 1-5
+
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+          minimum: 0
+          maximum: 9223372036854775807
+        comment:
+          type: string
+          minLength: 1
+        host_response:
+          type: string
+      required:
+      - comment
+      - rating
+    PropertyTypeEnum:
+      enum:
+      - apartment
+      - house
+      - condo
+      - villa
+      - studio
+      type: string
+      description: |-
+        * `apartment` - Apartment
+        * `house` - House
+        * `condo` - Condo
+        * `villa` - Villa
+        * `studio` - Studio
+    PurposeEnum:
+      enum:
+      - password_reset
+      - verify_email
+      type: string
+      description: |-
+        * `password_reset` - password_reset
+        * `verify_email` - verify_email
+    RatingEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      type: integer
+      description: |-
+        * `1` - 1
+        * `2` - 2
+        * `3` - 3
+        * `4` - 4
+        * `5` - 5
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          title: Email address
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+        phone:
+          type: string
+          default: ''
+        user_type:
+          $ref: '#/components/schemas/UserTypeEnum'
+      required:
+      - email
+      - password
+      - username
+    StatusD05Enum:
+      enum:
+      - available
+      - rented
+      - maintenance
+      type: string
+      description: |-
+        * `available` - Available
+        * `rented` - Rented
+        * `maintenance` - Under Maintenance
+    StatusF3dEnum:
+      enum:
+      - pending
+      - confirmed
+      - active
+      - cancelled
+      - completed
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `confirmed` - Confirmed
+        * `active` - Active
+        * `cancelled` - Cancelled
+        * `completed` - Completed
+        * `rejected` - Rejected
+    TenantDashboard:
+      type: object
+      properties:
+        bookings: {}
+        upcoming_payments: {}
+        next_booking:
+          nullable: true
+        recent_bookings: {}
+      required:
+      - bookings
+      - next_booking
+      - recent_bookings
+      - upcoming_payments
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TokenRefreshResponse:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+      required:
+      - access
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 20
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+        user_type:
+          allOf:
+          - $ref: '#/components/schemas/UserTypeEnum'
+          readOnly: true
+      required:
+      - email
+      - id
+      - user_type
+      - username
+    UserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          title: Email address
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 20
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+      required:
+      - email
+      - username
+    UserTypeEnum:
+      enum:
+      - customer
+      - owner
+      - admin
+      type: string
+      description: |-
+        * `customer` - Customer
+        * `owner` - Property Owner
+        * `admin` - Admin
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: Auth
+  description: Registration, login, profile, JWT refresh, password reset, OTP
+- name: Properties
+  description: Listings, detail, host "my properties"
+- name: Customer catalog
+  description: Public customer-facing listing route
+- name: Reference
+  description: Lookup data (e.g. currency codes)
+- name: Geography
+  description: Countries and related facets
+- name: Discounts
+  description: Promo validation and admin promo CRUD
+- name: Availability
+  description: Calendar and availability checks
+- name: Bookings
+  description: Tenant bookings
+- name: Host
+  description: Host booking management
+- name: Payments
+  description: Booking payments and mark-paid
+- name: Reviews
+  description: Property reviews and host responses
+- name: Dashboards
+  description: Host and tenant summaries

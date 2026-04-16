@@ -18,11 +18,13 @@ import { useProperties } from "@/contexts/PropertiesContext";
 
 export function MyProperties() {
   const [refreshing, setRefreshing] = React.useState(false);
-  const { properties } = useProperties();
+  const { properties, refetchProperties } = useProperties();
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 600);
+    void refetchProperties().finally(() => {
+      window.setTimeout(() => setRefreshing(false), 300);
+    });
   };
 
   return (

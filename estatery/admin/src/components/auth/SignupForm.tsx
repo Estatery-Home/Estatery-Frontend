@@ -1,23 +1,25 @@
 "use client";
 
 /**
- * Signup form – username, email, password, phone (API-aligned).
- * Estatery web app is admin-only; user_type is always "admin".
+ * Signup form – username, email, password, phone, account type (API-aligned).
+ * Admin app can register admin or property owner accounts.
  * API: POST /api/auth/register/ with username, email, password, user_type, optional phone.
  */
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { TermsPrivacyModal } from "@/components/legal/TermsPrivacyModal";
 
 const EMAIL_ERROR_MESSAGE = "The email address you entered is wrong!";
 const USERNAME_REQUIRED_MESSAGE = "Username is required!";
 const PASSWORD_REQUIRED_MESSAGE = "Password is required!";
+const TERMS_REQUIRED_MESSAGE = "Please read and accept the Terms & Conditions and Privacy Policy.";
 
 /** Check if email matches standard format (user@domain.tld) */
 function validateEmail(email: string): boolean {
@@ -37,11 +39,14 @@ function isWrongEmail(email: string): boolean {
 export function SignupForm() {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const [userType, setUserType] = React.useState<"admin" | "owner">("admin");
   const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [keepLoggedIn, setKeepLoggedIn] = React.useState(false);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [termsError, setTermsError] = React.useState<string | null>(null);
+  const [termsModalOpen, setTermsModalOpen] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [emailError, setEmailError] = React.useState<string | null>(null);
   const [usernameError, setUsernameError] = React.useState<string | null>(null);
@@ -79,6 +84,13 @@ export function SignupForm() {
       setPasswordError(null);
     }
 
+    if (!acceptedTerms) {
+      setTermsError(TERMS_REQUIRED_MESSAGE);
+      hasError = true;
+    } else {
+      setTermsError(null);
+    }
+
     if (hasError) return;
 
     setLoading(true);
@@ -86,13 +98,15 @@ export function SignupForm() {
       username: username.trim(),
       email: email.trim(),
       password,
-      user_type: "admin",
+      user_type: userType,
       phone: phone.trim() || undefined,
     });
     setLoading(false);
 
     if (result.success) {
-      navigate("/auth/login");
+      navigate("/auth/verify-otp", {
+        state: { email: email.trim(), flow: "verify_email" as const },
+      });
     } else {
       setSubmitError(result.error ?? "Registration failed.");
     }
@@ -219,6 +233,21 @@ export function SignupForm() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="userType" className="text-black">
+              Account Type <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="userType"
+              value={userType}
+              onChange={(e) => setUserType(e.target.value as "admin" | "owner")}
+              className="w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[var(--logo)]"
+            >
+              <option value="admin">Admin</option>
+              <option value="owner">Property Owner</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="phone" className="text-black">
               Phone <span className="text-[#94a3b8]">(optional)</span>
             </Label>
@@ -284,25 +313,55 @@ export function SignupForm() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="space-y-2 rounded-lg border border-[#e5e7eb] bg-[#fafafa] p-4">
+            <div className="flex gap-3">
               <Checkbox
                 id="terms"
-                checked={keepLoggedIn}
-                onCheckedChange={(checked) =>
-                  setKeepLoggedIn(checked === true)
-                }
-                aria-describedby="terms-label"
-                className="border-[#d1d5db] bg-white"
+                checked={acceptedTerms}
+                onCheckedChange={(checked) => {
+                  setAcceptedTerms(checked === true);
+                  if (checked === true) setTermsError(null);
+                }}
+                aria-invalid={!!termsError}
+                aria-describedby="terms-label terms-hint"
+                className="mt-0.5 border-[#d1d5db] bg-white"
               />
-              <Label
-                id="terms-label"
-                htmlFor="terms"
-                className="cursor-pointer text-sm font-normal text-black"
-              >
-                I agree to the terms
-              </Label>
+              <div className="min-w-0 flex-1 space-y-1">
+                <Label id="terms-label" htmlFor="terms" className="cursor-pointer text-sm font-normal leading-snug text-black">
+                  I have read and agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsModalOpen(true);
+                    }}
+                    className="font-medium text-[var(--logo)] underline decoration-[var(--logo)]/40 underline-offset-2 hover:decoration-[var(--logo)]"
+                  >
+                    Terms &amp; Conditions and Privacy Policy
+                  </button>
+                  .
+                </Label>
+                <p id="terms-hint" className="flex flex-wrap items-center gap-x-2 text-xs text-[#6b7280]">
+                  <Link
+                    to="/legal/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-[var(--logo)] hover:underline"
+                  >
+                    Open full policy in a new tab
+                    <ExternalLink className="size-3.5 shrink-0 opacity-80" aria-hidden />
+                  </Link>
+                </p>
+                {termsError ? (
+                  <p role="alert" className="text-sm font-medium text-red-600">
+                    {termsError}
+                  </p>
+                ) : null}
+              </div>
             </div>
+          </div>
+
+          <div className="flex justify-end">
             <Link
               to="/auth/login"
               className="text-sm font-medium text-[var(--logo)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--logo)] focus:ring-offset-2 rounded"
@@ -316,7 +375,7 @@ export function SignupForm() {
             disabled={loading}
             className={cn(
               "w-full rounded-lg text-white",
-              (usernameError || emailError || passwordError)
+              usernameError || emailError || passwordError || termsError
                 ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 : hasTyped
                   ? "bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
@@ -327,6 +386,8 @@ export function SignupForm() {
             {loading ? "Registering…" : "Register"}
           </Button>
         </form>
+
+        <TermsPrivacyModal open={termsModalOpen} onClose={() => setTermsModalOpen(false)} />
       </div>
     </div>
   );

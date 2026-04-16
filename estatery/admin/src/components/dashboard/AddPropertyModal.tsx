@@ -1,9 +1,7 @@
 "use client";
 
 /**
- * Multi-step Add Property modal (5 steps).
- * Collects: basic info, location, details, media, contact.
- * Calls onPropertyAdded when complete; ID is assigned by PropertiesContext.
+ * Multi-step Add Property modal — fields aligned with PropertySerializer / Property model.
  */
 import * as React from "react";
 import { X } from "lucide-react";
@@ -21,134 +19,163 @@ import { cn } from "@/lib/utils";
 import type { Property } from "@/lib/properties";
 import { PROPERTY_TYPES, LISTING_TYPES } from "@/lib/properties";
 import { createProperty } from "@/lib/api-client";
-import { AddPropertyLocationStep } from "./AddProperty2";
+import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
 import { AddPropertyMediaStep } from "./AddProperty4";
-import { AddPropertyContactStep } from "./AddProperty5";
+import { AddPropertyRentalStep, type AddPropertyRentalForm } from "./AddProperty5";
 
-
-/** Step labels for the 5-step add property flow */
 const STEPS = [
   { id: 1, label: "Basic Information" },
-  { id: 2, label: "Location Details" },
+  { id: 2, label: "Location" },
   { id: 3, label: "Property Details" },
-  { id: 4, label: "Photos & Media" },
-  { id: 5, label: "Contact Information" },
+  { id: 4, label: "Photos" },
+  { id: 5, label: "Rental & amenities" },
 ] as const;
+
+const RENTAL_MIN_MONTHS: Record<string, number> = {
+  "6 months": 6,
+  "1 year": 12,
+  "2 years": 24,
+  "3 years": 36,
+};
+
+const defaultRentalForm = (): AddPropertyRentalForm => ({
+  currency: "ghs",
+  monthly_cycle_start: 1,
+  security_deposit_months: 2,
+  max_stay_months: "",
+  has_wifi: false,
+  has_parking: false,
+  has_pool: false,
+  has_gym: false,
+  is_furnished: false,
+  has_kitchen: true,
+});
 
 type AddPropertyModalProps = {
   open: boolean;
   onClose: () => void;
-  onPropertyAdded?: (property: Omit<Property, "id">) => void;
+  /** Called after a successful API create — refetch listings in parent */
+  onPropertyAdded?: () => void;
 };
 
 export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddPropertyModalProps) {
   const [step, setStep] = React.useState(1);
-  const [title, setTitle] = React.useState("Modern 3-Bedroom Family Home in Suburban Area");
+  const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [descLength, setDescLength] = React.useState(50);
   const [propertyType, setPropertyType] = React.useState<Property["property_type"]>("house");
   const [listingType, setListingType] = React.useState<"rent" | "sale">("rent");
-  const [price, setPrice] = React.useState("₵350,000");
+  const [price, setPrice] = React.useState("");
   const [rentalPeriod, setRentalPeriod] = React.useState("1 year");
-  const [contactName, setContactName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [agent, setAgent] = React.useState("");
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
-  const [address, setAddress] = React.useState("");
-  const [city, setCity] = React.useState("");
-  const [country, setCountry] = React.useState("USA");
-  const [bedrooms, setBedrooms] = React.useState<number>(3);
-  const [bathrooms, setBathrooms] = React.useState<number>(2);
-  const [area, setArea] = React.useState<number>(2000);
-  const [imageUrl, setImageUrl] = React.useState<string>("/images/property-1.webp");
+  const [location, setLocation] = React.useState<LocationData>({ ...emptyLocation, country: "Ghana" });
+  const [bedrooms, setBedrooms] = React.useState(3);
+  const [bathrooms, setBathrooms] = React.useState(2);
+  const [area, setArea] = React.useState(2000);
+  const [imageUrl, setImageUrl] = React.useState("");
+  const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
+
+  const resetForm = React.useCallback(() => {
+    setStep(1);
+    setTitle("");
+    setDescription("");
+    setPropertyType("house");
+    setListingType("rent");
+    setPrice("");
+    setRentalPeriod("1 year");
+    setLocation({ ...emptyLocation, country: "Ghana" });
+    setBedrooms(3);
+    setBathrooms(2);
+    setArea(2000);
+    setImageUrl("");
+    setRentalForm(defaultRentalForm());
+    setSaveError(null);
+    setShowSaveDialog(false);
+  }, []);
+
+  const wasOpen = React.useRef(false);
+  React.useEffect(() => {
+    if (open && !wasOpen.current) resetForm();
+    wasOpen.current = open;
+  }, [open, resetForm]);
 
   const canContinue = () => {
     switch (step) {
       case 1:
-        return !!(
-          title.trim() &&
-          description.trim() &&
-          propertyType &&
-          listingType &&
-          price.trim() &&
-          (listingType === "rent" ? rentalPeriod : true)
-        );
+        return !!(title.trim() && description.trim() && price.trim());
       case 2:
-        return !!(address.trim() && city.trim() && country.trim());
+        return !!(location.address.trim() && location.city.trim() && location.country.trim());
       case 3:
-        return !!(bedrooms > 0 && bathrooms > 0 && area > 0);
+        return area > 0 && bedrooms > 0 && bathrooms > 0;
       case 4:
-        return !!imageUrl.trim();
+        return true;
       case 5:
-        return !!(contactName.trim() && phone.trim() && email.trim() && agent.trim());
+        return (
+          rentalForm.monthly_cycle_start >= 1 &&
+          rentalForm.monthly_cycle_start <= 28 &&
+          rentalForm.security_deposit_months >= 0
+        );
       default:
         return true;
     }
   };
 
-  /** Update description and track length (max 200 chars for step 1) */
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value;
-    setDescription(v);
-    setDescLength(Math.min(v.length, 200));
+    setDescription(e.target.value.slice(0, 200));
   };
 
-  /** Update a contact field (name, phone, email, agent) in step 5 */
-  const handleContactChange = (
-    field: "contactName" | "phone" | "email" | "agent",
-    value: string
-  ) => {
-    if (field === "contactName") setContactName(value);
-    if (field === "phone") setPhone(value);
-    if (field === "email") setEmail(value);
-    if (field === "agent") setAgent(value);
-  };
-
-  /** Build property payload, POST to API via createProperty, call onPropertyAdded on success */
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
-    const priceVal = price.replace(/\/month$/, "").trim().replace(/[^0-9.]/g, "") || "0";
-    const monthlyPrice = priceVal;
-    const dailyPrice = (parseFloat(priceVal) / 30).toFixed(2);
-    const minStay = listingType === "sale" ? 12 : rentalPeriod === "6 months" ? 6 : rentalPeriod === "2 years" ? 24 : 12;
+    const priceVal = price.replace(/[^\d.]/g, "") || "0";
+    const monthlyNum = parseFloat(priceVal);
+    const dailyPrice = (monthlyNum / 30.44).toFixed(2);
+    const minStay =
+      listingType === "sale"
+        ? 12
+        : (RENTAL_MIN_MONTHS[rentalPeriod] ?? 12);
+    let maxStay: number | undefined;
+    if (rentalForm.max_stay_months.trim()) {
+      const m = parseInt(rentalForm.max_stay_months, 10);
+      if (!Number.isNaN(m) && m > 0) maxStay = m;
+    }
 
     try {
-      const result = await createProperty({
-        title,
-        description: description || "No description",
-        address: address || "Address to be added",
-        city: city || "TBD",
-        country: country || "USA",
+      await createProperty({
+        title: title.trim(),
+        description: description.trim() || "—",
+        address: location.address.trim(),
+        city: location.city.trim(),
+        country: location.country.trim(),
+        state: location.state.trim() || "Optional",
+        zip_code: location.zip_code.trim() || undefined,
         property_type: propertyType,
         listing_type: listingType,
         daily_price: dailyPrice,
-        monthly_price: monthlyPrice,
-        currency: "ghs",
-        bedrooms: bedrooms ?? 0,
-        bathrooms: bathrooms ?? 0,
-        area: area ?? 0,
+        monthly_price: priceVal,
+        currency: rentalForm.currency,
+        bedrooms,
+        bathrooms,
+        area,
         min_stay_months: minStay,
+        max_stay_months: maxStay,
+        monthly_cycle_start: rentalForm.monthly_cycle_start,
+        security_deposit_months: rentalForm.security_deposit_months,
+        has_wifi: rentalForm.has_wifi,
+        has_parking: rentalForm.has_parking,
+        has_pool: rentalForm.has_pool,
+        has_gym: rentalForm.has_gym,
+        is_furnished: rentalForm.is_furnished,
+        has_kitchen: rentalForm.has_kitchen,
       });
 
-      const apiProperty = result.property as Property;
-      onPropertyAdded?.(apiProperty);
+      onPropertyAdded?.();
       setShowSaveDialog(false);
       onClose();
-      setStep(1);
-      setAddress("");
-      setCity("");
-      setCountry("USA");
-      setBedrooms(3);
-      setBathrooms(2);
-      setArea(2000);
-      setImageUrl("/images/property-1.webp");
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save property. Make sure you're logged in and the backend is running.");
+      setSaveError(err instanceof Error ? err.message : "Failed to save property.");
     } finally {
       setIsSaving(false);
     }
@@ -165,7 +192,6 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         aria-modal="true"
         aria-labelledby="add-property-title"
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
           <h2 id="add-property-title" className="text-xl font-semibold text-[#1e293b]">
             Add New Property
@@ -180,7 +206,6 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
           </button>
         </div>
 
-        {/* Step indicator */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[#e2e8f0] px-6 py-3">
           {STEPS.map((s, i) => (
             <React.Fragment key={s.id}>
@@ -188,9 +213,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                 <div
                   className={cn(
                     "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-medium",
-                    step === s.id
-                      ? "bg-[var(--logo)] text-white"
-                      : "bg-[#f1f5f9] text-[#64748b]"
+                    step === s.id ? "bg-[var(--logo)] text-white" : "bg-[#f1f5f9] text-[#64748b]"
                   )}
                 >
                   {s.id}
@@ -209,7 +232,6 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
           ))}
         </div>
 
-        {/* Step content */}
         <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
           {step === 1 && (
             <div className="space-y-5">
@@ -235,11 +257,11 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                   onChange={handleDescriptionChange}
                   maxLength={200}
                   rows={4}
-                  placeholder="Enter property description..."
+                  placeholder="Describe the listing"
                   className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] placeholder:text-[#94a3b8] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
                   required
                 />
-                <p className="text-right text-xs text-[#64748b]">{descLength}/200</p>
+                <p className="text-right text-xs text-[#64748b]">{description.length}/200</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="listing-type" className="text-[#1e293b]">
@@ -278,21 +300,24 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               <div className={`grid gap-4 ${listingType === "sale" ? "grid-cols-1" : "grid-cols-2"}`}>
                 <div className="space-y-2">
                   <Label htmlFor="price" className="text-[#1e293b]">
-                    {listingType === "sale" ? "Price (₵)" : "Monthly Price (₵)"} <span className="text-red-500">*</span>
+                    {listingType === "sale" ? "Price" : "Monthly rent"} <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="price"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="₵2,500"
+                    placeholder="3500"
                     className="border-[#e2e8f0] bg-white text-[#1e293b]"
                     required
                   />
+                  <p className="text-xs text-[#64748b]">
+                    Numbers only (amount in selected currency). Daily rate is derived for the API (÷ 30.44).
+                  </p>
                 </div>
                 {listingType !== "sale" && (
                   <div className="space-y-2">
                     <Label htmlFor="rental-period" className="text-[#1e293b]">
-                      Min Stay <span className="text-red-500">*</span>
+                      Min stay <span className="text-red-500">*</span>
                     </Label>
                     <Select value={rentalPeriod} onValueChange={setRentalPeriod}>
                       <SelectTrigger id="rental-period" className="border-[#e2e8f0] bg-white text-[#1e293b]">
@@ -310,17 +335,14 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               </div>
             </div>
           )}
-          {/* Step 2: Location Details (API: address, city, country) */}
           {step === 2 && (
             <AddPropertyLocationStep
-              address={address}
-              city={city}
-              country={country}
-              onLocationChange={(data) => {
-                setAddress(data.address);
-                setCity(data.city);
-                setCountry(data.country);
-              }}
+              address={location.address}
+              city={location.city}
+              country={location.country}
+              state={location.state}
+              zip_code={location.zip_code}
+              onLocationChange={setLocation}
             />
           )}
           {step === 3 && (
@@ -333,24 +355,10 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               onAreaChange={setArea}
             />
           )}
-          {step === 4 && (
-            <AddPropertyMediaStep
-              imageUrl={imageUrl}
-              onImageChange={setImageUrl}
-            />
-          )}
-          {step === 5 && (
-            <AddPropertyContactStep
-              contactName={contactName}
-              phone={phone}
-              email={email}
-              agent={agent}
-              onChange={handleContactChange}
-            />
-          )}
+          {step === 4 && <AddPropertyMediaStep imageUrl={imageUrl} onImageChange={setImageUrl} />}
+          {step === 5 && <AddPropertyRentalStep value={rentalForm} onChange={setRentalForm} />}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-between border-t border-[#e2e8f0] px-6 py-4">
           <div>
             {step > 1 && (
@@ -377,11 +385,8 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               type="button"
               disabled={!canContinue()}
               onClick={() => {
-                if (step < STEPS.length) {
-                  setStep(step + 1);
-                } else {
-                  setShowSaveDialog(true);
-                }
+                if (step < STEPS.length) setStep(step + 1);
+                else setShowSaveDialog(true);
               }}
               className="bg-[var(--logo)] text-white shadow-sm transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
@@ -391,15 +396,13 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         </div>
 
         {showSaveDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
             <div className="rounded-2xl bg-white px-8 py-7 text-center shadow-xl">
               <div className="mx-auto mb-4 flex size-10 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[var(--logo)]">
                 <span className="text-lg">!</span>
               </div>
-              <h3 className="mb-1 text-lg font-semibold text-[#1e293b]">Save Your Changes?</h3>
-              <p className="mb-6 text-sm text-[#64748b]">
-                You&apos;ve made some changes. Make sure to save them before you leave.
-              </p>
+              <h3 className="mb-1 text-lg font-semibold text-[#1e293b]">Create listing?</h3>
+              <p className="mb-6 text-sm text-[#64748b]">This will submit the property to your backend as the logged-in host.</p>
               {saveError && (
                 <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>
               )}
@@ -419,7 +422,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                   onClick={handleSave}
                   className="bg-[var(--logo)] text-white shadow-md transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95"
                 >
-                  {isSaving ? "Saving..." : "Yes, Save"}
+                  {isSaving ? "Saving…" : "Create property"}
                 </Button>
               </div>
             </div>

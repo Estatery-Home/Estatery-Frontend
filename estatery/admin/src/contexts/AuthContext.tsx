@@ -2,61 +2,153 @@
 
 /**
  * AuthContext – Authentication via backend API.
- * Login/register call POST /api/auth/login/ and /api/auth/register/.
- * Token stored in estatery-access (used by api-client), user in estatery-user.
+ * Login stores access + refresh + last-activity. On startup: idle timeout and JWT refresh
+ * via POST /api/auth/token/refresh/ so expired access or long idle sends users to login.
  */
 import * as React from "react";
-import { api, apiHeaders } from "@/lib/api-client";
+import { api, apiHeaders, fetchProfile, getAccessToken } from "@/lib/api-client";
 import type { User, AuthResponse } from "@/lib/api-types";
+import {
+  AUTH_ACCESS_KEY,
+  AUTH_REFRESH_KEY,
+  AUTH_USER_KEY,
+  clearAuthStorage,
+  getSessionIdleMs,
+  isAccessTokenExpired,
+  isIdleExceeded,
+  readStoredAuth,
+  refreshAccessToken,
+  touchLastActivity,
+} from "@/lib/auth-session";
 
-
-// AuthContextValue to be used in the app to access the auth context values  
 type AuthContextValue = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { username: string; email: string; password: string; user_type: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  register: (data: {
+    username: string;
+    email: string;
+    password: string;
+    user_type: string;
+    phone?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Reload user from GET /api/auth/profile/ (e.g. after updating social links). */
+  refreshUser: () => Promise<void>;
 };
 
-// AuthContext to be used in the app to access the auth context values 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-// AUTH_KEY to be used in the app to store the authentication token
-const AUTH_KEY = "estatery-access";
-// USER_KEY to be used in the app to store the user data
-const USER_KEY = "estatery-user";
+const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart", "scroll", "click"] as const;
+const ACTIVITY_THROTTLE_MS = 30_000;
+const IDLE_CHECK_INTERVAL_MS = 60_000;
+const ADMIN_ALLOWED_ROLES = new Set(["admin", "owner"]);
 
-/** Read user and token from localStorage. Returns null if missing or invalid. */
-function getStoredAuth(): { user: User; token: string } | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    const userRaw = localStorage.getItem(USER_KEY);
-    if (!raw || !userRaw) return null;
-    const user = JSON.parse(userRaw) as User;
-    return { user, token: raw };
-  } catch {
+async function restoreSession(): Promise<User | null> {
+  const stored = readStoredAuth();
+  if (!stored) return null;
+  if (!ADMIN_ALLOWED_ROLES.has(stored.user?.user_type)) {
+    clearAuthStorage();
     return null;
   }
+
+  const idleMs = getSessionIdleMs();
+  if (isIdleExceeded(stored.lastActivity, idleMs)) {
+    clearAuthStorage();
+    return null;
+  }
+
+  let access = stored.access;
+  if (isAccessTokenExpired(access)) {
+    if (!stored.refresh) {
+      clearAuthStorage();
+      return null;
+    }
+    const next = await refreshAccessToken(stored.refresh);
+    if (!next) {
+      clearAuthStorage();
+      return null;
+    }
+    access = next.access;
+    try {
+      localStorage.setItem(AUTH_ACCESS_KEY, access);
+      if (next.refresh) localStorage.setItem(AUTH_REFRESH_KEY, next.refresh);
+    } catch {
+      clearAuthStorage();
+      return null;
+    }
+  }
+
+  touchLastActivity();
+  return stored.user;
 }
 
-// AuthProvider to be used in the app to provide the auth context values to the app and to access the auth context values in the app
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const lastThrottleRef = React.useRef(0);
 
   React.useEffect(() => {
-    const stored = getStoredAuth();
-    if (stored) {
-      setUser(stored.user);
-    }
-    setIsLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const restored = await restoreSession();
+        if (!cancelled) setUser(restored);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Login function to be used in the app to login the user with the backend API and display the error message to the user if the login fails
+  /** Throttled activity → extends idle window while using the app */
+  const bumpActivityThrottled = React.useCallback(() => {
+    if (!user) return;
+    const now = Date.now();
+    if (now - lastThrottleRef.current < ACTIVITY_THROTTLE_MS) return;
+    lastThrottleRef.current = now;
+    touchLastActivity();
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const onActivity = () => bumpActivityThrottled();
+    for (const ev of ACTIVITY_EVENTS) {
+      window.addEventListener(ev, onActivity, { passive: true });
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const stored = readStoredAuth();
+        if (stored && isIdleExceeded(stored.lastActivity, getSessionIdleMs())) {
+          clearAuthStorage();
+          setUser(null);
+          return;
+        }
+        bumpActivityThrottled();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    const interval = window.setInterval(() => {
+      const stored = readStoredAuth();
+      if (!stored) return;
+      if (isIdleExceeded(stored.lastActivity, getSessionIdleMs())) {
+        clearAuthStorage();
+        setUser(null);
+      }
+    }, IDLE_CHECK_INTERVAL_MS);
+    return () => {
+      for (const ev of ACTIVITY_EVENTS) {
+        window.removeEventListener(ev, onActivity);
+      }
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(interval);
+    };
+  }, [user, bumpActivityThrottled]);
+
   const login = React.useCallback(
     async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
       try {
@@ -74,7 +166,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: `Backend error (${res.status}). Is the Django server running? Start it with: npm run dev:backend`,
           };
         }
-        // Login failed with error message to be displayed to the user if the login fails
         if (!res.ok) {
           const msg =
             (data.username as string[])?.[0] ??
@@ -84,25 +175,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: msg };
         }
         const auth = data as AuthResponse;
+        if (!ADMIN_ALLOWED_ROLES.has(auth.user.user_type)) {
+          clearAuthStorage();
+          return {
+            success: false,
+            error: "This account is customer-only. Please use the customer login portal.",
+          };
+        }
         setUser(auth.user);
-        localStorage.setItem(AUTH_KEY, auth.access);
-        localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
+        try {
+          localStorage.setItem(AUTH_ACCESS_KEY, auth.access);
+          if (auth.refresh) localStorage.setItem(AUTH_REFRESH_KEY, auth.refresh);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(auth.user));
+          touchLastActivity();
+        } catch {
+          clearAuthStorage();
+          setUser(null);
+          return { success: false, error: "Could not save session in browser storage." };
+        }
         return { success: true };
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : "";
-        const hint = errMsg.includes("fetch") || errMsg.includes("Failed")
-          ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
-          : "Network error. Is the backend running at http://localhost:8000?";
+        const hint =
+          errMsg.includes("fetch") || errMsg.includes("Failed")
+            ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
+            : "Network error. Is the backend running at http://localhost:8000?";
         return { success: false, error: hint };
       }
     },
     []
   );
 
-
-// Register function to be used in the app to register the user with the backend API and display the error message to the user if the registration fails
   const register = React.useCallback(
-    async (data: { username: string; email: string; password: string; user_type: string; phone?: string }): Promise<{ success: boolean; error?: string }> => {
+    async (data: {
+      username: string;
+      email: string;
+      password: string;
+      user_type: string;
+      phone?: string;
+    }): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch(api.endpoints.register, {
           method: "POST",
@@ -118,7 +229,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: `Backend error (${res.status}). Is the Django server running? Start it with: npm run dev:backend`,
           };
         }
-        // Registration failed with error message to be displayed to the user if the registration fails 
         if (!res.ok) {
           const fieldErrors = Object.entries(responseData)
             .filter(([, v]) => Array.isArray(v) && (v as unknown[]).length > 0)
@@ -129,39 +239,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: fieldErrors || (responseData.detail as string) || "Registration failed, check your details and try again",
           };
         }
-        // Signup success – do NOT log in; user must go to login page to login after registration
         return { success: true };
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : "";
-        const hint = errMsg.includes("fetch") || errMsg.includes("Failed")
-          ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
-          : "Network error. Is the backend running at http://localhost:8000?";
+        const hint =
+          errMsg.includes("fetch") || errMsg.includes("Failed")
+            ? "Cannot reach backend. Start it with: npm run dev:backend (or: cd backend/home_backend && python manage.py runserver)"
+            : "Network error. Is the backend running at http://localhost:8000?";
         return { success: false, error: hint };
       }
     },
     []
   );
 
-// Logout function to be used in the app to logout the user
-  const logout = React.useCallback(() => {
-    setUser(null);
+  const refreshUser = React.useCallback(async () => {
     try {
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem("estatery-user-profile");
-    } catch {}
+      const u = await fetchProfile();
+      if (!u) return;
+      setUser(u);
+      try {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* keep existing user */
+    }
   }, []);
 
-  // Change password function to be used in the app to change the password
+  const logout = React.useCallback(async () => {
+    try {
+      if (typeof window !== "undefined" && getAccessToken()) {
+        await fetch(api.endpoints.logout, {
+          method: "POST",
+          headers: apiHeaders(true),
+        });
+      }
+    } catch {
+      /* still clear client session if backend is unreachable */
+    } finally {
+      setUser(null);
+      clearAuthStorage();
+    }
+  }, []);
+
   const changePassword = React.useCallback(async (currentPassword: string, newPassword: string) => {
-    // TODO: wire to backend change-password when available
+    void currentPassword;
     try {
       if (typeof window !== "undefined") {
         window.localStorage.setItem("estatery-password", newPassword);
       }
-    } catch {} 
+    } catch {
+      /* ignore */
+    }
   }, []);
-// AuthContextValue provider to be used in the app to access the auth context values 
+
   const value = React.useMemo<AuthContextValue>(
     () => ({
       user,
@@ -171,8 +303,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       changePassword,
+      refreshUser,
     }),
-    [user, isLoading, login, register, logout, changePassword]
+    [user, isLoading, login, register, logout, changePassword, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

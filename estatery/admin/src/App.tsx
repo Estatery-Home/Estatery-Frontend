@@ -5,8 +5,9 @@
  * Public routes (welcome, login, signup) vs protected routes (dashboard, etc.).
  */
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { PropertiesProvider } from "@/contexts/PropertiesContext";
@@ -14,30 +15,30 @@ import { PublicRoute, ProtectedRoute } from "@/components";
 
 // Lazy-load screens – only the current route loads, reducing initial bundle size
 // Each import() returns a promise that resolves to the module when the route is visited
-const Login = lazy(() => import("@/screens/auth/Login"));
-const Signup = lazy(() => import("@/screens/auth/Signup"));
-const ForgotPassword = lazy(() => import("@/screens/auth/forgotPassword"));
-const VerifyOTP = lazy(() => import("@/screens/auth/VerifyOTP"));
-const CreateNewPassword = lazy(() => import("@/screens/auth/CreateNewPassword"));
+const Login = lazy(() => import("@/screens/auth").then((m) => ({ default: m.Login })));
+const Signup = lazy(() => import("@/screens/auth").then((m) => ({ default: m.Signup })));
+const ForgotPassword = lazy(() => import("@/screens/auth").then((m) => ({ default: m.ForgotPassword })));
+const VerifyOTP = lazy(() => import("@/screens/auth").then((m) => ({ default: m.VerifyOTP })));
+const CreateNewPassword = lazy(() => import("@/screens/auth").then((m) => ({ default: m.CreateNewPassword })));
 const Dashboard = lazy(() => import("@/screens/Dashboard"));
-const PropertyDetail = lazy(() => import("@/screens/dashboard/PropertyDetail"));
-const PropertiesList = lazy(() => import("@/screens/dashboard/PropertiesList"));
-const Notifications = lazy(() => import("@/screens/dashboard/Notifications"));
-const NotificationDetail = lazy(() => import("@/screens/dashboard/NotificationDetail"));
+const PropertyDetail = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.PropertyDetail })));
+const PropertiesList = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.PropertiesList })));
+const Notifications = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Notifications })));
+const NotificationDetail = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.NotificationDetail })));
 const DashboardLayout = lazy(() => import("@/components/dashboard").then((m) => ({ default: m.DashboardLayout })));
-const Settings = lazy(() => import("@/screens/settings/settings"));
-const Clients = lazy(() => import("@/screens/clients/clients"));
-const ClientDetail = lazy(() => import("@/screens/clients/ClientDetail"));
-const Messages = lazy(() => import("@/screens/dashboard/Messages"));
-const Calendar = lazy(() => import("@/screens/dashboard/Calendar"));
-const Leads = lazy(() => import("@/screens/dashboard/Leads"));
-const Discounts = lazy(() => import("@/screens/dashboard/Discounts"));
-const Transactions = lazy(() => import("@/screens/dashboard/Transactions"));
-const Analytics = lazy(() => import("@/screens/dashboard/Analytics"));
-const Agents = lazy(() => import("@/screens/dashboard/Agents"));
-const HelpCenter = lazy(() => import("@/screens/dashboard/HelpCenter"));
-const Feedback = lazy(() => import("@/screens/dashboard/Feedback"));
-const Welcome = lazy(() => import("@/screens/Welcome"));
+const Settings = lazy(() => import("@/screens/settings").then((m) => ({ default: m.Settings })));
+const Clients = lazy(() => import("@/screens/clients").then((m) => ({ default: m.Clients })));
+const ClientDetail = lazy(() => import("@/screens/clients").then((m) => ({ default: m.ClientDetail })));
+const Messages = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Messages })));
+const Calendar = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Calendar })));
+const Bookings = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Bookings })));
+const Discounts = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Discounts })));
+const Transactions = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Transactions })));
+const Analytics = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Analytics })));
+const Agents = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Agents })));
+const HelpCenter = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.HelpCenter })));
+const Feedback = lazy(() => import("@/screens/dashboard/index").then((m) => ({ default: m.Feedback })));
+const TermsPage = lazy(() => import("@/screens/legal").then((m) => ({ default: m.TermsPage })));
 const NotFound = lazy(() => import("@/screens/NotFound"));
 
 /**
@@ -65,6 +66,7 @@ export default function App() {
   // Then BrowserRouter for routing, Suspense for lazy-load fallback, Routes for path matching
   return (
     <AuthProvider>
+      <NotificationsProvider>
       <UserProfileProvider>
         <SettingsProvider>
         <PropertiesProvider>
@@ -128,6 +130,7 @@ export default function App() {
                   </PublicRoute>
                 }
               />
+              <Route path="/legal/terms" element={<TermsPage />} />
 
               <Route
                 path="/dashboard"
@@ -218,13 +221,14 @@ export default function App() {
                 }
               />
               <Route
-                path="/dashboard/leads"
+                path="/dashboard/bookings"
                 element={
                   <ProtectedRoute>
-                    <Leads />
+                    <Bookings />
                   </ProtectedRoute>
                 }
               />
+              <Route path="/dashboard/leads" element={<Navigate to="/dashboard/bookings" replace />} />
               <Route
                 path="/dashboard/transactions"
                 element={
@@ -284,6 +288,7 @@ export default function App() {
         </PropertiesProvider>
         </SettingsProvider>
       </UserProfileProvider>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

@@ -11,7 +11,7 @@ import { AddPropertyModal } from "./AddPropertyModal";
 
 export function AddPropertyFab() {
   const [open, setOpen] = React.useState(false);
-  const { addProperty } = useProperties();
+  const { refetchProperties } = useProperties();
 
   return (
     <>
@@ -29,7 +29,7 @@ export function AddPropertyFab() {
         <AddPropertyModal
           open={open}
           onClose={() => setOpen(false)}
-          onPropertyAdded={addProperty}
+          onPropertyAdded={() => void refetchProperties()}
         />
       )}
     </>

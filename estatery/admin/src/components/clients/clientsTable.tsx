@@ -12,14 +12,19 @@ import { Pagination } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { clientsTableData, type ClientRow, type ClientStatus } from "@/lib/clients";
+import { cn, formatDashboardCurrency } from "@/lib/utils";
+import { type ClientRow, type ClientStatus } from "@/lib/clients";
 
 type SortField = "name" | "amount" | "nextPayment";
 
 const PAGE_SIZE = 8;
 
-export function ClientsTable() {
+export type ClientsTableProps = {
+  rows: ClientRow[];
+  loading?: boolean;
+};
+
+export function ClientsTable({ rows, loading }: ClientsTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"all" | ClientStatus>("all");
@@ -27,10 +32,12 @@ export function ClientsTable() {
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [page, setPage] = React.useState(1);
-  const [clientsData, setClientsData] = React.useState<ClientRow[]>(() =>
-    clientsTableData.map((c) => ({ ...c }))
-  );
+  const [clientsData, setClientsData] = React.useState<ClientRow[]>(rows);
   const [selectedClient, setSelectedClient] = React.useState<ClientRow | null>(null);
+
+  React.useEffect(() => {
+    setClientsData(rows.map((c) => ({ ...c })));
+  }, [rows]);
 
   const filteredAndSorted = React.useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -141,7 +148,10 @@ export function ClientsTable() {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[15px] font-bold text-slate-900">Clients Ledger</h2>
+        <h2 className="text-[15px] font-bold text-slate-900">
+          Clients Ledger
+          {loading && <span className="ml-2 text-xs font-normal text-slate-400">(loading…)</span>}
+        </h2>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-3 w-full sm:w-auto mt-2 sm:mt-0">
           <div className="relative w-full sm:max-w-xs shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -261,18 +271,16 @@ export function ClientsTable() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-right align-middle text-[14px] font-bold tracking-tight text-slate-900">
-                    {client.amount.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "GHS",
-                      minimumFractionDigits: 0,
-                    })}
+                    {formatDashboardCurrency(client.currency ?? "ghs", client.amount)}
                   </td>
                   <td className="px-4 py-3.5 align-middle font-semibold text-slate-500">
-                    {new Date(client.nextPayment).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {client.nextPayment
+                      ? new Date(client.nextPayment).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "—"}
                   </td>
                   <td className="px-4 py-3.5 align-middle">
                     <span

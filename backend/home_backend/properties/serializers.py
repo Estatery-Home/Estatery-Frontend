@@ -1,12 +1,14 @@
 from rest_framework import serializers
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, F
 from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
 from users.serializers import UserSerializer
 from django.utils import timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime
 
 from .promo import (
+    active_promos_for_property,
     combined_discount_percent,
     final_total_with_promo,
     get_promo_by_code,
@@ -138,9 +140,13 @@ class PropertyDetailSerializer(PropertySerializer):
     bookings = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    active_discounts = serializers.SerializerMethodField()
     
     class Meta(PropertySerializer.Meta):
-        fields = PropertySerializer.Meta.fields + ('bookings', 'reviews', 'average_rating')
+        fields = PropertySerializer.Meta.fields + (
+            'bookings', 'reviews', 'average_rating', 'review_count', 'active_discounts',
+        )
     
     def get_bookings(self, obj):
         # Only show future bookings for availability
@@ -159,8 +165,34 @@ class PropertyDetailSerializer(PropertySerializer):
         avg = obj.reviews.aggregate(avg=Avg('rating'))['avg']
         return round(avg, 1) if avg else None
 
+    def get_review_count(self, obj):
+        return obj.reviews.count()
+
+    def get_active_discounts(self, obj):
+        qs = active_promos_for_property(obj)
+        return PromoCodePublicSerializer(qs, many=True).data
+
 
 # ============ PROMO CODE (admin + validate) ============
+class PromoCodePublicSerializer(serializers.ModelSerializer):
+    """Public promo listing for a property (no redemption stats)."""
+
+    class Meta:
+        model = PromoCode
+        fields = (
+            'id',
+            'code',
+            'description',
+            'discount_type',
+            'discount_value',
+            'valid_from',
+            'valid_until',
+            'min_booking_months',
+            'applies_to_property',
+        )
+        read_only_fields = fields
+
+
 class PromoCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PromoCode
@@ -212,46 +244,105 @@ class BookingSerializer(serializers.ModelSerializer):
     property_title = serializers.CharField(source='rented_property.title', read_only=True)
     property_address = serializers.CharField(source='rented_property.address', read_only=True)
     property_image = serializers.SerializerMethodField()
+    review_id = serializers.SerializerMethodField(read_only=True)
+    can_review = serializers.SerializerMethodField(read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     applied_promo_code = serializers.CharField(source='promo.code', read_only=True, allow_null=True)
 
-    # Writeable fields for creation
+    # API field `property` maps to model FK `rented_property`
     property = serializers.PrimaryKeyRelatedField(
-        source='rented_property',
         queryset=Property.objects.filter(status='available'),
+        source='rented_property',
     )
-    
+
     class Meta:
         model = Booking
         fields = (
-            'id', 'property', 'user',
-            'property_title', 'property_address', 'property_image',
-            'user_name', 'user_email',
-            'check_in', 'check_out', 'guests',
-            'promo_code', 'applied_promo_code',
-            'status', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at',
-            'deposit_refunded', 'deposit_refunded_at',
+            'id',
+            'property',
+            'user',
+            'check_in',
+            'check_out',
+            'guests',
+            'booking_type',
+            'promo_code',
+            'applied_promo_code',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'agreed_monthly_rate',
+            'months_booked',
+            'total_price',
+            'security_deposit',
+            'discount_applied',
+            'emergency_contact',
+            'occupation',
+            'special_requests',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'review_id',
+            'can_review',
+            'user_name',
+            'user_email',
         )
         read_only_fields = (
-            'user', 'total_price', 'agreed_monthly_rate', 'months_booked',
-            'security_deposit', 'discount_applied', 'status', 'confirmed_at',
-            'cancelled_at', 'completed_at', 'created_at', 'updated_at',
-            'deposit_paid', 'deposit_paid_at', 'deposit_refunded', 'deposit_refunded_at',
-            'property_title', 'property_address', 'property_image',
-            'user_name', 'user_email',
+            'user',
+            'booking_type',
+            'total_price',
+            'agreed_monthly_rate',
+            'months_booked',
+            'security_deposit',
+            'discount_applied',
+            'status',
+            'rejection_reason',
+            'confirmed_at',
+            'cancelled_at',
+            'completed_at',
+            'created_at',
+            'updated_at',
+            'deposit_paid',
+            'deposit_paid_at',
+            'deposit_refunded',
+            'deposit_refunded_at',
+            'property_title',
+            'property_address',
+            'property_image',
+            'review_id',
+            'can_review',
+            'user_name',
+            'user_email',
             'applied_promo_code',
         )
-    
+
     def get_property_image(self, obj):
         primary = obj.rented_property.primary_image
         if primary:
             if hasattr(primary, 'image') and primary.image:
                 return primary.image.url
         return None
-    
+
+    def get_review_id(self, obj):
+        try:
+            return obj.review.pk
+        except ObjectDoesNotExist:
+            return None
+
+    def get_can_review(self, obj):
+        if obj.status != 'completed':
+            return False
+        return self.get_review_id(obj) is None
+
     def validate(self, attrs):
         request = self.context.get('request')
         
@@ -338,6 +429,14 @@ class BookingSerializer(serializers.ModelSerializer):
         discount = self.context.get('calculated_discount', 0)
         deposit = self.context.get('calculated_deposit', monthly_rate * 2)
 
+        # Match DB DecimalField(scale=2) before model full_clean() runs.
+        def _money(v):
+            return Decimal(v).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        monthly_rate = _money(monthly_rate)
+        total_price = _money(total_price)
+        deposit = _money(deposit)
+
         booking = Booking.objects.create(
             rented_property=validated_data['rented_property'],
             user=request.user,
@@ -373,6 +472,14 @@ class BookingSerializer(serializers.ModelSerializer):
         return instance
 
 
+class BookingRescheduleSerializer(serializers.Serializer):
+    """PATCH body for host/admin booking reschedule."""
+
+    check_in = serializers.DateField()
+    check_out = serializers.DateField()
+    guests = serializers.IntegerField(required=False, min_value=1, max_value=50)
+
+
 # ============ BOOKING CALENDAR SERIALIZER ============
 class BookingCalendarSerializer(serializers.ModelSerializer):
     """Minimal booking info for calendar display"""
@@ -387,6 +494,16 @@ class BookingCalendarSerializer(serializers.ModelSerializer):
 class HostBookingSerializer(BookingSerializer):
     """Extended booking serializer for property owners"""
 
+    property = serializers.PrimaryKeyRelatedField(
+        source='rented_property',
+        read_only=True,
+    )
+    property_title = serializers.CharField(source='rented_property.title', read_only=True)
+    property_address = serializers.CharField(source='rented_property.address', read_only=True)
+    property_image = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
     tenant_name = serializers.CharField(source='user.get_full_name', read_only=True)
     tenant_email = serializers.EmailField(source='user.email', read_only=True)
     tenant_phone = serializers.CharField(source='user.phone', read_only=True)
@@ -395,16 +512,34 @@ class HostBookingSerializer(BookingSerializer):
     class Meta(BookingSerializer.Meta):
         fields = BookingSerializer.Meta.fields + (
             'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at',
         )
-        read_only_fields = BookingSerializer.Meta.read_only_fields + (
-            'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
-            'rejection_reason', 'confirmed_at', 'cancelled_at',
-        )
-    
+
+    def get_property_image(self, obj):
+        primary = obj.rented_property.primary_image
+        if primary:
+            if hasattr(primary, 'image') and primary.image:
+                return primary.image.url
+        return None
+
     def get_payments(self, obj):
         payments = obj.payments.all().order_by('due_date')
         return BookingPaymentSerializer(payments, many=True).data
+
+
+class AdminBookingListSerializer(BookingSerializer):
+    """Platform-wide booking row for staff / admin dashboard (no nested payments)."""
+
+    property = serializers.PrimaryKeyRelatedField(source='rented_property', read_only=True)
+    host_name = serializers.SerializerMethodField()
+    host_email = serializers.EmailField(source='rented_property.owner.email', read_only=True)
+    property_city = serializers.CharField(source='rented_property.city', read_only=True)
+
+    class Meta(BookingSerializer.Meta):
+        fields = BookingSerializer.Meta.fields + ('host_name', 'host_email', 'property_city')
+
+    def get_host_name(self, obj):
+        owner = obj.rented_property.owner
+        return (owner.get_full_name() or '').strip() or owner.username
 
 
 # ============ BOOKING PAYMENT SERIALIZER ============
@@ -429,47 +564,61 @@ class BookingPaymentSerializer(serializers.ModelSerializer):
 # ============ PROPERTY REVIEW SERIALIZER ============
 class PropertyReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
-    user_avatar = serializers.ImageField(source='user.avatar', read_only=True)
-    
+    user_avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = PropertyReview
-        fields = '__all__'
-        read_only_fields = ('user', 'property', 'booking', 'created_at', 'updated_at', 'host_responded_at')
-    
-    def validate(self, attrs):
-        request = self.context.get('request')
-        
-        # For CREATE operations
-        if request and request.method == 'POST':
-            booking_id = self.context.get('booking_id')
-            
-            if not booking_id:
-                raise serializers.ValidationError("Booking ID is required")
-            
-            try:
-                booking = Booking.objects.get(id=booking_id)
-            except Booking.DoesNotExist:
-                raise serializers.ValidationError("Booking not found")
-            
-            # Check if user is the tenant
-            if booking.user != request.user:
-                raise serializers.ValidationError("You can only review your own bookings")
-            
-            # Check if booking is completed
-            if booking.status != 'completed':
-                raise serializers.ValidationError("You can only review completed stays")
-            
-            # Check if already reviewed
-            if hasattr(booking, 'review'):
-                raise serializers.ValidationError("This booking has already been reviewed")
-            
-            attrs['user'] = request.user
-            attrs['property'] = booking.rented_property
-            attrs['booking'] = booking
-        
-        return attrs
-    
+        fields = (
+            'id',
+            'rating',
+            'comment',
+            'user_name',
+            'user_avatar',
+            'host_response',
+            'host_responded_at',
+            'created_at',
+            'updated_at',
+            'user',
+            'property',
+            'booking',
+        )
+        read_only_fields = (
+            'id',
+            'user_name',
+            'user_avatar',
+            'host_response',
+            'host_responded_at',
+            'created_at',
+            'updated_at',
+            'user',
+            'property',
+            'booking',
+        )
+
+    def get_user_avatar(self, obj):
+        user = obj.user
+        if user.avatar:
+            return user.avatar.url
+        return None
+
     def create(self, validated_data):
+        request = self.context.get('request')
+        booking_id = self.context.get('booking_id')
+        if not booking_id:
+            raise serializers.ValidationError({"detail": "Booking ID is required"})
+        try:
+            booking = Booking.objects.get(id=booking_id)
+        except Booking.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Booking not found"})
+        if booking.user != request.user:
+            raise serializers.ValidationError({"detail": "You can only review your own bookings"})
+        if booking.status != 'completed':
+            raise serializers.ValidationError({"detail": "You can only review completed stays"})
+        if PropertyReview.objects.filter(booking=booking).exists():
+            raise serializers.ValidationError({"detail": "This booking has already been reviewed"})
+        validated_data['user'] = request.user
+        validated_data['property'] = booking.rented_property
+        validated_data['booking'] = booking
         return super().create(validated_data)
 
 
@@ -552,6 +701,11 @@ class CountryRowSerializer(serializers.Serializer):
     name = serializers.CharField()
 
 
+class LocaleChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
 class PromoValidateNestedSerializer(serializers.Serializer):
     discount_type = serializers.CharField()
     discount_value = serializers.CharField()
@@ -576,6 +730,11 @@ class HostDashboardSerializer(serializers.Serializer):
     bookings = serializers.JSONField()
     revenue = serializers.JSONField()
     recent_bookings = serializers.JSONField()
+    recent_payments = serializers.JSONField()
+    listings_chart = serializers.JSONField()
+    activity_chart = serializers.JSONField()
+    comparison = serializers.JSONField()
+    currency = serializers.CharField()
 
 
 class TenantDashboardSerializer(serializers.Serializer):
@@ -583,3 +742,8 @@ class TenantDashboardSerializer(serializers.Serializer):
     upcoming_payments = serializers.JSONField()
     next_booking = serializers.JSONField(allow_null=True)
     recent_bookings = serializers.JSONField()
+
+
+class CurrencyChoiceSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()

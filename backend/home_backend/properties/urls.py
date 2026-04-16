@@ -9,13 +9,22 @@ urlpatterns = [
     path('discounts/validate/', views.PromoCodeValidateView.as_view(), name='discount-validate'),
     path('admin/discounts/', views.AdminPromoCodeListCreateView.as_view(), name='admin-discount-list'),
     path('admin/discounts/<int:pk>/', views.AdminPromoCodeDetailView.as_view(), name='admin-discount-detail'),
+    path('admin/bookings/', views.AdminAllBookingsListView.as_view(), name='admin-bookings-list'),
+    path('admin/calendar/', views.AdminCalendarView.as_view(), name='admin-calendar'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
     path('properties/my/', views.MyPropertiesView.as_view(), name='my-properties'),
     path('currencies/', views.CurrencyChoicesView.as_view(), name='currency-choices'),
+    path('languages/', views.LanguageListView.as_view(), name='language-list'),
+    path('timezones/', views.TimeZoneListView.as_view(), name='timezone-list'),
     
     # === AVAILABILITY ===
+    path(
+        'properties/<int:pk>/discounts/',
+        views.PropertyActiveDiscountsView.as_view(),
+        name='property-active-discounts',
+    ),
     path('properties/<int:pk>/check-availability/', 
          views.PropertyAvailabilityCheckView.as_view(), 
          name='property-availability-check'),
@@ -27,12 +36,18 @@ urlpatterns = [
     path('bookings/', views.BookingCreateView.as_view(), name='booking-create'),
     path('bookings/my/', views.MyBookingsView.as_view(), name='my-bookings'),
     path('bookings/<int:pk>/', views.BookingDetailView.as_view(), name='booking-detail'),
+    path('bookings/<int:pk>/reschedule/', views.BookingRescheduleView.as_view(), name='booking-reschedule'),
     
     # === HOST BOOKINGS ===
     path('host/bookings/', views.HostBookingsView.as_view(), name='host-bookings'),
     path('host/bookings/<int:pk>/confirm/', 
          views.ConfirmBookingView.as_view(), 
          name='confirm-booking'),
+    path('host/clients/', views.HostClientsListView.as_view(), name='host-clients-list'),
+    path('host/clients/<int:user_id>/', views.HostClientDetailView.as_view(), name='host-client-detail'),
+    path('host/analytics/', views.HostAnalyticsView.as_view(), name='host-analytics'),
+    path('host/calendar/', views.HostCalendarView.as_view(), name='host-calendar'),
+    path('host/payments/', views.HostPaymentsListView.as_view(), name='host-payments-list'),
     
     # === PAYMENTS ===
     path('bookings/<int:pk>/payments/', 

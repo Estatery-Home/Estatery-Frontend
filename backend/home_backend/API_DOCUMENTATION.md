@@ -120,7 +120,157 @@ Invalidate current session (server-side session logout).
 
 ---
 
-### 1.4 Get / Update Profile
+### 1.4 Request password reset (send OTP)
+
+Sends a **6-digit** one-time code to the account email (hashed at rest). Codes expire after **10 minutes**; at most **5** wrong attempts are allowed per active challenge. Responses are generic so email addresses cannot be enumerated.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/request/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+
+**Response** `200 OK` (always the same message, whether or not the email exists):
+
+```json
+{
+  "message": "If an account exists for this email, a verification code was sent."
+}
+```
+
+In development, Django’s **console email backend** prints the message (including the code) to the server terminal. Configure `EMAIL_BACKEND` and `DEFAULT_FROM_EMAIL` in production for real delivery.
+
+---
+
+### 1.5 Verify password reset OTP
+
+Validates the code and returns a **signed `reset_token`** (valid **15 minutes**) used only for the confirm step.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/verify-otp/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `otp` | string | Yes (length 4–12; API issues 6 digits) |
+
+**Response** `200 OK`:
+
+```json
+{
+  "reset_token": "<signed_token>",
+  "message": "Verification successful. Submit a new password with this token."
+}
+```
+
+**Error** `400 Bad Request`:
+
+```json
+{ "detail": "Invalid or expired verification code." }
+```
+
+---
+
+### 1.6 Confirm password reset
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/password-reset/confirm/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `reset_token` | string | Yes (from verify-otp) |
+| `new_password` | string | Yes (min length 6) |
+
+**Response** `200 OK`:
+
+```json
+{
+  "message": "Password has been reset. You can sign in with your new password."
+}
+```
+
+**Error** `400 Bad Request`: `{"detail": "Invalid or expired reset token."}`
+
+---
+
+### 1.7 Request OTP (generic)
+
+Same OTP generation as password reset, with an explicit **`purpose`**. Only **`password_reset`** and **`verify_email`** are supported; both require an existing user with that email.
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/otp/request/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `purpose` | string | No (default: `password_reset`) — `password_reset` \| `verify_email` |
+
+**Response** `200 OK`:
+
+```json
+{ "message": "If this email is eligible, a verification code was sent." }
+```
+
+---
+
+### 1.8 Verify OTP (generic)
+
+| | |
+|---|---|
+| **Endpoint** | `POST /api/auth/otp/verify/` |
+| **Auth** | None (AllowAny) |
+
+**Request body:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string (email) | Yes |
+| `otp` | string | Yes |
+| `purpose` | string | Yes — `password_reset` \| `verify_email` |
+
+**Response** `200 OK` — for `verify_email`:
+
+```json
+{ "verified": true }
+```
+
+For `password_reset`, if verification succeeds:
+
+```json
+{
+  "verified": true,
+  "reset_token": "<signed_token>"
+}
+```
+
+Use `reset_token` with **`POST /api/auth/password-reset/confirm/`** to set the new password.
+
+**Error** `400 Bad Request`:
+
+```json
+{ "detail": "Invalid or expired verification code.", "verified": false }
+```
+
+---
+
+### 1.9 Get / Update Profile
 
 Retrieve or update the authenticated user's profile.
 
@@ -135,7 +285,7 @@ Retrieve or update the authenticated user's profile.
 
 ---
 
-### 1.5 Refresh Token
+### 1.10 Refresh Token
 
 Get a new access token using a valid refresh token.
 
@@ -562,6 +712,106 @@ Or for reject: `"message": "Booking rejected"`.
 
 ---
 
+### 5.3 Host calendar (aggregated booking nights)
+
+Bookings on the host’s properties, expanded to **one row per occupied night** (`check_in` ≤ night &lt; `check_out`). Useful for admin calendar UIs.
+
+| | |
+|---|---|
+| **Endpoint** | `GET /api/host/calendar/` |
+| **Auth** | Required (host) |
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start` | string (YYYY-MM-DD) | First calendar day to include (required) |
+| `end` | string (YYYY-MM-DD) | Last calendar day to include (required) |
+
+Statuses included: `pending`, `confirmed`, `active`, `completed` (excludes cancelled/rejected).
+
+**Response** `200 OK`:
+
+```json
+{
+  "events": [
+    {
+      "id": "42-2026-03-15",
+      "booking_id": 42,
+      "title": "Downtown Loft · Jane Doe",
+      "date": "2026-03-15",
+      "status": "confirmed",
+      "property_id": 3,
+      "property_title": "Downtown Loft",
+      "all_day": true
+    }
+  ]
+}
+```
+
+**Error** `400 Bad Request`: missing or invalid `start`/`end`, or `end` &lt; `start`.
+
+---
+
+### 5.4 Host payment schedule (all installments)
+
+All **BookingPayment** rows for bookings on the host’s properties (deposit + rent schedule). Suitable for a transactions / payouts screen; hosts mark items paid via `PATCH /api/payments/<id>/mark-paid/`.
+
+| | |
+|---|---|
+| **Endpoint** | `GET /api/host/payments/` |
+| **Auth** | Required (host) |
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | Optional. Comma-separated `BookingPayment` statuses, e.g. `pending` or `pending,overdue`. Omit for all. |
+| `page` | int | Page number (1-based). With `page_size`, max 200 per page; if only `page` is sent, `page_size` defaults to 50. |
+| `page_size` | int | Rows per page when using `page` (default 50 if `page` is set, max 200). |
+| `limit` | int | Legacy: when `page` / `page_size` are not used, sizes the first (and only implied) page (default 500, max 2000). |
+
+**Response** `200 OK`:
+
+```json
+{
+  "payments": [
+    {
+      "id": 1,
+      "booking": 10,
+      "payment_type": "rent",
+      "month_number": 2,
+      "amount": "1500.00",
+      "due_date": "2026-04-01",
+      "status": "pending",
+      "paid_date": null,
+      "transaction_id": "",
+      "property_title": "Downtown Loft",
+      "customer": "Jane Doe"
+    }
+  ],
+  "summary": {
+    "count": 1,
+    "paid": 0,
+    "pending": 1,
+    "overdue": 0,
+    "cancelled": 0,
+    "refunded": 0,
+    "outstanding_amount": "1500.00"
+  },
+  "page": 1,
+  "page_size": 12,
+  "total_count": 1,
+  "total_pages": 1
+}
+```
+
+`summary` counts and `outstanding_amount` (sum of amounts with status `pending` or `overdue`) apply to the **full result set after `status` filtering**, not only the current page.
+
+**Error** `400 Bad Request`: invalid `status` value.
+
+---
+
 ## 6. Payments
 
 ### 6.1 List Booking Payments
@@ -830,6 +1080,11 @@ Validation errors are returned as JSON, e.g.:
 | POST | `/api/auth/register/` | No | Register |
 | POST | `/api/auth/login/` | No | Login |
 | POST | `/api/auth/logout/` | Yes | Logout |
+| POST | `/api/auth/password-reset/request/` | No | Send password-reset OTP |
+| POST | `/api/auth/password-reset/verify-otp/` | No | Verify OTP → `reset_token` |
+| POST | `/api/auth/password-reset/confirm/` | No | Set new password with `reset_token` |
+| POST | `/api/auth/otp/request/` | No | Request OTP (`password_reset` / `verify_email`) |
+| POST | `/api/auth/otp/verify/` | No | Verify OTP (optional `reset_token` for password reset) |
 | GET/PUT/PATCH | `/api/auth/profile/` | Yes | Profile |
 | POST | `/api/auth/token/refresh/` | No | Refresh access token |
 | GET | `/api/properties/` | No | List properties |
@@ -847,6 +1102,8 @@ Validation errors are returned as JSON, e.g.:
 | PUT/PATCH | `/api/bookings/<id>/` | Yes (tenant) | Update booking |
 | DELETE | `/api/bookings/<id>/` | Yes (tenant) | Cancel booking |
 | GET | `/api/host/bookings/` | Yes (host) | Host bookings |
+| GET | `/api/host/calendar/` | Yes (host) | Host calendar (booking nights by date range) |
+| GET | `/api/host/payments/` | Yes (host) | Host booking payment schedule (all installments) |
 | PUT/PATCH | `/api/host/bookings/<id>/confirm/` | Yes (host) | Confirm/reject booking |
 | GET | `/api/bookings/<id>/payments/` | Yes (tenant/host) | List payments |
 | PUT/PATCH | `/api/payments/<id>/mark-paid/` | Yes (host) | Mark payment paid |

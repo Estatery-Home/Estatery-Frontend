@@ -6,7 +6,7 @@
  * API: POST /api/auth/login/ with username, password.
  */
 import * as React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { User, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ const USERNAME_ERROR_MESSAGE = "Username is required!";
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const bannerMessage = (location.state as { bannerMessage?: string } | null)?.bannerMessage;
   const { login } = useAuth();
   // Form field values
   const [username, setUsername] = React.useState("");
@@ -87,6 +89,11 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {bannerMessage && (
+            <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              {bannerMessage}
+            </div>
+          )}
           {submitError && (
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
               <AlertCircle className="size-4 shrink-0" />
