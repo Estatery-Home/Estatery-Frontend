@@ -28,34 +28,23 @@ RESET_TOKEN_MAX_AGE_SECONDS = 15 * 60
 def _purpose_from_api(value: str) -> str:
     if value == "password_reset":
         return OtpChallenge.Purpose.PASSWORD_RESET
-    return OtpChallenge.Purpose.VERIFY_EMAIL
+    if value == "verify_email":
+        return OtpChallenge.Purpose.VERIFY_EMAIL
+    raise ValueError("Invalid purpose")
 
 
 def _sign_password_reset(user_id: int) -> str:
-    return TimestampSigner(salt=PASSWORD_RESET_SIGNER_SALT).sign(str(user_id))
+    signer = TimestampSigner(salt=PASSWORD_RESET_SIGNER_SALT)
+    return signer.sign(str(user_id))
 
 
 def _unsign_password_reset(token: str) -> int | None:
     signer = TimestampSigner(salt=PASSWORD_RESET_SIGNER_SALT)
     try:
-        return int(signer.unsign(token, max_age=RESET_TOKEN_MAX_AGE_SECONDS))
+        uid = signer.unsign(token, max_age=RESET_TOKEN_MAX_AGE_SECONDS)
+        return int(uid)
     except (BadSignature, SignatureExpired, ValueError):
         return None
-
-
-def _ensure_verified_for_password_reset(email: str) -> Response | None:
-    """Block password-reset OTP when the account exists but email is not verified."""
-    email_norm = email.strip().lower()
-    user = CustomUser.objects.filter(email__iexact=email_norm).first()
-    if user is not None and not user.email_verified:
-        return Response(
-            {
-                "detail": "Please verify your email address before resetting your password.",
-                "code": "email_not_verified",
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    return None
 
 
 AuthTokenOut = inline_serializer(
@@ -73,40 +62,6 @@ LogoutOut = inline_serializer(
     fields={'message': drf_serializers.CharField()},
 )
 
-GenericMessageOut = inline_serializer(
-    name='GenericAuthMessage',
-    fields={'message': drf_serializers.CharField()},
-)
-
-PasswordResetVerifyOut = inline_serializer(
-    name='PasswordResetVerifyResponse',
-    fields={
-        'reset_token': drf_serializers.CharField(),
-        'message': drf_serializers.CharField(),
-    },
-)
-
-AuthErrorDetailOut = inline_serializer(
-    name='AuthErrorDetail',
-    fields={'detail': drf_serializers.CharField()},
-)
-
-OtpVerifySuccessOut = inline_serializer(
-    name='OtpVerifySuccess',
-    fields={
-        'verified': drf_serializers.BooleanField(),
-        'reset_token': drf_serializers.CharField(required=False, allow_null=True),
-    },
-)
-
-OtpVerifyFailureOut = inline_serializer(
-    name='OtpVerifyFailure',
-    fields={
-        'detail': drf_serializers.CharField(),
-        'verified': drf_serializers.BooleanField(),
-    },
-)
-
 @extend_schema(
     tags=['Auth'],
     summary='Register',
@@ -122,28 +77,15 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-
-        otp_result = otp_service.issue_otp(
-            email=user.email,
-            purpose=OtpChallenge.Purpose.VERIFY_EMAIL,
-        )
-
+        
         # Create JWT tokens for the user
         refresh = RefreshToken.for_user(user)
-
-        if otp_result == "send_failed":
-            msg = (
-                "User created successfully, but the verification email could not be sent. "
-                "Try requesting a new code from account settings once email is configured."
-            )
-        else:
-            msg = "User created successfully. A verification code was sent to your email."
-
+        
         return Response({
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'message': msg,
+            'message': 'User created successfully'
         }, status=status.HTTP_201_CREATED)
 
 @extend_schema(
@@ -212,35 +154,42 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         ).get(id=self.request.user.id)
 
 
+GenericMessageOut = inline_serializer(
+    name='GenericAuthMessage',
+    fields={'message': drf_serializers.CharField()},
+)
+
+PasswordResetVerifyOut = inline_serializer(
+    name='PasswordResetVerifyResponse',
+    fields={
+        'reset_token': drf_serializers.CharField(),
+        'message': drf_serializers.CharField(required=False),
+    },
+)
+
+OtpVerifyOut = inline_serializer(
+    name='OtpVerifyResponse',
+    fields={
+        'verified': drf_serializers.BooleanField(),
+        'reset_token': drf_serializers.CharField(required=False),
+    },
+)
+
+
 @extend_schema(
     tags=['Auth'],
-    summary='Request password reset (send OTP)',
+    summary='Request password reset OTP',
     request=PasswordResetRequestSerializer,
-    responses={200: GenericMessageOut, 400: AuthErrorDetailOut},
+    responses={200: GenericMessageOut},
 )
 class PasswordResetRequestView(APIView):
-    """Send a one-time code to the user's email (if an account exists and email is verified)."""
-
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
-        blocked = _ensure_verified_for_password_reset(email)
-        if blocked is not None:
-            return blocked
-        otp_result = otp_service.issue_otp(
-            email=email,
-            purpose=OtpChallenge.Purpose.PASSWORD_RESET,
-        )
-        if otp_result == "send_failed":
-            return Response(
-                {
-                    "detail": "Could not send email. Check server email settings and try again.",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        otp_service.issue_otp(email=email, purpose=OtpChallenge.Purpose.PASSWORD_RESET)
         return Response(
             {
                 "message": "If an account exists for this email, a verification code was sent.",
@@ -250,24 +199,21 @@ class PasswordResetRequestView(APIView):
 
 @extend_schema(
     tags=['Auth'],
-    summary='Verify password-reset OTP',
+    summary='Verify password reset OTP',
     request=PasswordResetVerifyOtpSerializer,
-    responses={
-        200: PasswordResetVerifyOut,
-        400: AuthErrorDetailOut,
-    },
+    responses={200: PasswordResetVerifyOut},
 )
 class PasswordResetVerifyOtpView(APIView):
-    """Exchange email + OTP for a short-lived signed reset_token."""
-
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetVerifyOtpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        code = serializer.validated_data["otp"]
         ok, user = otp_service.verify_otp(
-            email=serializer.validated_data["email"],
-            code=serializer.validated_data["otp"],
+            email=email,
+            code=code,
             purpose=OtpChallenge.Purpose.PASSWORD_RESET,
         )
         if not ok or user is None:
@@ -275,9 +221,10 @@ class PasswordResetVerifyOtpView(APIView):
                 {"detail": "Invalid or expired verification code."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        token = _sign_password_reset(user.pk)
         return Response(
             {
-                "reset_token": _sign_password_reset(user.pk),
+                "reset_token": token,
                 "message": "Verification successful. Submit a new password with this token.",
             }
         )
@@ -285,22 +232,19 @@ class PasswordResetVerifyOtpView(APIView):
 
 @extend_schema(
     tags=['Auth'],
-    summary='Confirm password reset (set new password)',
+    summary='Confirm password reset',
     request=PasswordResetConfirmSerializer,
-    responses={
-        200: GenericMessageOut,
-        400: AuthErrorDetailOut,
-    },
+    responses={200: GenericMessageOut},
 )
 class PasswordResetConfirmView(APIView):
-    """Set a new password using reset_token from verify-otp."""
-
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        uid = _unsign_password_reset(serializer.validated_data["reset_token"])
+        reset_token = serializer.validated_data["reset_token"]
+        new_password = serializer.validated_data["new_password"]
+        uid = _unsign_password_reset(reset_token)
         if uid is None:
             return Response(
                 {"detail": "Invalid or expired reset token."},
@@ -312,78 +256,55 @@ class PasswordResetConfirmView(APIView):
                 {"detail": "Invalid or expired reset token."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        user.set_password(serializer.validated_data["new_password"])
+        user.set_password(new_password)
         user.save(update_fields=["password"])
-        return Response(
-            {"message": "Password has been reset. You can sign in with your new password."}
-        )
+        return Response({"message": "Password has been reset. You can sign in with your new password."})
 
 
 @extend_schema(
     tags=['Auth'],
-    summary='Request OTP (password_reset or verify_email)',
+    summary='Request an OTP (password reset or verify email)',
     request=OtpRequestSerializer,
     responses={200: GenericMessageOut},
 )
 class OtpRequestView(APIView):
-    """Request an OTP for password_reset or verify_email (requires existing account)."""
-
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = OtpRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        purpose = _purpose_from_api(serializer.validated_data["purpose"])
         email = serializer.validated_data["email"]
-        if purpose == OtpChallenge.Purpose.PASSWORD_RESET:
-            blocked = _ensure_verified_for_password_reset(email)
-            if blocked is not None:
-                return blocked
-        otp_result = otp_service.issue_otp(
-            email=email,
-            purpose=purpose,
-        )
-        if otp_result == "send_failed":
-            return Response(
-                {
-                    "detail": "Could not send email. Check server email settings and try again.",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        purpose = _purpose_from_api(serializer.validated_data["purpose"])
+        otp_service.issue_otp(email=email, purpose=purpose)
         return Response(
-            {"message": "If this email is eligible, a verification code was sent."}
+            {
+                "message": "If this email is eligible, a verification code was sent.",
+            }
         )
 
 
 @extend_schema(
     tags=['Auth'],
-    summary='Verify OTP (includes reset_token when purpose is password_reset)',
+    summary='Verify an OTP',
     request=OtpVerifySerializer,
-    responses={
-        200: OtpVerifySuccessOut,
-        400: OtpVerifyFailureOut,
-    },
+    responses={200: OtpVerifyOut},
 )
 class OtpVerifyView(APIView):
-    """Verify an OTP. For password_reset, returns reset_token (same flow as dedicated verify endpoint)."""
-
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = OtpVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        code = serializer.validated_data["otp"]
         purpose = _purpose_from_api(serializer.validated_data["purpose"])
-        ok, user = otp_service.verify_otp(
-            email=serializer.validated_data["email"],
-            code=serializer.validated_data["otp"],
-            purpose=purpose,
-        )
+        ok, user = otp_service.verify_otp(email=email, code=code, purpose=purpose)
         if not ok:
             return Response(
                 {"detail": "Invalid or expired verification code.", "verified": False},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        body: dict = {"verified": True}
+        out: dict = {"verified": True}
         if purpose == OtpChallenge.Purpose.PASSWORD_RESET and user is not None:
-            body["reset_token"] = _sign_password_reset(user.pk)
-        return Response(body)
+            out["reset_token"] = _sign_password_reset(user.pk)
+        return Response(out)

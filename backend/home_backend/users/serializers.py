@@ -5,24 +5,10 @@ from django.contrib.auth import authenticate
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Profile fields for GET/PATCH /api/auth/profile/. Social URLs apply to all properties owned by this user."""
-
     class Meta:
         model = CustomUser
-        fields = [
-            'id',
-            'username',
-            'email',
-            'phone',
-            'avatar',
-            'user_type',
-            'email_verified',
-            'instagram_url',
-            'facebook_url',
-            'twitter_url',
-            'youtube_url',
-        ]
-        read_only_fields = ['id', 'user_type', 'email_verified']
+        fields = ['id', 'username', 'email', 'phone', 'avatar', 'user_type']
+        read_only_fields = ['id','user_type']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -60,9 +46,16 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class OtpCodeField(serializers.CharField):
+    def __init__(self, **kwargs):
+        kwargs.setdefault("min_length", OTP_CODE_MIN_LEN)
+        kwargs.setdefault("max_length", OTP_CODE_MAX_LEN)
+        super().__init__(**kwargs)
+
+
 class PasswordResetVerifyOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp = serializers.CharField(min_length=OTP_CODE_MIN_LEN, max_length=OTP_CODE_MAX_LEN)
+    otp = OtpCodeField()
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -80,5 +73,5 @@ class OtpRequestSerializer(serializers.Serializer):
 
 class OtpVerifySerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp = serializers.CharField(min_length=OTP_CODE_MIN_LEN, max_length=OTP_CODE_MAX_LEN)
+    otp = OtpCodeField()
     purpose = serializers.ChoiceField(choices=["password_reset", "verify_email"])
