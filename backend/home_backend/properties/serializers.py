@@ -244,6 +244,30 @@ class PromoCodeValidateSerializer(serializers.Serializer):
         return attrs
 
 
+def _absolute_media_url(serializer, path: str) -> str:
+    """Match PropertyImageSerializer: absolute URL when request is present."""
+    if path.startswith("http://") or path.startswith("https://"):
+        return path
+    request = serializer.context.get("request")
+    if request is not None:
+        return request.build_absolute_uri(path)
+    return path
+
+
+def _booking_listing_thumbnail_url(serializer, rented_property) -> str | None:
+    """Primary (or first) property image URL for booking list cards."""
+    primary = rented_property.primary_image
+    if not primary or not getattr(primary, "image", None):
+        return None
+    try:
+        path = primary.image.url
+    except ValueError:
+        return None
+    if not path:
+        return None
+    return _absolute_media_url(serializer, path)
+
+
 # ============ BOOKING SERIALIZER ============
 class BookingSerializer(serializers.ModelSerializer):
     # Read-only fields for display
@@ -332,11 +356,7 @@ class BookingSerializer(serializers.ModelSerializer):
         )
 
     def get_property_image(self, obj):
-        primary = obj.rented_property.primary_image
-        if primary:
-            if hasattr(primary, 'image') and primary.image:
-                return primary.image.url
-        return None
+        return _booking_listing_thumbnail_url(self, obj.rented_property)
 
     def get_review_id(self, obj):
         try:
@@ -506,7 +526,6 @@ class HostBookingSerializer(BookingSerializer):
     )
     property_title = serializers.CharField(source='rented_property.title', read_only=True)
     property_address = serializers.CharField(source='rented_property.address', read_only=True)
-    property_image = serializers.SerializerMethodField()
     user_name = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.EmailField(source='user.email', read_only=True)
 
@@ -519,13 +538,6 @@ class HostBookingSerializer(BookingSerializer):
         fields = BookingSerializer.Meta.fields + (
             'tenant_name', 'tenant_email', 'tenant_phone', 'payments',
         )
-
-    def get_property_image(self, obj):
-        primary = obj.rented_property.primary_image
-        if primary:
-            if hasattr(primary, 'image') and primary.image:
-                return primary.image.url
-        return None
 
     def get_payments(self, obj):
         payments = obj.payments.all().order_by('due_date')
