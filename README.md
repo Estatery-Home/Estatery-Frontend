@@ -41,4 +41,11 @@ Both frontends use `NEXT_PUBLIC_API_URL`. Copy `.env.example` to `.env`:
 - `estatery/admin/.env.example` → `estatery/admin/.env`
 - `estatery/customer/.env.example` → `estatery/customer/.env`
 
-Default: `http://localhost:8000/api` (when backend runs on port 8000)
+Use a **full URL** to the Django API (e.g. `http://127.0.0.1:8000/api`). Do **not** set only `/api` — that would call the Next.js dev server instead of Django. If the variable is missing or blank, the apps default to `http://127.0.0.1:8000/api`.
+
+To verify the in-app notification bell, create a test row for your logged-in user:
+
+```bash
+cd backend/home_backend
+python manage.py create_test_notification --username YOUR_USERNAME
+```

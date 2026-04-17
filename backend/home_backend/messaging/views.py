@@ -5,6 +5,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from notifications.models import Notification
+from notifications.services import create_notification
+
 from .models import Conversation, Message
 from .serializers import (
     ConversationListSerializer,
@@ -75,6 +78,19 @@ class ConversationMessagesView(APIView):
             return Response({"detail": "Message body is required."}, status=status.HTTP_400_BAD_REQUEST)
         msg = Message.objects.create(conversation=conv, sender=request.user, body=body)
         conv.save(update_fields=["updated_at"])
+
+        recipient = conv.other_user(request.user)
+        if recipient is not None:
+            preview = body[:500] + ("…" if len(body) > 500 else "")
+            create_notification(
+                user=recipient,
+                notification_type=Notification.NotificationType.MESSAGE,
+                title=f"New message from {request.user.get_username()}",
+                body=preview,
+                action_href=f"/dashboard/messages?conversationId={conv.id}",
+                action_label="Open messages",
+            )
+
         return Response(
             {
                 "message": "Sent.",

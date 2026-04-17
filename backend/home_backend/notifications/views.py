@@ -13,7 +13,11 @@ from .serializers import (
     NotificationSerializer,
     UnreadCountSerializer,
 )
-from .services import get_or_create_notification_preferences, mark_all_read_for_user
+from .services import (
+    delete_all_for_user,
+    get_or_create_notification_preferences,
+    mark_all_read_for_user,
+)
 
 
 @extend_schema_view(
@@ -153,3 +157,18 @@ class NotificationMarkAllReadView(APIView):
             user=request.user, read_at__isnull=True
         ).count()
         return Response({"updated": updated, "unread_count": unread})
+
+
+@extend_schema(
+    tags=["Notifications"],
+    summary="Delete all notifications",
+    description="Removes every in-app notification for the current user (list and badge empty).",
+    request=None,
+    responses={200: OpenApiResponse(description="deleted count and unread_count 0")},
+)
+class NotificationClearAllView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        deleted = delete_all_for_user(request.user)
+        return Response({"deleted": deleted, "unread_count": 0})

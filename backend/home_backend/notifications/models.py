@@ -33,6 +33,7 @@ class Notification(models.Model):
         AGENT = "agent", "Agent"
         PROPERTY_ALERT = "property_alert", "Property alert"
         EXPIRED = "expired", "Expired"
+        MESSAGE = "message", "Message"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
