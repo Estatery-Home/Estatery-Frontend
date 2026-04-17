@@ -49,6 +49,12 @@ def create_notification(
     )
 
 
+def delete_all_for_user(user: User) -> int:
+    """Delete all in-app notifications for this user. Returns rows deleted."""
+    deleted, _ = Notification.objects.filter(user=user).delete()
+    return deleted
+
+
 def mark_all_read_for_user(user: User) -> int:
     """Set read_at for all unread notifications. Returns number updated."""
     qs = Notification.objects.filter(user=user, read_at__isnull=True)
