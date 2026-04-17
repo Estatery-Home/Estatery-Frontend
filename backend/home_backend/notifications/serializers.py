@@ -36,10 +36,16 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class UnreadCountSerializer(serializers.Serializer):
     unread_count = serializers.IntegerField(min_value=0)
+    message_unread_count = serializers.IntegerField(min_value=0)
 
 
 class MarkAllReadOutSerializer(serializers.Serializer):
     updated = serializers.IntegerField()
+    unread_count = serializers.IntegerField()
+
+
+class ClearAllOutSerializer(serializers.Serializer):
+    deleted = serializers.IntegerField()
     unread_count = serializers.IntegerField()
 
 

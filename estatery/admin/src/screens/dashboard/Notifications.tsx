@@ -38,7 +38,7 @@ export default function Notifications() {
             disabled={!canClear}
             className="shrink-0 rounded-lg border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-medium text-[#64748b] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:text-[#1e293b] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Clear notifications
+            Delete notifications
           </button>
         </div>
         <div className="space-y-0 rounded-xl border border-[#e2e8f0] bg-white shadow-sm overflow-hidden">

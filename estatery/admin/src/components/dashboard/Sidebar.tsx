@@ -27,6 +27,7 @@ import {
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 const BRAND = "Home";
 
@@ -61,6 +62,7 @@ type SidebarProps = {
 
 export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
   const isMobile = useIsMobile();
+  const { messageUnreadCount } = useNotifications();
 
   const closeMobileDrawer = React.useCallback(() => {
     if (isMobile && !collapsed) onToggle();
@@ -151,22 +153,52 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
             <div className="mx-auto mb-3 h-px w-6 bg-slate-100" />
           )}
           <div className="space-y-1">
-            {mainNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={navLinkClass}
-                end={item.to === "/dashboard"}
-                onClick={closeMobileDrawer}
-              >
-                {({ isActive }) => (
-                  <>
-                    <item.icon className={cn("size-4 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} strokeWidth={isActive ? 2.5 : 2} />
-                    {!collapsed && <span className="truncate tracking-wide">{item.label}</span>}
-                  </>
-                )}
-              </NavLink>
-            ))}
+            {mainNav.map((item) => {
+              const showMsgBadge = item.to === "/dashboard/messages" && messageUnreadCount > 0;
+              const badgeLabel =
+                messageUnreadCount > 99 ? "99+" : String(messageUnreadCount);
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={navLinkClass}
+                  end={item.to === "/dashboard"}
+                  onClick={closeMobileDrawer}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className="relative inline-flex shrink-0">
+                        <item.icon
+                          className={cn(
+                            "size-4 shrink-0 transition-transform duration-300 group-hover:scale-110",
+                            isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"
+                          )}
+                          strokeWidth={isActive ? 2.5 : 2}
+                        />
+                        {showMsgBadge && collapsed ? (
+                          <span
+                            className="absolute -right-1.5 -top-1.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-red-600 px-0.5 text-[9px] font-bold leading-none text-white ring-2 ring-white"
+                            aria-label={`${messageUnreadCount} unread messages`}
+                          >
+                            {badgeLabel}
+                          </span>
+                        ) : null}
+                      </span>
+                      {!collapsed && (
+                        <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                          <span className="truncate tracking-wide">{item.label}</span>
+                          {showMsgBadge ? (
+                            <span className="shrink-0 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                              {badgeLabel}
+                            </span>
+                          ) : null}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
           </div>
         </div>
 

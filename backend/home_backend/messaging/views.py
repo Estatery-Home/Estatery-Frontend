@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -66,6 +67,12 @@ class ConversationMessagesView(APIView):
         conv = self.get_conversation(conversation_id)
         if not conv:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        Notification.objects.filter(
+            user=request.user,
+            notification_type=Notification.NotificationType.MESSAGE,
+            related_conversation_id=conversation_id,
+            read_at__isnull=True,
+        ).update(read_at=timezone.now())
         qs = conv.messages.select_related("sender").order_by("created_at")
         return Response(MessageSerializer(qs, many=True).data)
 
@@ -78,19 +85,18 @@ class ConversationMessagesView(APIView):
             return Response({"detail": "Message body is required."}, status=status.HTTP_400_BAD_REQUEST)
         msg = Message.objects.create(conversation=conv, sender=request.user, body=body)
         conv.save(update_fields=["updated_at"])
-
         recipient = conv.other_user(request.user)
-        if recipient is not None:
-            preview = body[:500] + ("…" if len(body) > 500 else "")
+        if recipient:
+            preview = (body[:120] + "…") if len(body) > 120 else body
             create_notification(
                 user=recipient,
                 notification_type=Notification.NotificationType.MESSAGE,
                 title=f"New message from {request.user.get_username()}",
                 body=preview,
                 action_href=f"/dashboard/messages?conversationId={conv.id}",
-                action_label="Open messages",
+                action_label="Open chat",
+                related_conversation_id=conv.id,
             )
-
         return Response(
             {
                 "message": "Sent.",

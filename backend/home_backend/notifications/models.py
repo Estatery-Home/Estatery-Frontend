@@ -45,6 +45,12 @@ class Notification(models.Model):
         choices=NotificationType.choices,
         db_index=True,
     )
+    related_conversation_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="For message-type alerts: conversation id; cleared when recipient opens the thread.",
+    )
     title = models.CharField(max_length=255)
     body = models.TextField()
     read_at = models.DateTimeField(null=True, blank=True, db_index=True)

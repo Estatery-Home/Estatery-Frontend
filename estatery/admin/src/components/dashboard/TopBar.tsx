@@ -102,16 +102,10 @@ export function TopBar() {
             <Bell className="size-4" />
             {unreadCount > 0 ? (
               <span
-                className="absolute -right-0.5 -top-0.5 z-10 flex items-center gap-0.5"
+                className="absolute -right-0.5 -top-0.5 z-10 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
                 aria-hidden
               >
-                <span className="relative flex size-2.5 shrink-0 items-center justify-center">
-                  <span className="absolute inline-flex size-2.5 animate-ping rounded-full bg-red-400 opacity-70" />
-                  <span className="relative size-2.5 rounded-full bg-red-600 ring-2 ring-white" />
-                </span>
-                <span className="flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             ) : null}
           </button>

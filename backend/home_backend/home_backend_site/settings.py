@@ -132,7 +132,7 @@ USE_TZ = True
 
 # Static files (CSS, images, JavaScript)
 STATIC_URL = 'static/'
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Email (OTP / password reset). Console backend prints messages when DEBUG is True.

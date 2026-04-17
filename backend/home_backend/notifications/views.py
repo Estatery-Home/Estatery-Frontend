@@ -8,16 +8,13 @@ from rest_framework.views import APIView
 
 from .models import Notification
 from .serializers import (
+    ClearAllOutSerializer,
     MarkAllReadOutSerializer,
     NotificationPreferencesSerializer,
     NotificationSerializer,
     UnreadCountSerializer,
 )
-from .services import (
-    delete_all_for_user,
-    get_or_create_notification_preferences,
-    mark_all_read_for_user,
-)
+from .services import get_or_create_notification_preferences, mark_all_read_for_user
 
 
 @extend_schema_view(
@@ -73,20 +70,26 @@ class NotificationListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        unread_count = Notification.objects.filter(
-            user=request.user, read_at__isnull=True
+        user = request.user
+        unread_count = Notification.objects.filter(user=user, read_at__isnull=True).count()
+        message_unread_count = Notification.objects.filter(
+            user=user,
+            notification_type=Notification.NotificationType.MESSAGE,
+            read_at__isnull=True,
         ).count()
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             response = self.get_paginated_response(serializer.data)
             response.data["unread_count"] = unread_count
+            response.data["message_unread_count"] = message_unread_count
             return response
         serializer = self.get_serializer(queryset, many=True)
         return Response(
             {
                 "count": queryset.count(),
                 "unread_count": unread_count,
+                "message_unread_count": message_unread_count,
                 "results": serializer.data,
             }
         )
@@ -102,10 +105,14 @@ class UnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        n = Notification.objects.filter(
-            user=request.user, read_at__isnull=True
+        user = request.user
+        n = Notification.objects.filter(user=user, read_at__isnull=True).count()
+        msg_n = Notification.objects.filter(
+            user=user,
+            notification_type=Notification.NotificationType.MESSAGE,
+            read_at__isnull=True,
         ).count()
-        return Response({"unread_count": n})
+        return Response({"unread_count": n, "message_unread_count": msg_n})
 
 
 @extend_schema(
@@ -162,13 +169,12 @@ class NotificationMarkAllReadView(APIView):
 @extend_schema(
     tags=["Notifications"],
     summary="Delete all notifications",
-    description="Removes every in-app notification for the current user (list and badge empty).",
     request=None,
-    responses={200: OpenApiResponse(description="deleted count and unread_count 0")},
+    responses={200: ClearAllOutSerializer},
 )
 class NotificationClearAllView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        deleted = delete_all_for_user(request.user)
+        deleted, _ = Notification.objects.filter(user=request.user).delete()
         return Response({"deleted": deleted, "unread_count": 0})

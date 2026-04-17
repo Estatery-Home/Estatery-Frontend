@@ -36,6 +36,7 @@ def create_notification(
     body: str,
     action_href: str = "",
     action_label: str = "",
+    related_conversation_id: int | None = None,
 ) -> Notification:
     return Notification.objects.create(
         user=user,
@@ -44,6 +45,7 @@ def create_notification(
         body=body,
         action_href=action_href or "",
         action_label=action_label or "",
+        related_conversation_id=related_conversation_id,
     )
 
 

@@ -1,12 +1,14 @@
 from rest_framework import generics, permissions, filters, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from decimal import Decimal
 
-from .models import Property, Booking, BookingPayment, PropertyReview, PromoCode
+from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
+    PropertyImageSerializer,
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, AdminBookingListSerializer, HostBookingSerializer, BookingPaymentSerializer,
     BookingRescheduleSerializer,
@@ -73,7 +75,58 @@ class PublicPropertyCatalogMixin:
         for amenity in amenities:
             if self.request.query_params.get(f'has_{amenity}'):
                 queryset = queryset.filter(**{f'has_{amenity}': True})
-        return queryset
+        return queryset.prefetch_related("images")
+
+
+@extend_schema(
+    tags=["Properties"],
+    summary="Upload a property image",
+    description=(
+        "Multipart form: field `image` (file). Optional `is_primary` (true/false). "
+        "First image for a listing is always stored as primary if none exists yet."
+    ),
+    request={
+        "multipart/form-data": {
+            "type": "object",
+            "properties": {
+                "image": {"type": "string", "format": "binary"},
+                "is_primary": {"type": "boolean"},
+            },
+            "required": ["image"],
+        }
+    },
+    responses={201: PropertyImageSerializer},
+)
+class PropertyImageUploadView(APIView):
+    """POST multipart image for a property (owner only)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        if prop.owner_id != request.user.id:
+            raise PermissionDenied("You can only add images to your own properties.")
+        file_obj = request.FILES.get("image")
+        if not file_obj:
+            return Response(
+                {"detail": 'Missing file field "image".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        raw_primary = request.data.get("is_primary", False)
+        if isinstance(raw_primary, bool):
+            is_primary = raw_primary
+        else:
+            is_primary = str(raw_primary).lower() in ("1", "true", "yes", "on")
+        if not prop.images.exists():
+            is_primary = True
+        row = PropertyImage.objects.create(
+            property=prop,
+            image=file_obj,
+            is_primary=is_primary,
+        )
+        ser = PropertyImageSerializer(row, context={"request": request})
+        return Response(ser.data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(tags=['Customer catalog'], summary='List properties (customer)')
@@ -258,7 +311,7 @@ class PropertyListView(PublicPropertyCatalogMixin, generics.ListCreateAPIView):
 
 class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update or delete a property"""
-    queryset = Property.objects.all()
+    queryset = Property.objects.prefetch_related("images").all()
     
     def get_serializer_class(self):
         """Use detailed serializer for GET, regular for others"""
@@ -322,7 +375,11 @@ class MyPropertiesView(generics.ListAPIView):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Property.objects.none()
-        return Property.objects.filter(owner=self.request.user).order_by('-created_at')
+        return (
+            Property.objects.filter(owner=self.request.user)
+            .prefetch_related("images")
+            .order_by("-created_at")
+        )
     
     def get_serializer_class(self):
         """Use detail serializer for host view"""
@@ -596,7 +653,11 @@ class MyBookingsView(generics.ListAPIView):
         if to_date:
             queryset = queryset.filter(check_out__lte=to_date)
         
-        return queryset.select_related('rented_property', 'user', 'review').order_by('-created_at')
+        return (
+            queryset.select_related('rented_property', 'user', 'review')
+            .prefetch_related('rented_property__images')
+            .order_by('-created_at')
+        )
 
 
 @extend_schema(tags=['Bookings'])
@@ -609,8 +670,10 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         """Users can only access their own bookings"""
         if getattr(self, 'swagger_fake_view', False):
             return Booking.objects.none()
-        return Booking.objects.filter(user=self.request.user).select_related(
-            'rented_property', 'user', 'review'
+        return (
+            Booking.objects.filter(user=self.request.user)
+            .select_related('rented_property', 'user', 'review')
+            .prefetch_related('rented_property__images')
         )
     
     def perform_update(self, serializer):
