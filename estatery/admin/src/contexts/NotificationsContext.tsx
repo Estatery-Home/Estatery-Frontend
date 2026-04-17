@@ -16,6 +16,8 @@ const POLL_MS = 15_000;
 
 type NotificationsContextValue = {
   unreadCount: number;
+  /** Unread in-app notifications of type message (drives Messages nav badge). */
+  messageUnreadCount: number;
   notifications: Notification[];
   isLoadingList: boolean;
   refreshUnreadCount: () => Promise<void>;
@@ -31,6 +33,7 @@ const NotificationsContext = React.createContext<NotificationsContextValue | nul
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [messageUnreadCount, setMessageUnreadCount] = React.useState(0);
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
   const [isLoadingList, setIsLoadingList] = React.useState(false);
 
@@ -42,8 +45,14 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     });
     if (!res.ok) return;
     try {
-      const data = (await res.json()) as { unread_count?: number };
+      const data = (await res.json()) as {
+        unread_count?: number;
+        message_unread_count?: number;
+      };
       setUnreadCount(typeof data.unread_count === "number" ? data.unread_count : 0);
+      setMessageUnreadCount(
+        typeof data.message_unread_count === "number" ? data.message_unread_count : 0
+      );
     } catch {
       /* non-JSON error page */
     }
@@ -57,6 +66,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const res = await fetchWithAuthRetry(api.endpoints.notifications, { cache: "no-store" });
       if (!res.ok) {
         setNotifications([]);
+        setMessageUnreadCount(0);
         return;
       }
       let payload: unknown;
@@ -64,6 +74,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         payload = await res.json();
       } catch {
         setNotifications([]);
+        setMessageUnreadCount(0);
         return;
       }
       const raw = Array.isArray(payload)
@@ -72,8 +83,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const items = raw.map((row) => mapApiNotification(row as Record<string, unknown>));
       setNotifications(items);
       if (!Array.isArray(payload)) {
-        const u = (payload as { unread_count?: number }).unread_count;
-        if (typeof u === "number") setUnreadCount(u);
+        const p = payload as { unread_count?: number; message_unread_count?: number };
+        if (typeof p.unread_count === "number") setUnreadCount(p.unread_count);
+        if (typeof p.message_unread_count === "number") setMessageUnreadCount(p.message_unread_count);
       }
     } finally {
       setIsLoadingList(false);
@@ -84,6 +96,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (authLoading) return;
     if (!isAuthenticated) {
       setUnreadCount(0);
+      setMessageUnreadCount(0);
       setNotifications([]);
       return;
     }
@@ -125,6 +138,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (!res.ok) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
     setUnreadCount(0);
+    setMessageUnreadCount(0);
     await refreshUnreadCount();
   }, [refreshUnreadCount]);
 
@@ -136,12 +150,14 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (!res.ok) return;
     setNotifications([]);
     setUnreadCount(0);
+    setMessageUnreadCount(0);
     await refreshUnreadCount();
   }, [refreshUnreadCount]);
 
   const value = React.useMemo(
     () => ({
       unreadCount,
+      messageUnreadCount,
       notifications,
       isLoadingList,
       refreshUnreadCount,
@@ -152,6 +168,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }),
     [
       unreadCount,
+      messageUnreadCount,
       notifications,
       isLoadingList,
       refreshUnreadCount,

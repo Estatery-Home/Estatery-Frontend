@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
 import {
   fetchMessageConversations,
   openMessageConversation,
@@ -58,6 +59,7 @@ export default function Messages() {
   const query = useQuery();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { refreshUnreadCount } = useNotifications();
 
   const [conversations, setConversations] = React.useState<ConversationSummary[]>([]);
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
@@ -98,15 +100,19 @@ export default function Messages() {
     return () => clearInterval(t);
   }, [isAuthenticated, loadConversations]);
 
-  const loadThread = React.useCallback(async (conversationId: number) => {
-    setThreadLoading(true);
-    try {
-      const msgs = await fetchConversationMessages(conversationId);
-      setThread(msgs);
-    } finally {
-      setThreadLoading(false);
-    }
-  }, []);
+  const loadThread = React.useCallback(
+    async (conversationId: number) => {
+      setThreadLoading(true);
+      try {
+        const msgs = await fetchConversationMessages(conversationId);
+        setThread(msgs);
+        void refreshUnreadCount();
+      } finally {
+        setThreadLoading(false);
+      }
+    },
+    [refreshUnreadCount]
+  );
 
   React.useEffect(() => {
     if (!selectedId) {

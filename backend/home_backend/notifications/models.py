@@ -33,6 +33,7 @@ class Notification(models.Model):
         AGENT = "agent", "Agent"
         PROPERTY_ALERT = "property_alert", "Property alert"
         EXPIRED = "expired", "Expired"
+        MESSAGE = "message", "Message"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -43,6 +44,12 @@ class Notification(models.Model):
         max_length=32,
         choices=NotificationType.choices,
         db_index=True,
+    )
+    related_conversation_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="For message-type alerts: conversation id; cleared when recipient opens the thread.",
     )
     title = models.CharField(max_length=255)
     body = models.TextField()
