@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     #LOCAL APPS
     'users',
     'properties',
+    'messaging',
+    'notifications',
     'bookings',
 ]
 
