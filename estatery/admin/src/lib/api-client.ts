@@ -60,6 +60,7 @@ export const api = {
     otpVerify: `${AUTH_BASE}/otp/verify/`,
     /** Properties */
     properties: `${API_BASE}/properties/`,
+    propertyImages: (id: number) => `${API_BASE}/properties/${id}/images/`,
     propertyDetail: (id: number) => `${API_BASE}/properties/${id}/`,
     myProperties: `${API_BASE}/properties/my/`,
     checkAvailability: (id: number) => `${API_BASE}/properties/${id}/check-availability/`,
@@ -244,6 +245,34 @@ export async function createProperty(data: {
     throwFromPropertyErrorResponse(err, `Failed to create property: ${res.status}`);
   }
   return res.json();
+}
+
+/** POST multipart: attach an image file to a property (authenticated owner). */
+export async function uploadPropertyImage(
+  propertyId: number,
+  file: File,
+  options?: { isPrimary?: boolean }
+): Promise<Record<string, unknown>> {
+  const form = new FormData();
+  form.append("image", file);
+  if (options?.isPrimary) {
+    form.append("is_primary", "true");
+  }
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(api.endpoints.propertyImages(propertyId), {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    throwFromPropertyErrorResponse(err, `Image upload failed (${res.status})`);
+  }
+  return (await res.json()) as Record<string, unknown>;
 }
 
 /** GET all available properties from API. Returns array or empty on error. */

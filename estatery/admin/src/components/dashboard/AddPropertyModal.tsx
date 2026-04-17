@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Property } from "@/lib/properties";
 import { PROPERTY_TYPES, LISTING_TYPES } from "@/lib/properties";
-import { createProperty } from "@/lib/api-client";
+import { createProperty, uploadPropertyImage } from "@/lib/api-client";
 import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
 import { AddPropertyMediaStep } from "./AddProperty4";
@@ -74,7 +74,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [bedrooms, setBedrooms] = React.useState(3);
   const [bathrooms, setBathrooms] = React.useState(2);
   const [area, setArea] = React.useState(2000);
-  const [imageUrl, setImageUrl] = React.useState("");
+  const [photoFiles, setPhotoFiles] = React.useState<File[]>([]);
   const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
 
   const resetForm = React.useCallback(() => {
@@ -89,7 +89,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     setBedrooms(3);
     setBathrooms(2);
     setArea(2000);
-    setImageUrl("");
+    setPhotoFiles([]);
     setRentalForm(defaultRentalForm());
     setSaveError(null);
     setShowSaveDialog(false);
@@ -143,7 +143,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     }
 
     try {
-      await createProperty({
+      const created = await createProperty({
         title: title.trim(),
         description: description.trim() || "—",
         address: location.address.trim(),
@@ -170,6 +170,14 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         is_furnished: rentalForm.is_furnished,
         has_kitchen: rentalForm.has_kitchen,
       });
+
+      const rawId = (created.property as { id?: unknown })?.id;
+      const propertyId = typeof rawId === "number" ? rawId : Number(rawId);
+      if (Number.isFinite(propertyId) && photoFiles.length > 0) {
+        for (let i = 0; i < photoFiles.length; i++) {
+          await uploadPropertyImage(propertyId, photoFiles[i], { isPrimary: i === 0 });
+        }
+      }
 
       onPropertyAdded?.();
       setShowSaveDialog(false);
@@ -355,7 +363,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               onAreaChange={setArea}
             />
           )}
-          {step === 4 && <AddPropertyMediaStep imageUrl={imageUrl} onImageChange={setImageUrl} />}
+          {step === 4 && <AddPropertyMediaStep files={photoFiles} onFilesChange={setPhotoFiles} />}
           {step === 5 && <AddPropertyRentalStep value={rentalForm} onChange={setRentalForm} />}
         </div>
 

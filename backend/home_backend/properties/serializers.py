@@ -25,9 +25,15 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'uploaded_at')
     
     def get_image_url(self, obj):
-        if obj.image:
-            return obj.image.url
-        return None
+        if not obj.image:
+            return None
+        path = obj.image.url
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        request = self.context.get("request")
+        if request is not None:
+            return request.build_absolute_uri(path)
+        return path
     
     def validate(self, attrs):
         # Ensure only one primary image per property
@@ -74,7 +80,7 @@ class PropertySerializer(serializers.ModelSerializer):
     def get_primary_image(self, obj):
         primary = obj.primary_image
         if primary:
-            return PropertyImageSerializer(primary).data
+            return PropertyImageSerializer(primary, context=self.context).data
         return None
     
     def get_monthly_price_display(self, obj):

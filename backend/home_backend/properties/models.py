@@ -168,7 +168,10 @@ class Property(models.Model):
     
     @property
     def primary_image(self):
-        return self.images.filter(is_primary=True).first()
+        primary = self.images.filter(is_primary=True).first()
+        if primary:
+            return primary
+        return self.images.order_by("uploaded_at").first()
     
     @property
     def security_deposit_amount(self):
