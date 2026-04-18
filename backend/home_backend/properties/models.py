@@ -340,7 +340,12 @@ class Booking(models.Model):
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),  
     )
-    
+
+    TENANT_PAYMENT_CHANNEL_CHOICES = (
+        ('momo_card', _('Mobile money or card (online checkout)')),
+        ('offline', _('Bank transfer or cash (host confirms payment)')),
+    )
+
     # Relationships (`rented_property` avoids shadowing Python's `@property` decorator)
     rented_property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='bookings')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bookings')
@@ -385,6 +390,14 @@ class Booking(models.Model):
         help_text=_("Discount percentage applied")
     )
     
+    # How the tenant intends to pay (drives client checkout vs host-confirmed flow)
+    tenant_payment_channel = models.CharField(
+        max_length=20,
+        choices=TENANT_PAYMENT_CHANNEL_CHOICES,
+        default='offline',
+        help_text=_("momo_card: online checkout; offline: bank/cash, host marks paid when received"),
+    )
+
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     rejection_reason = models.TextField(blank=True)

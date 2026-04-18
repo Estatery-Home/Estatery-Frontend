@@ -280,6 +280,11 @@ class BookingSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     applied_promo_code = serializers.CharField(source='promo.code', read_only=True, allow_null=True)
+    tenant_payment_channel = serializers.ChoiceField(
+        choices=["momo_card", "offline"],
+        required=False,
+        default="offline",
+    )
 
     # API field `property` maps to model FK `rented_property`
     property = serializers.PrimaryKeyRelatedField(
@@ -312,6 +317,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'emergency_contact',
             'occupation',
             'special_requests',
+            'tenant_payment_channel',
             'created_at',
             'updated_at',
             'deposit_paid',
@@ -479,6 +485,7 @@ class BookingSerializer(serializers.ModelSerializer):
             emergency_contact=validated_data.get('emergency_contact', ''),
             occupation=validated_data.get('occupation', ''),
             special_requests=validated_data.get('special_requests', ''),
+            tenant_payment_channel=validated_data.get('tenant_payment_channel', 'offline'),
             status='pending'
         )
         if promo:
