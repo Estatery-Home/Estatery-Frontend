@@ -2,7 +2,7 @@
 
 /**
  * Messages – real 1:1 threads via GET/POST /api/messages/conversations/…
- * Query: ?conversationId=1 | ?userId=5 (opens or creates thread with that user)
+ * Query: ?conversationId=1 | ?username=bob | ?userId=5 (opens or creates thread with that user)
  */
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -66,7 +66,7 @@ export default function Messages() {
   const [thread, setThread] = React.useState<ThreadMessage[]>([]);
   const [input, setInput] = React.useState("");
   const [chatSearch, setChatSearch] = React.useState("");
-  const [newUserId, setNewUserId] = React.useState("");
+  const [newUsername, setNewUsername] = React.useState("");
   const [listLoading, setListLoading] = React.useState(true);
   const [threadLoading, setThreadLoading] = React.useState(false);
   const [listError, setListError] = React.useState<string | null>(null);
@@ -124,14 +124,37 @@ export default function Messages() {
     return () => clearInterval(poll);
   }, [selectedId, loadThread]);
 
-  /* Deep link: ?userId= — open once */
+  /* Deep link: ?username= or ?userId= — open once */
   React.useEffect(() => {
-    const raw = query.get("userId");
-    if (!raw || !isAuthenticated || openedUserRef.current) return;
-    const uid = Number(raw);
+    if (!isAuthenticated || openedUserRef.current) return;
+    const rawName = query.get("username")?.trim();
+    const rawId = query.get("userId")?.trim();
+    if (rawName) {
+      openedUserRef.current = true;
+      void (async () => {
+        try {
+          setOpening(true);
+          const { conversation } = await openMessageConversation({ username: rawName });
+          setConversations((prev) => {
+            const rest = prev.filter((c) => c.id !== conversation.id);
+            return [conversation, ...rest];
+          });
+          setSelectedId(conversation.id);
+          navigate(`/dashboard/messages?conversationId=${conversation.id}`, { replace: true });
+        } catch (e) {
+          setListError(e instanceof Error ? e.message : "Could not open chat.");
+          openedUserRef.current = false;
+        } finally {
+          setOpening(false);
+        }
+      })();
+      return;
+    }
+    if (!rawId) return;
+    const uid = Number(rawId);
     if (!Number.isFinite(uid) || uid < 1) return;
     openedUserRef.current = true;
-    (async () => {
+    void (async () => {
       try {
         setOpening(true);
         const { conversation } = await openMessageConversation(uid);
@@ -206,21 +229,21 @@ export default function Messages() {
     }
   };
 
-  const handleOpenByUserId = async () => {
-    const uid = Number(newUserId.trim());
-    if (!Number.isFinite(uid) || uid < 1) {
-      setListError("Enter a valid numeric user ID.");
+  const handleOpenByUsername = async () => {
+    const name = newUsername.trim();
+    if (!name) {
+      setListError("Enter a username.");
       return;
     }
     setListError(null);
     try {
       setOpening(true);
-      const { conversation } = await openMessageConversation(uid);
+      const { conversation } = await openMessageConversation({ username: name });
       setConversations((prev) => {
         const rest = prev.filter((c) => c.id !== conversation.id);
         return [conversation, ...rest];
       });
-      setNewUserId("");
+      setNewUsername("");
       selectConversation(conversation.id);
     } catch (e) {
       setListError(e instanceof Error ? e.message : "Could not start chat.");
@@ -258,7 +281,7 @@ export default function Messages() {
             <div>
               <h1 className="text-xl font-bold text-[#1e293b]">Messages</h1>
               <p className="mt-1 text-xs text-[#64748b]">
-                Real conversations stored on the server. Open a chat with any user by ID, or pick an existing thread.
+                Real conversations stored on the server. Open a chat by username, or pick an existing thread.
               </p>
             </div>
             {other && (
@@ -295,18 +318,17 @@ export default function Messages() {
               </div>
               <div className="flex gap-2">
                 <Input
-                  value={newUserId}
-                  onChange={(e) => setNewUserId(e.target.value)}
-                  placeholder="User ID"
-                  type="number"
-                  min={1}
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Username"
+                  autoComplete="off"
                   className="h-9 flex-1 rounded-xl border-[#e2e8f0] text-sm"
                 />
                 <Button
                   type="button"
                   size="sm"
                   disabled={opening}
-                  onClick={() => void handleOpenByUserId()}
+                  onClick={() => void handleOpenByUsername()}
                   className="shrink-0 gap-1 bg-[var(--logo)] hover:bg-[var(--logo-hover)]"
                 >
                   <UserPlus className="size-4" />

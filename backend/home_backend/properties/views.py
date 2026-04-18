@@ -11,6 +11,8 @@ from .serializers import (
     PropertyImageSerializer,
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, AdminBookingListSerializer, HostBookingSerializer, BookingPaymentSerializer,
+    BulkMarkBookingPaymentsSerializer,
+    CustomerPaymentSerializer,
     BookingRescheduleSerializer,
     PropertyReviewSerializer, HostResponseSerializer,
     PromoCodeSerializer, PromoCodePublicSerializer, PromoCodeValidateSerializer,
@@ -55,15 +57,24 @@ class PublicPropertyCatalogMixin:
     """Shared filters for public property listing (marketplace / customer app)."""
     serializer_class = PropertySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country', 'status']
+    # Note: `status` is handled only in get_queryset() (supports `all`, `available`, `rented`,
+    # `maintenance`). It must not be in filterset_fields — django-filter would treat `status=all`
+    # as an exact match and return zero rows.
+    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country']
     search_fields = ['title', 'description', 'address', 'city']
     ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms']
     ordering = ['-created_at']
 
     def get_queryset(self):
         queryset = Property.objects.all()
-        status = self.request.query_params.get('status', 'available')
-        if status == 'available':
+        status_param = self.request.query_params.get('status', 'available')
+        if status_param == 'all':
+            pass
+        elif status_param in ('rented', 'maintenance'):
+            queryset = queryset.filter(status=status_param)
+        elif status_param == 'available':
+            queryset = queryset.filter(status='available')
+        else:
             queryset = queryset.filter(status='available')
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
@@ -326,11 +337,33 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [permissions.AllowAny()]
     
     def perform_update(self, serializer):
-        """Only owner can update"""
+        """Owner may update any field; staff or user_type=admin may change status only on others' listings."""
         property_obj = self.get_object()
-        if property_obj.owner != self.request.user:
-            raise PermissionDenied("You can only edit your own properties.")
-        serializer.save()
+        user = self.request.user
+        is_owner = property_obj.owner_id == user.pk
+        is_platform_admin = bool(
+            getattr(user, "is_staff", False) or getattr(user, "user_type", None) == "admin"
+        )
+
+        if is_owner:
+            serializer.save()
+            return
+
+        if is_platform_admin:
+            extra = set(serializer.validated_data.keys()) - {"status"}
+            if extra:
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "Platform admins may only change the listing status for properties they do not own. "
+                            "Omit other fields or edit as the listing owner."
+                        )
+                    }
+                )
+            serializer.save()
+            return
+
+        raise PermissionDenied("You can only edit your own properties.")
     
     def perform_destroy(self, instance):
         """Only owner can delete - soft delete"""
@@ -1462,6 +1495,121 @@ class BookingPaymentsView(generics.ListAPIView):
         return BookingPayment.objects.filter(booking=booking).order_by('due_date')
 
 
+@extend_schema(
+    tags=['Payments'],
+    summary='Bulk mark booking installments paid',
+    description=(
+        'Property owner or platform admin marks multiple pending/overdue rent rows (and optionally '
+        'the security deposit) as paid—e.g. after a 6‑, 12‑, or 24‑month advance transfer.'
+    ),
+    request=BulkMarkBookingPaymentsSerializer,
+)
+class BulkMarkBookingPaymentsPaidView(APIView):
+    """Mark up to N rent installments + optional deposit for one booking (host or staff/admin)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        booking = get_object_or_404(
+            Booking.objects.select_related('rented_property', 'rented_property__owner'),
+            pk=pk,
+        )
+        user = request.user
+        is_owner = booking.rented_property.owner_id == user.id
+        is_admin = IsAdminUserType().has_permission(request, self)
+        if not (is_owner or is_admin):
+            raise PermissionDenied("You don't have permission to record payments for this booking.")
+
+        ser = BulkMarkBookingPaymentsSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        v = ser.validated_data
+        rent_n = v['rent_installments_to_mark']
+        include_deposit = v['include_deposit']
+        txn = (v.get('transaction_id') or '').strip()
+        pm = v.get('payment_method')
+
+        to_mark: list[BookingPayment] = []
+        with transaction.atomic():
+            if include_deposit:
+                dep = (
+                    BookingPayment.objects.select_for_update()
+                    .filter(
+                        booking_id=booking.id,
+                        payment_type='deposit',
+                        status__in=['pending', 'overdue'],
+                    )
+                    .order_by('due_date', 'id')
+                    .first()
+                )
+                if dep:
+                    to_mark.append(dep)
+            if rent_n > 0:
+                rent_rows = list(
+                    BookingPayment.objects.select_for_update()
+                    .filter(
+                        booking_id=booking.id,
+                        payment_type='rent',
+                        status__in=['pending', 'overdue'],
+                    )
+                    .order_by('due_date', 'month_number', 'id')[:rent_n]
+                )
+                to_mark.extend(rent_rows)
+
+            if not to_mark:
+                return Response(
+                    {
+                        'message': 'No matching pending installments to mark.',
+                        'marked_count': 0,
+                        'payments': [],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            updated_ids: list[int] = []
+            for payment in to_mark:
+                payment.mark_as_paid(transaction_id=txn, payment_method=pm)
+                if payment.payment_type == 'deposit' and payment.status == 'paid':
+                    b = payment.booking
+                    if not b.deposit_paid:
+                        b.deposit_paid = True
+                        b.deposit_paid_at = timezone.now()
+                        b.save(update_fields=['deposit_paid', 'deposit_paid_at'])
+                updated_ids.append(payment.id)
+
+        refreshed = (
+            BookingPayment.objects.filter(id__in=updated_ids)
+            .select_related('booking')
+            .order_by('due_date', 'month_number')
+        )
+        return Response(
+            {
+                'message': f'Marked {len(updated_ids)} payment(s) as paid.',
+                'marked_count': len(updated_ids),
+                'payments': BookingPaymentSerializer(refreshed, many=True).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(tags=['Payments'])
+class MyPaymentsListView(generics.ListAPIView):
+    """All scheduled / completed payments for the authenticated tenant's bookings."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CustomerPaymentSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return BookingPayment.objects.none()
+        from django.db.models import F
+
+        return (
+            BookingPayment.objects.filter(booking__user=self.request.user)
+            .select_related('booking', 'booking__rented_property')
+            .order_by(F('paid_date').desc(nulls_last=True), '-due_date', '-id')
+        )
+
+
 @extend_schema(tags=['Payments'])
 class MarkPaymentPaidView(generics.UpdateAPIView):
     """Mark a payment as paid (host or admin only)"""
@@ -1480,7 +1628,8 @@ class MarkPaymentPaidView(generics.UpdateAPIView):
         payment = self.get_object()
         
         payment.mark_as_paid(
-            transaction_id=request.data.get('transaction_id', '')
+            transaction_id=request.data.get('transaction_id', ''),
+            payment_method=request.data.get('payment_method'),
         )
         
         # Check if deposit is paid

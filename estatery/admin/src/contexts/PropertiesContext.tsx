@@ -39,6 +39,8 @@ type PropertiesContextValue = {
   getPropertyById: (id: string | number) => Property | undefined;
   getOtherProperties: (excludeId: string | number, limit?: number) => Property[];
   refetchProperties: () => Promise<void>;
+  /** Merge one property object from the API (e.g. PATCH response) into the in-memory list. */
+  applyPropertyFromApi: (raw: unknown) => void;
 };
 
 const PropertiesContext = React.createContext<PropertiesContextValue | null>(null);
@@ -112,6 +114,18 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
     }
   }, [loadProperties]);
 
+  const applyPropertyFromApi = React.useCallback((raw: unknown) => {
+    const p = propertyFromApiJson(raw);
+    if (!p) return;
+    setProperties((prev) => {
+      const i = prev.findIndex((x) => String(x.id) === String(p.id));
+      if (i === -1) return prev;
+      const next = [...prev];
+      next[i] = { ...next[i], ...p };
+      return next;
+    });
+  }, []);
+
   const addProperty = React.useCallback((property: Omit<Property, "id"> | Property) => {
     const id = "id" in property && typeof property.id === "number" ? property.id : generateId();
     const newProperty: Property = { ...property, id } as Property;
@@ -137,8 +151,17 @@ export function PropertiesProvider({ children }: { children: React.ReactNode }) 
       getPropertyById,
       getOtherProperties,
       refetchProperties,
+      applyPropertyFromApi,
     }),
-    [properties, loading, addProperty, getPropertyById, getOtherProperties, refetchProperties]
+    [
+      properties,
+      loading,
+      addProperty,
+      getPropertyById,
+      getOtherProperties,
+      refetchProperties,
+      applyPropertyFromApi,
+    ]
   );
 
   return <PropertiesContext.Provider value={value}>{children}</PropertiesContext.Provider>;

@@ -70,8 +70,10 @@ class BookingPaymentAdmin(admin.ModelAdmin):
         'amount',
         'due_date',
         'status',
+        'payment_method',
+        'transaction_id',
     )
-    list_filter = ('status', 'payment_type')
+    list_filter = ('status', 'payment_type', 'payment_method')
     raw_id_fields = ('booking',)
     date_hierarchy = 'due_date'
 
