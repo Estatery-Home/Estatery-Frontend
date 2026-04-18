@@ -11,6 +11,7 @@ import type {
   HostClientsListResponse,
   HostDashboardResponse,
   HostPaymentsListResponse,
+  AdminBookingRow,
   PaginatedAdminBookings,
   PromoCode,
   PromoCodeCreateInput,
@@ -101,6 +102,7 @@ export const api = {
     adminDiscountDetail: (id: number) => `${API_BASE}/admin/discounts/${id}/`,
     /** All tenant bookings across the platform (admin/staff only) */
     adminBookings: `${API_BASE}/admin/bookings/`,
+    adminBookingDecision: (id: number) => `${API_BASE}/admin/bookings/${id}/decision/`,
     discountsValidate: `${API_BASE}/discounts/validate/`,
     countries: `${API_BASE}/countries/`,
     customerProperties: `${API_BASE}/customer/properties/`,
@@ -665,4 +667,33 @@ export async function fetchAdminBookings(params: {
     previous: data.previous ?? null,
     results: Array.isArray(data.results) ? data.results : [],
   };
+}
+
+/** PATCH /api/admin/bookings/:id/decision/ — confirm or reject a pending booking (admin/staff). */
+export async function patchAdminBookingDecision(
+  bookingId: number,
+  body: { action: "confirm" | "reject"; reason?: string }
+): Promise<{ message: string; booking: AdminBookingRow }> {
+  const res = await fetch(api.endpoints.adminBookingDecision(bookingId), {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    message?: string;
+    booking?: AdminBookingRow;
+    detail?: string;
+  };
+  if (res.status === 403) {
+    throw new Error("Admin access required to update bookings.");
+  }
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === "string" ? data.detail : `Booking update failed (${res.status})`
+    );
+  }
+  if (!data.booking) {
+    throw new Error(data.message ?? "Unexpected response from server.");
+  }
+  return { message: data.message ?? "OK", booking: data.booking };
 }

@@ -264,6 +264,71 @@ class AdminAllBookingsListView(generics.ListAPIView):
         )
 
 
+@extend_schema(
+    tags=["Bookings"],
+    summary="Confirm or reject a pending booking (admin)",
+    description=(
+        "Staff or `user_type=admin` only. PATCH/PUT body: `action` = `confirm` or `reject`; "
+        "optional `reason` when rejecting (stored on the booking)."
+    ),
+)
+class AdminBookingDecisionView(generics.UpdateAPIView):
+    """Admin/staff confirms or rejects any pending booking (same rules as host confirm)."""
+
+    serializer_class = BookingSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Booking.objects.none()
+        return Booking.objects.filter(status="pending").select_related(
+            "user", "rented_property", "rented_property__owner", "promo"
+        )
+
+    def update(self, request, *args, **kwargs):
+        booking = self.get_object()
+        action = request.data.get("action")
+
+        with transaction.atomic():
+            if action == "confirm":
+                booking.status = "confirmed"
+                booking.confirmed_at = timezone.now()
+                booking.save()
+                message = "Booking confirmed successfully"
+                if not settings.DEBUG:
+                    send_mail(
+                        "Booking Confirmed",
+                        f"Your booking for {booking.rented_property.title} has been confirmed!",
+                        settings.DEFAULT_FROM_EMAIL,
+                        [booking.user.email],
+                        fail_silently=True,
+                    )
+            elif action == "reject":
+                reason = request.data.get("reason", "No reason provided")
+                booking.status = "rejected"
+                booking.rejection_reason = reason
+                booking.save()
+                message = "Booking rejected"
+                if not settings.DEBUG:
+                    send_mail(
+                        "Booking Update",
+                        f"Your booking request for {booking.rented_property.title} has been rejected.\n"
+                        f"Reason: {reason}",
+                        settings.DEFAULT_FROM_EMAIL,
+                        [booking.user.email],
+                        fail_silently=True,
+                    )
+            else:
+                raise ValidationError({"action": "Must be 'confirm' or 'reject'"})
+
+        return Response(
+            {
+                "message": message,
+                "booking": AdminBookingListSerializer(booking, context={"request": request}).data,
+            }
+        )
+
+
 @extend_schema(tags=['Properties'], summary='List or create properties')
 class PropertyListView(PublicPropertyCatalogMixin, generics.ListCreateAPIView):
     """List all available properties or create a new property"""
