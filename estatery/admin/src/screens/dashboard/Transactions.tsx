@@ -661,9 +661,8 @@ export default function Transactions() {
               <div className="flex flex-wrap justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={() => setBulkOpen(true)}
-                  className="gap-2 border-slate-200 bg-white/90 shadow-sm hover:bg-white"
+                  className="gap-2 border-0 bg-[var(--logo)] text-white shadow-md hover:bg-[var(--logo-hover)]"
                 >
                   <Layers className="size-4" />
                   Record advance (bulk)
