@@ -5,7 +5,7 @@
  * Search, status filter, sort, pagination, and at-a-glance status counts.
  */
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -320,12 +320,15 @@ export default function Bookings() {
                   <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#64748b]">
                     Status
                   </th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[#64748b]">
+                    Payments
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e2e8f0]">
                 {loading && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center">
+                    <td colSpan={8} className="px-4 py-16 text-center">
                       <Loader2 className="mx-auto size-8 animate-spin text-[var(--logo)]" aria-hidden />
                       <p className="mt-2 text-[#64748b]">Loading bookings…</p>
                     </td>
@@ -411,12 +414,20 @@ export default function Bookings() {
                             {statusLabel(b.status)}
                           </span>
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            to={`/dashboard/transactions?booking=${b.id}`}
+                            className="text-[11px] font-semibold text-[var(--logo)] hover:underline"
+                          >
+                            Bulk record
+                          </Link>
+                        </td>
                       </tr>
                     );
                   })}
                 {!loading && rows.length === 0 && !error && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-14 text-center text-[#94a3b8]">
+                    <td colSpan={8} className="px-4 py-14 text-center text-[#94a3b8]">
                       No bookings match your filters.
                     </td>
                   </tr>

@@ -5,6 +5,7 @@
  * Host records receipts manually (no in-app card checkout). Mark paid via PATCH /api/payments/:id/mark-paid/.
  */
 import * as React from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   RefreshCw,
   Download,
@@ -17,13 +18,14 @@ import {
   Landmark,
   TrendingUp,
   ArrowUpRight,
+  Layers,
 } from "lucide-react";
 import { format, subMonths, subWeeks, startOfWeek, endOfWeek, eachWeekOfInterval } from "date-fns";
 import { DashboardLayout } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui";
 import { cn, formatDashboardCurrency } from "@/lib/utils";
-import { fetchHostDashboard, fetchHostPayments, markHostPaymentPaid } from "@/lib/api-client";
+import { bulkMarkBookingPaymentsPaid, fetchHostDashboard, fetchHostPayments, markHostPaymentPaid } from "@/lib/api-client";
 import type { HostDashboardResponse, HostRecentPaymentRow } from "@/lib/api-types";
 
 const PAYMENT_TYPE_LABEL: Record<string, string> = {
@@ -227,7 +229,281 @@ function RecordPaymentModal({
   );
 }
 
+type BulkPreset = "6" | "12" | "24" | "custom";
+
+function BulkAdvancePaymentModal({
+  open,
+  onClose,
+  payments,
+  onDone,
+  initialBookingId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  payments: HostRecentPaymentRow[];
+  onDone: () => void;
+  initialBookingId: number | null;
+}) {
+  const [bookingId, setBookingId] = React.useState<string>("");
+  const [preset, setPreset] = React.useState<BulkPreset>("12");
+  const [customCount, setCustomCount] = React.useState(12);
+  const [includeDeposit, setIncludeDeposit] = React.useState(false);
+  const [ref, setRef] = React.useState("");
+  const [method, setMethod] = React.useState<"bank" | "momo" | "card">("bank");
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setErr(null);
+    setBusy(false);
+    if (initialBookingId != null) {
+      setBookingId(String(initialBookingId));
+    } else {
+      setBookingId("");
+    }
+  }, [open, initialBookingId]);
+
+  const bookingChoices = React.useMemo(() => {
+    const m = new Map<number, { title: string; customer: string; pendingRent: number; hasDeposit: boolean }>();
+    for (const p of payments) {
+      if (p.status !== "pending" && p.status !== "overdue") continue;
+      const cur = m.get(p.booking) ?? {
+        title: p.property_title ?? "",
+        customer: p.customer ?? "",
+        pendingRent: 0,
+        hasDeposit: false,
+      };
+      if (p.payment_type === "rent") cur.pendingRent += 1;
+      if (p.payment_type === "deposit") cur.hasDeposit = true;
+      m.set(p.booking, cur);
+    }
+    return Array.from(m.entries())
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => b.id - a.id);
+  }, [payments]);
+
+  const selectedId = bookingId.trim() ? Number(bookingId) : NaN;
+  const pendingRentForBooking = React.useMemo(() => {
+    if (!Number.isFinite(selectedId)) return 0;
+    return payments.filter(
+      (p) =>
+        p.booking === selectedId &&
+        p.payment_type === "rent" &&
+        (p.status === "pending" || p.status === "overdue")
+    ).length;
+  }, [payments, selectedId]);
+
+  const hasPendingDeposit = React.useMemo(() => {
+    if (!Number.isFinite(selectedId)) return false;
+    return payments.some(
+      (p) =>
+        p.booking === selectedId &&
+        p.payment_type === "deposit" &&
+        (p.status === "pending" || p.status === "overdue")
+    );
+  }, [payments, selectedId]);
+
+  const rentInstallments =
+    preset === "custom" ? Math.min(60, Math.max(0, Math.floor(customCount))) : Number(preset);
+
+  if (!open) return null;
+
+  const submit = () => {
+    if (!Number.isFinite(selectedId) || selectedId < 1) {
+      setErr("Choose a booking.");
+      return;
+    }
+    const rentN = rentInstallments;
+    if (rentN < 1 && !(includeDeposit && hasPendingDeposit)) {
+      setErr("Select at least one rent month, or tick deposit if that line is still due.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    void bulkMarkBookingPaymentsPaid(selectedId, {
+      rent_installments_to_mark: rentN,
+      include_deposit: includeDeposit,
+      transaction_id: ref.trim() || undefined,
+      payment_method: method,
+    }).then((r) => {
+      setBusy(false);
+      if (!r.ok) {
+        setErr(r.message ?? "Could not record bulk payment.");
+        return;
+      }
+      onDone();
+      onClose();
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button type="button" className="absolute inset-0 bg-slate-900/50 backdrop-blur-[1px]" aria-label="Close" onClick={onClose} />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--logo-muted)] text-[var(--logo)]">
+            <Layers className="size-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Record advance payment (bulk)</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              When a tenant pays several months (or years) upfront, mark the matching rent lines in one step. Oldest due
+              installments are marked first. Platform admins can enter any booking ID they manage.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <label className="block text-xs font-medium text-slate-700">
+            Booking ID
+            <input
+              list="estatery-bulk-booking-ids"
+              value={bookingId}
+              onChange={(e) => setBookingId(e.target.value)}
+              placeholder="e.g. 42 — pick from list or type ID"
+              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+            />
+            <datalist id="estatery-bulk-booking-ids">
+              {bookingChoices.map((b) => (
+                <option
+                  key={b.id}
+                  value={String(b.id)}
+                  label={`${b.title || "Property"} · ${b.pendingRent} rent · ${b.customer || "tenant"}`}
+                />
+              ))}
+            </datalist>
+          </label>
+
+          {Number.isFinite(selectedId) ? (
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              This booking has <strong className="text-slate-900">{pendingRentForBooking}</strong> pending/overdue rent
+              row{pendingRentForBooking !== 1 ? "s" : ""}.
+              {hasPendingDeposit ? (
+                <>
+                  {" "}
+                  A <strong className="text-slate-900">security deposit</strong> line is still outstanding—use the checkbox
+                  below if they paid it with this transfer.
+                </>
+              ) : null}
+            </p>
+          ) : null}
+
+          <div>
+            <p className="text-xs font-medium text-slate-700">Rent installments to mark</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(["6", "12", "24"] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => {
+                    setPreset(n);
+                    setCustomCount(Number(n));
+                  }}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-xs font-semibold transition",
+                    preset === n ? "bg-[var(--logo)] text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  )}
+                >
+                  {n} months
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPreset("custom")}
+                className={cn(
+                  "rounded-full px-4 py-2 text-xs font-semibold transition",
+                  preset === "custom" ? "bg-[var(--logo)] text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                )}
+              >
+                Custom
+              </button>
+            </div>
+            {preset === "custom" ? (
+              <label className="mt-3 block text-xs text-slate-600">
+                Count (0–60; use 0 with “deposit only”)
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={customCount}
+                  onChange={(e) => setCustomCount(Number(e.target.value))}
+                  className="mt-1 block w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                />
+              </label>
+            ) : null}
+          </div>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeDeposit}
+              onChange={(e) => setIncludeDeposit(e.target.checked)}
+              className="size-4 rounded border-slate-300"
+            />
+            Also mark security deposit (if still pending)
+          </label>
+
+          <label className="block text-xs font-medium text-slate-700">
+            Payment method
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value as "bank" | "momo" | "card")}
+              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="bank">Bank transfer</option>
+              <option value="momo">Mobile money</option>
+              <option value="card">Card</option>
+            </select>
+          </label>
+
+          <label className="block text-xs font-medium text-slate-700">
+            Reference / transaction ID (optional, applied to each line)
+            <input
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder="e.g. MoMo ref or bank narration"
+              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+            />
+          </label>
+
+          <p className="text-xs text-slate-500">
+            Lines we will try to mark (max available on server may be lower):{" "}
+            <strong className="text-slate-800">
+              {(includeDeposit && hasPendingDeposit ? 1 : 0) + rentInstallments}
+            </strong>
+            .
+          </p>
+        </div>
+
+        {err ? <p className="mt-4 text-sm text-red-600">{err}</p> : null}
+
+        <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <Button variant="outline" type="button" onClick={() => onClose()} disabled={busy} className="border-slate-200">
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={submit}
+            className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+          >
+            {busy ? "Saving…" : "Mark installments paid"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Transactions() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const bookingFromUrl = React.useMemo(() => {
+    const raw = searchParams.get("booking");
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    return Number(raw);
+  }, [searchParams]);
+
   const [payments, setPayments] = React.useState<HostRecentPaymentRow[]>([]);
   const [summary, setSummary] = React.useState({
     count: 0,
@@ -248,6 +524,20 @@ export default function Transactions() {
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const [recordPayment, setRecordPayment] = React.useState<HostRecentPaymentRow | null>(null);
+  const [bulkOpen, setBulkOpen] = React.useState(false);
+
+  const clearBookingQueryParam = React.useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("booking");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  React.useEffect(() => {
+    if (loading) return;
+    if (bookingFromUrl != null) {
+      setBulkOpen(true);
+    }
+  }, [loading, bookingFromUrl]);
 
   const currency = dash?.currency ?? "ghs";
 
@@ -368,15 +658,26 @@ export default function Transactions() {
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onRefresh}
-                className="gap-2 border-slate-200 bg-white/90 shadow-sm hover:bg-white"
-              >
-                <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-                Refresh
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setBulkOpen(true)}
+                  className="gap-2 border-slate-200 bg-white/90 shadow-sm hover:bg-white"
+                >
+                  <Layers className="size-4" />
+                  Record advance (bulk)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onRefresh}
+                  className="gap-2 border-slate-200 bg-white/90 shadow-sm hover:bg-white"
+                >
+                  <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
               {dash?.revenue && (
                 <div className="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-right shadow-sm">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Last 30 days (dashboard)</p>
@@ -477,6 +778,10 @@ export default function Transactions() {
             <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-slate-600">
               <li>Payments are created from the booking&apos;s payment schedule—not from app store purchases.</li>
               <li>Use <strong className="text-slate-800">Mark as paid</strong> after you verify the tenant&apos;s transfer.</li>
+              <li>
+                For <strong className="text-slate-800">6 / 12 / 24 months</strong> (or more) paid upfront, use{" "}
+                <strong className="text-slate-800">Record advance (bulk)</strong> to mark many rent lines at once.
+              </li>
               <li>Export CSV for accounting; references can store MoMo or bank transaction IDs.</li>
             </ul>
           </div>
@@ -659,6 +964,17 @@ export default function Transactions() {
         onClose={() => setRecordPayment(null)}
         currency={currency}
         onDone={() => void load()}
+      />
+
+      <BulkAdvancePaymentModal
+        open={bulkOpen}
+        onClose={() => {
+          clearBookingQueryParam();
+          setBulkOpen(false);
+        }}
+        payments={payments}
+        onDone={() => void load()}
+        initialBookingId={bookingFromUrl}
       />
     </DashboardLayout>
   );
