@@ -18,6 +18,7 @@ import {
   getPropertyImage,
   getPropertyPriceDisplay,
   getRentalPeriodLabel,
+  getPropertyStatusBadgeClass,
   getPropertyStatusDisplay,
   getListingTypeDisplay,
 } from "@/lib/properties";
@@ -206,10 +207,22 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                         type="button"
                         onClick={() => setFilterStatus(opt)}
                         className={cn(
-                          "rounded-lg px-3 py-1.5 text-sm",
+                          "rounded-lg px-3 py-1.5 text-sm transition-colors",
                           filterStatus === opt
-                            ? "bg-[var(--logo)] text-white"
-                            : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                            ? opt === "available"
+                              ? "bg-sky-600 text-white shadow-sm"
+                              : opt === "rented"
+                                ? "bg-emerald-600 text-white shadow-sm"
+                                : opt === "maintenance"
+                                  ? "bg-amber-600 text-white shadow-sm"
+                                  : "bg-[var(--logo)] text-white shadow-sm"
+                            : opt === "available"
+                              ? "bg-sky-50 text-sky-900 hover:bg-sky-100"
+                              : opt === "rented"
+                                ? "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                                : opt === "maintenance"
+                                  ? "bg-amber-50 text-amber-950 hover:bg-amber-100"
+                                  : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
                         )}
                       >
                         {opt === "all" ? "All" : getPropertyStatusDisplay(opt)}
@@ -299,7 +312,12 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                 <td className="px-3 py-2 font-medium text-[#1e293b] sm:px-4">{getPropertyPriceDisplay(prop)}</td>
                 <td className="px-3 py-2 text-[#64748b] sm:px-4">{getRentalPeriodLabel(prop)}</td>
                 <td className="px-3 py-2 sm:px-4">
-                  <span className="inline-flex rounded bg-[var(--logo-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--logo)]">
+                  <span
+                    className={cn(
+                      "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                      getPropertyStatusBadgeClass(prop.status)
+                    )}
+                  >
                     {getPropertyStatusDisplay(prop.status)}
                   </span>
                 </td>
@@ -386,7 +404,9 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
         property={editTarget}
         open={editTarget != null}
         onClose={() => setEditTarget(null)}
-        onSaved={() => void refetchProperties()}
+        onSaved={async () => {
+          await refetchProperties();
+        }}
       />
 
       {deleteTarget ? (

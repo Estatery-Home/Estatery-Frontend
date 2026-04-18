@@ -57,15 +57,24 @@ class PublicPropertyCatalogMixin:
     """Shared filters for public property listing (marketplace / customer app)."""
     serializer_class = PropertySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country', 'status']
+    # Note: `status` is handled only in get_queryset() (supports `all`, `available`, `rented`,
+    # `maintenance`). It must not be in filterset_fields — django-filter would treat `status=all`
+    # as an exact match and return zero rows.
+    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country']
     search_fields = ['title', 'description', 'address', 'city']
     ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms']
     ordering = ['-created_at']
 
     def get_queryset(self):
         queryset = Property.objects.all()
-        status = self.request.query_params.get('status', 'available')
-        if status == 'available':
+        status_param = self.request.query_params.get('status', 'available')
+        if status_param == 'all':
+            pass
+        elif status_param in ('rented', 'maintenance'):
+            queryset = queryset.filter(status=status_param)
+        elif status_param == 'available':
+            queryset = queryset.filter(status='available')
+        else:
             queryset = queryset.filter(status='available')
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
@@ -328,11 +337,33 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
         return [permissions.AllowAny()]
     
     def perform_update(self, serializer):
-        """Only owner can update"""
+        """Owner may update any field; staff or user_type=admin may change status only on others' listings."""
         property_obj = self.get_object()
-        if property_obj.owner != self.request.user:
-            raise PermissionDenied("You can only edit your own properties.")
-        serializer.save()
+        user = self.request.user
+        is_owner = property_obj.owner_id == user.pk
+        is_platform_admin = bool(
+            getattr(user, "is_staff", False) or getattr(user, "user_type", None) == "admin"
+        )
+
+        if is_owner:
+            serializer.save()
+            return
+
+        if is_platform_admin:
+            extra = set(serializer.validated_data.keys()) - {"status"}
+            if extra:
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "Platform admins may only change the listing status for properties they do not own. "
+                            "Omit other fields or edit as the listing owner."
+                        )
+                    }
+                )
+            serializer.save()
+            return
+
+        raise PermissionDenied("You can only edit your own properties.")
     
     def perform_destroy(self, instance):
         """Only owner can delete - soft delete"""

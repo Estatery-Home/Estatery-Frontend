@@ -7,28 +7,80 @@ import * as React from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Bed, Bath, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DashboardLayout } from "@/components/dashboard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useProperties } from "@/contexts/PropertiesContext";
 import {
   getPropertyImage,
   getPropertyLocation,
   getPropertyPriceDisplay,
+  getPropertyStatusBadgeClass,
+  getPropertyStatusDisplay,
   getRentalPeriodLabel,
+  PROPERTY_STATUSES,
+  propertyFromApiJson,
 } from "@/lib/properties";
-import { propertyFromApiJson } from "@/lib/properties";
-import { fetchPropertyFromApi } from "@/lib/api-client";
 import type { Property } from "@/lib/properties";
+import type { PropertyStatusApi } from "@/lib/api-types";
+import { cn } from "@/lib/utils";
+import { fetchPropertyFromApi, updateProperty } from "@/lib/api-client";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getPropertyById, getOtherProperties, refetchProperties } = useProperties();
+  const { isAuthenticated } = useAuth();
+  const { getPropertyById, getOtherProperties, refetchProperties, applyPropertyFromApi } = useProperties();
   const [fetched, setFetched] = React.useState<Property | null>(null);
   const [fetching, setFetching] = React.useState(false);
+  const [statusDraft, setStatusDraft] = React.useState<PropertyStatusApi>("available");
+  const [statusSaving, setStatusSaving] = React.useState(false);
+  const [statusFeedback, setStatusFeedback] = React.useState<string | null>(null);
 
   const fromContext = id ? getPropertyById(id) : undefined;
   const property = fromContext ?? fetched ?? undefined;
   const moreProperties = property ? getOtherProperties(property.id) : [];
+
+  React.useEffect(() => {
+    if (property) setStatusDraft(property.status);
+  }, [property?.id, property?.status]);
+
+  const persistListingStatus = React.useCallback(
+    async (nextStatus: PropertyStatusApi) => {
+      if (!property) return;
+      const numId = typeof property.id === "number" ? property.id : parseInt(String(property.id), 10);
+      if (Number.isNaN(numId)) {
+        setStatusFeedback("Invalid property id.");
+        return;
+      }
+      if (nextStatus === property.status) return;
+      setStatusSaving(true);
+      setStatusFeedback(null);
+      try {
+        const res = await updateProperty(numId, { status: nextStatus });
+        await refetchProperties();
+        applyPropertyFromApi(res.property);
+        const merged = propertyFromApiJson(res.property);
+        if (fetched && merged) {
+          setFetched((prev) => (prev ? { ...prev, ...merged } : prev));
+        }
+        setStatusFeedback("Status updated.");
+      } catch (e) {
+        setStatusDraft(property.status);
+        setStatusFeedback(e instanceof Error ? e.message : "Could not update status.");
+      } finally {
+        setStatusSaving(false);
+      }
+    },
+    [property, fetched, refetchProperties, applyPropertyFromApi]
+  );
 
   React.useEffect(() => {
     if (!id || fromContext) {
@@ -101,6 +153,16 @@ export default function PropertyDetail() {
           </div>
           <div className="p-6 sm:p-8">
             <h1 className="text-xl font-bold text-[#1e293b] sm:text-2xl">{property.title}</h1>
+            <div className="mt-2">
+              <span
+                className={cn(
+                  "inline-flex rounded-md px-2.5 py-1 text-xs font-semibold",
+                  getPropertyStatusBadgeClass(property.status)
+                )}
+              >
+                {getPropertyStatusDisplay(property.status)}
+              </span>
+            </div>
             <p className="mt-2 flex items-center gap-1.5 text-[#64748b]">
               <MapPin className="size-4 shrink-0" />
               {getPropertyLocation(property)}
@@ -112,6 +174,60 @@ export default function PropertyDetail() {
               Rental period:{" "}
               <span className="font-medium text-[#1e293b]">{getRentalPeriodLabel(property)}</span>
             </p>
+            {isAuthenticated ? (
+              <div className="mt-6 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-4">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                  Listing status
+                </Label>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  Set to <strong className="text-[#1e293b]">available</strong> when accepting bookings,{" "}
+                  <strong className="text-[#1e293b]">rented</strong> when the unit is occupied, or{" "}
+                  <strong className="text-[#1e293b]">under maintenance</strong> when it is not bookable.{" "}
+                  <span className="text-[#94a3b8]">Changes save as soon as you pick a value.</span>
+                </p>
+                <div className="mt-3 flex flex-wrap items-end gap-3">
+                  <div className="min-w-[12rem] space-y-1.5">
+                    <Select
+                      value={statusDraft}
+                      onValueChange={(v) => {
+                        const next = v as PropertyStatusApi;
+                        setStatusFeedback(null);
+                        setStatusDraft(next);
+                        if (next !== property.status) {
+                          void persistListingStatus(next);
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        disabled={statusSaving}
+                        className="border-[#e2e8f0] bg-white"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROPERTY_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {getPropertyStatusDisplay(s)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {statusSaving ? (
+                    <span className="pb-2 text-xs text-[#64748b]">Saving…</span>
+                  ) : null}
+                </div>
+                {statusFeedback ? (
+                  <p
+                    className={`mt-2 text-xs ${
+                      statusFeedback === "Status updated." ? "text-emerald-700" : "text-amber-800"
+                    }`}
+                  >
+                    {statusFeedback}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {(property.bedrooms != null || property.bathrooms != null || property.area != null) && (
               <div className="mt-4 flex flex-wrap gap-6 text-sm text-[#64748b]">
                 {property.bedrooms != null && (

@@ -98,7 +98,7 @@ function Select({
   );
 }
 
-type SelectTriggerProps = React.HTMLAttributes<HTMLButtonElement>;
+type SelectTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
   ({ className, children, ...props }, ref) => {

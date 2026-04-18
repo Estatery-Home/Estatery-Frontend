@@ -20,16 +20,19 @@ import {
   PROPERTY_TYPES,
   LISTING_TYPES,
   PROPERTY_STATUSES,
+  getPropertyStatusBadgeClass,
   getPropertyStatusDisplay,
 } from "@/lib/properties";
 import type { PropertyStatusApi } from "@/lib/api-types";
 import { updateProperty } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import { useProperties } from "@/contexts/PropertiesContext";
 
 type EditPropertyModalProps = {
   property: Property | null;
   open: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 };
 
 export function toPropertyNumericId(id: Property["id"]): number | null {
@@ -38,6 +41,7 @@ export function toPropertyNumericId(id: Property["id"]): number | null {
 }
 
 export function EditPropertyModal({ property, open, onClose, onSaved }: EditPropertyModalProps) {
+  const { applyPropertyFromApi } = useProperties();
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [listingType, setListingType] = React.useState<"rent" | "sale">("rent");
@@ -156,8 +160,9 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
     };
 
     try {
-      await updateProperty(numId, payload);
-      onSaved();
+      const res = await updateProperty(numId, payload);
+      await Promise.resolve(onSaved());
+      applyPropertyFromApi(res.property);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed.");
@@ -237,7 +242,17 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Status</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label>Status</Label>
+                    <span
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                        getPropertyStatusBadgeClass(status)
+                      )}
+                    >
+                      {getPropertyStatusDisplay(status)}
+                    </span>
+                  </div>
                   <Select value={status} onValueChange={(v) => setStatus(v as PropertyStatusApi)}>
                     <SelectTrigger className="border-[#e2e8f0]">
                       <SelectValue />

@@ -51,6 +51,21 @@ function normalizeImages(raw: unknown): Property["images"] {
     .filter((x): x is NonNullable<typeof x> => x != null);
 }
 
+/**
+ * Map API / loose values to canonical listing status (Django Property.STATUS_CHOICES keys).
+ * Anything unrecognized falls back to "available" so the UI never breaks.
+ */
+export function normalizePropertyStatus(raw: unknown): PropertyStatusApi {
+  if (raw == null || raw === "") return "available";
+  const t = String(raw).trim();
+  if (!t) return "available";
+  const s = t.toLowerCase().replace(/\s+/g, "_");
+  if (s === "available") return "available";
+  if (s === "rented") return "rented";
+  if (s === "maintenance" || s === "under_maintenance") return "maintenance";
+  return "available";
+}
+
 /** Map GET /api/properties/… JSON to local Property (shared by context + detail fetch). */
 export function propertyFromApiJson(raw: unknown): Property | null {
   if (!raw || typeof raw !== "object") return null;
@@ -60,11 +75,20 @@ export function propertyFromApiJson(raw: unknown): Property | null {
   const listingRaw = o.listing_type;
   const listing_type: ListingTypeApi =
     listingRaw === "sale" || listingRaw === "rent" ? listingRaw : "rent";
-  const statusRaw = o.status;
-  const status: PropertyStatusApi =
-    statusRaw === "available" || statusRaw === "rented" || statusRaw === "maintenance"
-      ? statusRaw
-      : "available";
+  const statusRaw =
+    o.status ??
+    o.listing_status ??
+    (typeof o["Status"] === "string" ? o["Status"] : undefined);
+  const status = normalizePropertyStatus(statusRaw);
+  let owner_id: number | undefined;
+  if (o.owner != null && typeof o.owner === "object") {
+    const oid = (o.owner as Record<string, unknown>).id;
+    if (typeof oid === "number" && !Number.isNaN(oid)) owner_id = oid;
+    else if (typeof oid === "string") {
+      const n = parseInt(oid, 10);
+      if (!Number.isNaN(n)) owner_id = n;
+    }
+  }
   const ptype = String(o.property_type ?? "house");
   const property_type = (
     ["apartment", "house", "condo", "villa", "studio"].includes(ptype) ? ptype : "house"
@@ -88,6 +112,7 @@ export function propertyFromApiJson(raw: unknown): Property | null {
     property_type,
     listing_type,
     status,
+    owner_id,
     has_wifi: Boolean(o.has_wifi),
     has_parking: Boolean(o.has_parking),
     has_pool: Boolean(o.has_pool),
@@ -124,6 +149,8 @@ export type Property = {
   property_type: PropertyTypeApi;
   listing_type?: ListingTypeApi;
   status: PropertyStatusApi;
+  /** Present when property JSON includes owner (for edit permissions in UI). */
+  owner_id?: number;
   has_wifi?: boolean;
   has_parking?: boolean;
   has_pool?: boolean;
@@ -179,10 +206,27 @@ export function getPropertyStatusDisplay(status: PropertyStatusApi): string {
   const map: Record<PropertyStatusApi, string> = {
     available: "Available",
     rented: "Rented",
-    maintenance: "Maintenance",
+    maintenance: "Under maintenance",
   };
   return map[status] ?? status;
 }
+
+/** Tailwind classes for listing-status pills (available=blue, rented=green, maintenance=amber). */
+export function getPropertyStatusBadgeClass(status: PropertyStatusApi): string {
+  const map: Record<PropertyStatusApi, string> = {
+    available: "bg-sky-100 text-sky-900 ring-1 ring-inset ring-sky-300/80",
+    rented: "bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-300/80",
+    maintenance: "bg-amber-100 text-amber-950 ring-1 ring-inset ring-amber-300/80",
+  };
+  return map[status] ?? "bg-slate-100 text-slate-800 ring-1 ring-inset ring-slate-300/70";
+}
+
+/** Hex fills for charts / SVG (blue, green, amber). */
+export const PROPERTY_STATUS_HEX: Record<PropertyStatusApi, string> = {
+  available: "#2563eb",
+  rented: "#16a34a",
+  maintenance: "#d97706",
+};
 
 /** Map min/max stay months to rental period label (N/A for sale) */
 export function getRentalPeriodLabel(p: Property): string {

@@ -569,14 +569,26 @@ export async function fetchMessageConversations(): Promise<ConversationSummary[]
   return Array.isArray(data) ? data : data.results ?? [];
 }
 
-/** POST open conversation with another user by id */
+export type OpenMessageConversationParams = { userId?: number; username?: string };
+
+/** POST open conversation with another user by id or username (case-insensitive on the server). */
 export async function openMessageConversation(
-  userId: number
+  params: number | OpenMessageConversationParams
 ): Promise<{ conversation: ConversationSummary }> {
+  const body =
+    typeof params === "number"
+      ? { user_id: params }
+      : params.username != null && params.username.trim() !== ""
+        ? { username: params.username.trim() }
+        : params.userId != null && Number.isFinite(params.userId)
+          ? { user_id: params.userId }
+          : (() => {
+              throw new Error("Provide a username or numeric user id.");
+            })();
   const res = await fetch(api.endpoints.messagesOpenConversation, {
     method: "POST",
     headers: apiHeaders(true),
-    body: JSON.stringify({ user_id: userId }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
