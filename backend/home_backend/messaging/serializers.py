@@ -49,4 +49,22 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
 
 class OpenConversationSerializer(serializers.Serializer):
-    user_id = serializers.IntegerField(min_value=1)
+    user_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    username = serializers.CharField(required=False, allow_blank=True, max_length=150, trim_whitespace=True)
+
+    def validate(self, attrs):
+        uid = attrs.get("user_id")
+        has_id = uid is not None
+        raw = attrs.get("username")
+        uname = (raw or "").strip() if isinstance(raw, str) else ""
+        attrs["username"] = uname
+
+        if has_id and uname:
+            raise serializers.ValidationError(
+                {"detail": "Provide either user_id or username, not both."}
+            )
+        if not has_id and not uname:
+            raise serializers.ValidationError(
+                {"detail": "Either user_id or username is required."}
+            )
+        return attrs

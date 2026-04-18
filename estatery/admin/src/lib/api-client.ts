@@ -75,6 +75,8 @@ export const api = {
     myBookings: `${API_BASE}/bookings/my/`,
     bookingDetail: (id: number) => `${API_BASE}/bookings/${id}/`,
     bookingPayments: (id: number) => `${API_BASE}/bookings/${id}/payments/`,
+    bookingPaymentsBulkMarkPaid: (bookingId: number) =>
+      `${API_BASE}/bookings/${bookingId}/payments/bulk-mark-paid/`,
     createReview: (bookingId: number) => `${API_BASE}/bookings/${bookingId}/review/`,
     /** Host */
     hostBookings: `${API_BASE}/host/bookings/`,
@@ -440,12 +442,15 @@ export async function fetchHostClientDetail(
 
 export async function markHostPaymentPaid(
   paymentId: number,
-  transactionId?: string
+  transactionId?: string,
+  paymentMethod?: "bank" | "momo" | "card"
 ): Promise<{ ok: boolean; message?: string }> {
+  const body: Record<string, string> = { transaction_id: transactionId ?? "" };
+  if (paymentMethod) body.payment_method = paymentMethod;
   const res = await fetch(api.endpoints.markPaymentPaid(paymentId), {
     method: "PATCH",
     headers: apiHeaders(true),
-    body: JSON.stringify({ transaction_id: transactionId ?? "" }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -455,6 +460,40 @@ export async function markHostPaymentPaid(
     };
   }
   return { ok: true, message: (data as { message?: string }).message };
+}
+
+/** POST /api/bookings/:id/payments/bulk-mark-paid/ — host (property owner) or platform admin */
+export async function bulkMarkBookingPaymentsPaid(
+  bookingId: number,
+  body: {
+    rent_installments_to_mark: number;
+    include_deposit?: boolean;
+    transaction_id?: string;
+    payment_method?: "bank" | "momo" | "card" | null;
+  }
+): Promise<{ ok: boolean; message?: string; marked_count?: number }> {
+  const res = await fetch(api.endpoints.bookingPaymentsBulkMarkPaid(bookingId), {
+    method: "POST",
+    headers: apiHeaders(true),
+    body: JSON.stringify({
+      rent_installments_to_mark: body.rent_installments_to_mark,
+      include_deposit: Boolean(body.include_deposit),
+      transaction_id: body.transaction_id ?? "",
+      payment_method: body.payment_method ?? null,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return {
+      ok: false,
+      message: apiDetailFromResponse(data) ?? `Request failed (${res.status})`,
+    };
+  }
+  return {
+    ok: true,
+    message: (data as { message?: string }).message,
+    marked_count: (data as { marked_count?: number }).marked_count,
+  };
 }
 
 /** GET /api/admin/discounts/ — staff or user_type admin */
@@ -532,14 +571,26 @@ export async function fetchMessageConversations(): Promise<ConversationSummary[]
   return Array.isArray(data) ? data : data.results ?? [];
 }
 
-/** POST open conversation with another user by id */
+export type OpenMessageConversationParams = { userId?: number; username?: string };
+
+/** POST open conversation with another user by id or username (case-insensitive on the server). */
 export async function openMessageConversation(
-  userId: number
+  params: number | OpenMessageConversationParams
 ): Promise<{ conversation: ConversationSummary }> {
+  const body =
+    typeof params === "number"
+      ? { user_id: params }
+      : params.username != null && params.username.trim() !== ""
+        ? { username: params.username.trim() }
+        : params.userId != null && Number.isFinite(params.userId)
+          ? { user_id: params.userId }
+          : (() => {
+              throw new Error("Provide a username or numeric user id.");
+            })();
   const res = await fetch(api.endpoints.messagesOpenConversation, {
     method: "POST",
     headers: apiHeaders(true),
-    body: JSON.stringify({ user_id: userId }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

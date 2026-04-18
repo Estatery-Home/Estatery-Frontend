@@ -45,6 +45,7 @@ urlpatterns = [
     # === BOOKINGS ===
     path('bookings/', views.BookingCreateView.as_view(), name='booking-create'),
     path('bookings/my/', views.MyBookingsView.as_view(), name='my-bookings'),
+    path('bookings/my/payments/', views.MyPaymentsListView.as_view(), name='my-payments'),
     path('bookings/<int:pk>/', views.BookingDetailView.as_view(), name='booking-detail'),
     path('bookings/<int:pk>/reschedule/', views.BookingRescheduleView.as_view(), name='booking-reschedule'),
     
@@ -60,8 +61,13 @@ urlpatterns = [
     path('host/payments/', views.HostPaymentsListView.as_view(), name='host-payments-list'),
     
     # === PAYMENTS ===
-    path('bookings/<int:pk>/payments/', 
-         views.BookingPaymentsView.as_view(), 
+    path(
+        'bookings/<int:pk>/payments/bulk-mark-paid/',
+        views.BulkMarkBookingPaymentsPaidView.as_view(),
+        name='booking-payments-bulk-mark-paid',
+    ),
+    path('bookings/<int:pk>/payments/',
+         views.BookingPaymentsView.as_view(),
          name='booking-payments'),
     path('payments/<int:pk>/mark-paid/', 
          views.MarkPaymentPaidView.as_view(), 

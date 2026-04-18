@@ -32,7 +32,7 @@ class ConversationListView(generics.ListAPIView):
 
 class OpenConversationView(APIView):
     """
-    POST { "user_id": <int> } — get or create a 1:1 conversation with that user.
+    POST { "user_id": <int> } or { "username": "<name>" } — get or create a 1:1 conversation with that user.
     Returns conversation id and other_user (for opening the thread in the UI).
     """
 
@@ -41,7 +41,11 @@ class OpenConversationView(APIView):
     def post(self, request):
         ser = OpenConversationSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        other = get_object_or_404(User, pk=ser.validated_data["user_id"])
+        data = ser.validated_data
+        if data.get("user_id") is not None:
+            other = get_object_or_404(User, pk=data["user_id"])
+        else:
+            other = get_object_or_404(User, username__iexact=data["username"])
         if other.pk == request.user.pk:
             return Response(
                 {"detail": "Cannot start a conversation with yourself."},

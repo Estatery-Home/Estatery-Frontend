@@ -280,6 +280,11 @@ class BookingSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     promo_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     applied_promo_code = serializers.CharField(source='promo.code', read_only=True, allow_null=True)
+    tenant_payment_channel = serializers.ChoiceField(
+        choices=["momo_card", "offline"],
+        required=False,
+        default="offline",
+    )
 
     # API field `property` maps to model FK `rented_property`
     property = serializers.PrimaryKeyRelatedField(
@@ -312,6 +317,7 @@ class BookingSerializer(serializers.ModelSerializer):
             'emergency_contact',
             'occupation',
             'special_requests',
+            'tenant_payment_channel',
             'created_at',
             'updated_at',
             'deposit_paid',
@@ -479,6 +485,7 @@ class BookingSerializer(serializers.ModelSerializer):
             emergency_contact=validated_data.get('emergency_contact', ''),
             occupation=validated_data.get('occupation', ''),
             special_requests=validated_data.get('special_requests', ''),
+            tenant_payment_channel=validated_data.get('tenant_payment_channel', 'offline'),
             status='pending'
         )
         if promo:
@@ -487,13 +494,19 @@ class BookingSerializer(serializers.ModelSerializer):
         return booking
     
     def update(self, instance, validated_data):
-        """Only allow updating specific fields"""
-        allowed_fields = ['emergency_contact', 'occupation', 'special_requests', 'guests']
-        
+        """Only allow updating specific fields (pending bookings only — enforced in the view)."""
+        allowed_fields = [
+            'emergency_contact',
+            'occupation',
+            'special_requests',
+            'guests',
+            'tenant_payment_channel',
+        ]
+
         for field in allowed_fields:
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
-        
+
         instance.save()
         return instance
 
@@ -577,6 +590,61 @@ class BookingPaymentSerializer(serializers.ModelSerializer):
             })
         
         return attrs
+
+
+class BulkMarkBookingPaymentsSerializer(serializers.Serializer):
+    """Host/admin: mark many rent installments (and optionally deposit) paid in one request."""
+
+    rent_installments_to_mark = serializers.IntegerField(min_value=0, max_value=60, default=0)
+    include_deposit = serializers.BooleanField(default=False)
+    transaction_id = serializers.CharField(required=False, allow_blank=True, default="")
+    payment_method = serializers.ChoiceField(
+        choices=["bank", "momo", "card"],
+        required=False,
+        allow_null=True,
+    )
+
+    def validate(self, attrs):
+        if attrs.get("rent_installments_to_mark", 0) < 1 and not attrs.get("include_deposit"):
+            raise serializers.ValidationError(
+                {
+                    "rent_installments_to_mark": "Set at least 1 rent installment to mark, or set include_deposit=True."
+                }
+            )
+        return attrs
+
+
+class CustomerPaymentSerializer(serializers.ModelSerializer):
+    """Tenant-facing payment row (list on customer dashboard)."""
+
+    is_overdue = serializers.BooleanField(read_only=True)
+    payment_reference = serializers.SerializerMethodField()
+    property_title = serializers.CharField(source='booking.rented_property.title', read_only=True)
+    currency = serializers.CharField(source='booking.rented_property.currency', read_only=True)
+
+    class Meta:
+        model = BookingPayment
+        fields = (
+            'id',
+            'booking',
+            'property_title',
+            'currency',
+            'payment_reference',
+            'payment_type',
+            'payment_method',
+            'amount',
+            'status',
+            'due_date',
+            'paid_date',
+            'transaction_id',
+            'notes',
+            'is_overdue',
+            'created_at',
+            'updated_at',
+        )
+
+    def get_payment_reference(self, obj):
+        return f'EST-{obj.booking_id:06d}-PAY-{obj.id}'
 
 
 # ============ PROPERTY REVIEW SERIALIZER ============

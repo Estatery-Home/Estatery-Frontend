@@ -340,7 +340,12 @@ class Booking(models.Model):
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),  
     )
-    
+
+    TENANT_PAYMENT_CHANNEL_CHOICES = (
+        ('momo_card', _('Mobile money or card (online checkout)')),
+        ('offline', _('Bank transfer or cash (host confirms payment)')),
+    )
+
     # Relationships (`rented_property` avoids shadowing Python's `@property` decorator)
     rented_property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='bookings')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='bookings')
@@ -385,6 +390,14 @@ class Booking(models.Model):
         help_text=_("Discount percentage applied")
     )
     
+    # How the tenant intends to pay (drives client checkout vs host-confirmed flow)
+    tenant_payment_channel = models.CharField(
+        max_length=20,
+        choices=TENANT_PAYMENT_CHANNEL_CHOICES,
+        default='offline',
+        help_text=_("momo_card: online checkout; offline: bank/cash, host marks paid when received"),
+    )
+
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     rejection_reason = models.TextField(blank=True)
@@ -579,7 +592,13 @@ class BookingPayment(models.Model):
         ('refunded', 'Refunded'),
         ('cancelled', 'Cancelled'),
     )
-    
+
+    PAYMENT_METHOD_CHOICES = (
+        ('bank', 'Bank transfer'),
+        ('momo', 'Mobile money'),
+        ('card', 'Card'),
+    )
+
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='payments')
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES, default='rent')
     month_number = models.PositiveIntegerField(
@@ -591,6 +610,12 @@ class BookingPayment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     paid_date = models.DateField(null=True, blank=True)
     transaction_id = models.CharField(max_length=100, blank=True)
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        default='bank',
+        help_text=_('How the tenant paid (set when marked paid)'),
+    )
     notes = models.TextField(blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -615,13 +640,15 @@ class BookingPayment(models.Model):
             timezone.now().date() > self.due_date
         )
     
-    def mark_as_paid(self, transaction_id=""):
+    def mark_as_paid(self, transaction_id="", payment_method=None):
         """Mark payment as paid"""
         from django.utils import timezone
         self.status = 'paid'
         self.paid_date = timezone.now().date()
         if transaction_id:
             self.transaction_id = transaction_id
+        if payment_method and payment_method in dict(self.PAYMENT_METHOD_CHOICES):
+            self.payment_method = payment_method
         self.save()
 
 

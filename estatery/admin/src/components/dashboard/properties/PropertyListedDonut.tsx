@@ -7,6 +7,7 @@
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { useProperties } from "@/contexts/PropertiesContext";
+import { PROPERTY_STATUS_HEX } from "@/lib/properties";
 
 export function PropertyListedDonut() {
   const { properties, refetchProperties } = useProperties();
@@ -51,7 +52,7 @@ export function PropertyListedDonut() {
               cy="50"
               r={r}
               fill="none"
-              stroke="var(--logo)"
+              stroke={PROPERTY_STATUS_HEX.available}
               strokeWidth="16"
               strokeDasharray={`${availLen} ${circumference}`}
               strokeDashoffset="0"
@@ -61,7 +62,7 @@ export function PropertyListedDonut() {
               cy="50"
               r={r}
               fill="none"
-              stroke="#22c55e"
+              stroke={PROPERTY_STATUS_HEX.rented}
               strokeWidth="16"
               strokeDasharray={`${rentLen} ${circumference}`}
               strokeDashoffset={-availLen}
@@ -71,7 +72,7 @@ export function PropertyListedDonut() {
               cy="50"
               r={r}
               fill="none"
-              stroke="#f97316"
+              stroke={PROPERTY_STATUS_HEX.maintenance}
               strokeWidth="16"
               strokeDasharray={`${maintLen} ${circumference}`}
               strokeDashoffset={-(availLen + rentLen)}
@@ -90,21 +91,30 @@ export function PropertyListedDonut() {
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full bg-[var(--logo)]" />
+            <span
+              className="size-3 shrink-0 rounded-full"
+              style={{ backgroundColor: PROPERTY_STATUS_HEX.available }}
+            />
             <span className="text-sm font-medium text-[#0f172a]">Available Properties</span>
           </div>
           <span className="text-sm text-[#64748b]">{available}</span>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full bg-[#22c55e]" />
+            <span
+              className="size-3 shrink-0 rounded-full"
+              style={{ backgroundColor: PROPERTY_STATUS_HEX.rented }}
+            />
             <span className="text-sm font-medium text-[#0f172a]">Rented</span>
           </div>
           <span className="text-sm text-[#64748b]">{rent}</span>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full bg-[#f97316]" />
+            <span
+              className="size-3 shrink-0 rounded-full"
+              style={{ backgroundColor: PROPERTY_STATUS_HEX.maintenance }}
+            />
             <span className="text-sm font-medium text-[#0f172a]">Maintenance</span>
           </div>
           <span className="text-sm text-[#64748b]">{maintenance}</span>
