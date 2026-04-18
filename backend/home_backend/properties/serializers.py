@@ -494,13 +494,19 @@ class BookingSerializer(serializers.ModelSerializer):
         return booking
     
     def update(self, instance, validated_data):
-        """Only allow updating specific fields"""
-        allowed_fields = ['emergency_contact', 'occupation', 'special_requests', 'guests']
-        
+        """Only allow updating specific fields (pending bookings only — enforced in the view)."""
+        allowed_fields = [
+            'emergency_contact',
+            'occupation',
+            'special_requests',
+            'guests',
+            'tenant_payment_channel',
+        ]
+
         for field in allowed_fields:
             if field in validated_data:
                 setattr(instance, field, validated_data[field])
-        
+
         instance.save()
         return instance
 
