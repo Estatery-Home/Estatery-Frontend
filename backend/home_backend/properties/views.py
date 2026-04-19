@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from decimal import Decimal
 
-from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
+from .models import Property, PropertyImage, PropertyWishlist, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
     PropertyImageSerializer,
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
@@ -397,6 +397,41 @@ class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
             'message': 'Property updated successfully',
             'property': serializer.data
         })
+
+
+@extend_schema(tags=['Properties'], summary='List saved property ids (wishlist)')
+class MyPropertyWishlistIdsView(APIView):
+    """GET /api/properties/wishlist/my/ — ids the current user has saved (for customer app)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        ids = list(
+            PropertyWishlist.objects.filter(user=request.user).values_list("property_id", flat=True)
+        )
+        return Response({"property_ids": ids})
+
+
+@extend_schema(tags=['Properties'], summary='Add or remove property from wishlist')
+class PropertyWishlistView(APIView):
+    """POST add / DELETE remove — /api/properties/<id>/wishlist/"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        _, created = PropertyWishlist.objects.get_or_create(user=request.user, property=prop)
+        ids = list(
+            PropertyWishlist.objects.filter(user=request.user).values_list("property_id", flat=True)
+        )
+        return Response(
+            {"property_ids": ids},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, pk):
+        PropertyWishlist.objects.filter(user=request.user, property_id=pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=['Properties'], summary='List my properties (host)')
