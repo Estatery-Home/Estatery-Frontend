@@ -25,6 +25,7 @@ import {
 } from "@/lib/properties";
 import type { PropertyStatusApi } from "@/lib/api-types";
 import { updateProperty } from "@/lib/api-client";
+import { bumpPropertyCatalogCache } from "@/lib/catalog-bump";
 import { cn } from "@/lib/utils";
 import { useProperties } from "@/contexts/PropertiesContext";
 
@@ -161,8 +162,9 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
 
     try {
       const res = await updateProperty(numId, payload);
-      await Promise.resolve(onSaved());
       applyPropertyFromApi(res.property);
+      bumpPropertyCatalogCache();
+      await Promise.resolve(onSaved());
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed.");

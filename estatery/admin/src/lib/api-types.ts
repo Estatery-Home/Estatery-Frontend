@@ -226,6 +226,8 @@ export type AdminBookingRow = {
   completed_at?: string | null;
   deposit_paid?: boolean;
   deposit_paid_at?: string | null;
+  /** momo_card | offline — MoMo/card only after booking is approved */
+  tenant_payment_channel?: string;
   created_at?: string;
   updated_at?: string;
 };

@@ -10,6 +10,7 @@ import { Search, Filter, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditPropertyModal, toPropertyNumericId } from "@/components/dashboard/EditPropertyModal";
 import { deleteProperty } from "@/lib/api-client";
+import { bumpPropertyCatalogCache } from "@/lib/catalog-bump";
 import { useProperties } from "@/contexts/PropertiesContext";
 import type { Property } from "@/lib/properties";
 import type { PropertyTypeApi, PropertyStatusApi, ListingTypeApi } from "@/lib/api-types";
@@ -450,6 +451,7 @@ export function PropertyListingTable({ properties }: PropertyListingTableProps) 
                       setDeleteError(r.message ?? "Could not remove listing.");
                       return;
                     }
+                    bumpPropertyCatalogCache();
                     setDeleteTarget(null);
                     void refetchProperties();
                   });

@@ -32,6 +32,7 @@ import type { Property } from "@/lib/properties";
 import type { PropertyStatusApi } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 import { fetchPropertyFromApi, updateProperty } from "@/lib/api-client";
+import { bumpPropertyCatalogCache } from "@/lib/catalog-bump";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -65,8 +66,9 @@ export default function PropertyDetail() {
       setStatusFeedback(null);
       try {
         const res = await updateProperty(numId, { status: nextStatus });
-        await refetchProperties();
         applyPropertyFromApi(res.property);
+        bumpPropertyCatalogCache();
+        await refetchProperties();
         const merged = propertyFromApiJson(res.property);
         if (fetched && merged) {
           setFetched((prev) => (prev ? { ...prev, ...merged } : prev));

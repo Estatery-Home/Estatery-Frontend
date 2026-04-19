@@ -17,13 +17,13 @@ const baseUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: "Home | Buy, Rent & Sell Properties",
+  title: "Estatery Admin | Property management",
   description:
-    "Home is a modern real estate platform for buying, renting, and selling properties.",
-  icons: { icon: "/images/HomeLogo.webp" },
+    "Estatery admin — manage listings, bookings, and payouts on your real estate platform.",
+  icons: { icon: "/images/estatery-mark.svg" },
   openGraph: {
-    title: "Home | Buy, Rent & Sell Properties",
-    description: "Home is a modern real estate platform for buying, renting, and selling properties.",
+    title: "Estatery Admin | Property management",
+    description: "Manage listings, bookings, and payouts for Estatery.",
     type: "website",
     url: baseUrl,
   },

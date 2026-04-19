@@ -8,6 +8,8 @@ import { Star } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+export const MAX_PROPERTY_IMAGES = 5;
+
 type AddPropertyMediaStepProps = {
   files: File[];
   onFilesChange: (files: File[]) => void;
@@ -52,10 +54,11 @@ export function AddPropertyMediaStep({
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const list = event.target.files;
     if (!list || list.length === 0) {
-      onFilesChange([]);
       return;
     }
-    onFilesChange(Array.from(list));
+    const incoming = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    const merged = [...files, ...incoming].slice(0, MAX_PROPERTY_IMAGES);
+    onFilesChange(merged);
     event.target.value = "";
   };
 
@@ -65,15 +68,17 @@ export function AddPropertyMediaStep({
     <div className="space-y-5">
       <h3 className="text-lg font-semibold text-[#1e293b]">Photos</h3>
       <p className="text-sm text-[#64748b]">
-        Add multiple images. Choose one as the featured image — it is highlighted and used as the default cover
-        for listings and search cards.
+        Add up to {MAX_PROPERTY_IMAGES} images at once (or in batches — we keep the first {MAX_PROPERTY_IMAGES}). Choose one as the
+        featured image — it is highlighted and used as the default cover for listings and search cards.
       </p>
 
       <div className="space-y-2">
         <Label className="text-[#1e293b]">Listing photos</Label>
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-6 text-center text-sm text-[#64748b]">
           <p className="mb-2">
-            {files.length > 0 ? `${files.length} file(s) selected` : "Browse to add photos (optional)"}
+            {files.length > 0
+              ? `${files.length} of ${MAX_PROPERTY_IMAGES} image(s) selected`
+              : `Browse to add photos (optional, max ${MAX_PROPERTY_IMAGES})`}
           </p>
           <button
             type="button"

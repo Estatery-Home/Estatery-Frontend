@@ -283,6 +283,7 @@ export async function uploadPropertyImage(
 export async function fetchPropertiesFromApi(): Promise<unknown[]> {
   const res = await fetch(`${api.endpoints.properties}?status=available`, {
     headers: apiHeaders(false),
+    cache: "no-store",
   });
   if (!res.ok) return [];
   const data = await res.json();
@@ -293,6 +294,7 @@ export async function fetchPropertiesFromApi(): Promise<unknown[]> {
 export async function fetchMyPropertiesFromApi(): Promise<unknown[]> {
   const res = await fetch(api.endpoints.myProperties, {
     headers: apiHeaders(true),
+    cache: "no-store",
   });
   if (!res.ok) return [];
   const data = await res.json();
@@ -303,6 +305,7 @@ export async function fetchMyPropertiesFromApi(): Promise<unknown[]> {
 export async function fetchPropertyFromApi(id: number): Promise<unknown | null> {
   const res = await fetch(api.endpoints.propertyDetail(id), {
     headers: apiHeaders(false),
+    cache: "no-store",
   });
   if (!res.ok) return null;
   return res.json();
