@@ -440,7 +440,17 @@ class BookingSerializer(serializers.ModelSerializer):
                 property_obj, total_months, promo
             )
             self.context['calculated_deposit'] = property_obj.security_deposit_amount
-        
+
+            if attrs.get("tenant_payment_channel") == "momo_card":
+                raise serializers.ValidationError(
+                    {
+                        "tenant_payment_channel": (
+                            "MoMo or card checkout is only available after your booking is approved. "
+                            "Use bank transfer or cash for now, or leave the default."
+                        )
+                    }
+                )
+
         return attrs
     
     def _calculate_pricing(self, property_obj, months, promo=None):
@@ -494,7 +504,7 @@ class BookingSerializer(serializers.ModelSerializer):
         return booking
     
     def update(self, instance, validated_data):
-        """Only allow updating specific fields (pending bookings only — enforced in the view)."""
+        """Only allow updating specific fields; rules for payment channel vs status are in the view + here."""
         allowed_fields = [
             'emergency_contact',
             'occupation',
@@ -502,6 +512,19 @@ class BookingSerializer(serializers.ModelSerializer):
             'guests',
             'tenant_payment_channel',
         ]
+
+        if (
+            "tenant_payment_channel" in validated_data
+            and validated_data["tenant_payment_channel"] == "momo_card"
+            and instance.status == "pending"
+        ):
+            raise serializers.ValidationError(
+                {
+                    "tenant_payment_channel": (
+                        "MoMo or card is only available after your booking has been approved."
+                    )
+                }
+            )
 
         for field in allowed_fields:
             if field in validated_data:

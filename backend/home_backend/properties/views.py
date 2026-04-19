@@ -124,6 +124,11 @@ class PropertyImageUploadView(APIView):
                 {"detail": 'Missing file field "image".'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if prop.images.count() >= 5:
+            return Response(
+                {"detail": "A maximum of 5 images is allowed per property."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         raw_primary = request.data.get("is_primary", False)
         if isinstance(raw_primary, bool):
             is_primary = raw_primary
@@ -775,14 +780,25 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         )
     
     def perform_update(self, serializer):
-        """Only allow updates to specific fields"""
+        """Pending: guest details + payment channel. Approved (confirmed/active): payment channel only."""
         booking = self.get_object()
-        
-        # Only pending bookings can be updated
-        if booking.status != 'pending':
-            raise ValidationError("Cannot modify a booking that is not pending.")
-        
-        serializer.save()
+
+        if booking.status == "pending":
+            serializer.save()
+            return
+
+        if booking.status in ("confirmed", "active"):
+            changed = set(serializer.validated_data.keys())
+            if not changed:
+                raise ValidationError({"detail": "No changes submitted."})
+            if changed - {"tenant_payment_channel"}:
+                raise ValidationError(
+                    {"detail": "Only the payment method can be updated on an approved booking."}
+                )
+            serializer.save()
+            return
+
+        raise ValidationError("Cannot modify this booking.")
     
     def perform_destroy(self, instance):
         """Cancel booking instead of deleting"""
