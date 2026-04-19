@@ -18,11 +18,13 @@ urlpatterns = [
     path('admin/calendar/', views.AdminCalendarView.as_view(), name='admin-calendar'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
+    path('properties/wishlist/my/', views.MyPropertyWishlistIdsView.as_view(), name='my-property-wishlist'),
     path(
         'properties/<int:pk>/images/',
         views.PropertyImageUploadView.as_view(),
         name='property-images-upload',
     ),
+    path('properties/<int:pk>/wishlist/', views.PropertyWishlistView.as_view(), name='property-wishlist'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
     path('properties/my/', views.MyPropertiesView.as_view(), name='my-properties'),
     path('currencies/', views.CurrencyChoicesView.as_view(), name='currency-choices'),

@@ -324,6 +324,40 @@ class PropertyImage(models.Model):
         super().save(*args, **kwargs)
 
 
+# ============ PROPERTY WISHLIST (customer saved listings) ============
+class PropertyWishlist(models.Model):
+    """
+    Authenticated users who saved a listing — enables in-app alerts when listing status changes.
+    """
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="property_wishlist_entries",
+    )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name="wishlisted_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "property"],
+                name="uniq_propertywishlist_user_property",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["property", "user"]),
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id} ♥ {self.property_id}"
+
+
 # ============ BOOKING MODEL ============
 class Booking(models.Model):
     BOOKING_TYPES = (
