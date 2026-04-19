@@ -124,6 +124,11 @@ class PropertyImageUploadView(APIView):
                 {"detail": 'Missing file field "image".'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if prop.images.count() >= 5:
+            return Response(
+                {"detail": "A maximum of 5 images is allowed per property."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         raw_primary = request.data.get("is_primary", False)
         if isinstance(raw_primary, bool):
             is_primary = raw_primary
@@ -272,6 +277,71 @@ class AdminAllBookingsListView(generics.ListAPIView):
             Booking.objects.all()
             .select_related("user", "rented_property", "rented_property__owner", "promo")
             .order_by("-created_at")
+        )
+
+
+@extend_schema(
+    tags=["Bookings"],
+    summary="Confirm or reject a pending booking (admin)",
+    description=(
+        "Staff or `user_type=admin` only. PATCH/PUT body: `action` = `confirm` or `reject`; "
+        "optional `reason` when rejecting (stored on the booking)."
+    ),
+)
+class AdminBookingDecisionView(generics.UpdateAPIView):
+    """Admin/staff confirms or rejects any pending booking (same rules as host confirm)."""
+
+    serializer_class = BookingSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Booking.objects.none()
+        return Booking.objects.filter(status="pending").select_related(
+            "user", "rented_property", "rented_property__owner", "promo"
+        )
+
+    def update(self, request, *args, **kwargs):
+        booking = self.get_object()
+        action = request.data.get("action")
+
+        with transaction.atomic():
+            if action == "confirm":
+                booking.status = "confirmed"
+                booking.confirmed_at = timezone.now()
+                booking.save()
+                message = "Booking confirmed successfully"
+                if not settings.DEBUG:
+                    send_mail(
+                        "Booking Confirmed",
+                        f"Your booking for {booking.rented_property.title} has been confirmed!",
+                        settings.DEFAULT_FROM_EMAIL,
+                        [booking.user.email],
+                        fail_silently=True,
+                    )
+            elif action == "reject":
+                reason = request.data.get("reason", "No reason provided")
+                booking.status = "rejected"
+                booking.rejection_reason = reason
+                booking.save()
+                message = "Booking rejected"
+                if not settings.DEBUG:
+                    send_mail(
+                        "Booking Update",
+                        f"Your booking request for {booking.rented_property.title} has been rejected.\n"
+                        f"Reason: {reason}",
+                        settings.DEFAULT_FROM_EMAIL,
+                        [booking.user.email],
+                        fail_silently=True,
+                    )
+            else:
+                raise ValidationError({"action": "Must be 'confirm' or 'reject'"})
+
+        return Response(
+            {
+                "message": message,
+                "booking": AdminBookingListSerializer(booking, context={"request": request}).data,
+            }
         )
 
 
@@ -745,14 +815,25 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
         )
     
     def perform_update(self, serializer):
-        """Only allow updates to specific fields"""
+        """Pending: guest details + payment channel. Approved (confirmed/active): payment channel only."""
         booking = self.get_object()
-        
-        # Only pending bookings can be updated
-        if booking.status != 'pending':
-            raise ValidationError("Cannot modify a booking that is not pending.")
-        
-        serializer.save()
+
+        if booking.status == "pending":
+            serializer.save()
+            return
+
+        if booking.status in ("confirmed", "active"):
+            changed = set(serializer.validated_data.keys())
+            if not changed:
+                raise ValidationError({"detail": "No changes submitted."})
+            if changed - {"tenant_payment_channel"}:
+                raise ValidationError(
+                    {"detail": "Only the payment method can be updated on an approved booking."}
+                )
+            serializer.save()
+            return
+
+        raise ValidationError("Cannot modify this booking.")
     
     def perform_destroy(self, instance):
         """Cancel booking instead of deleting"""

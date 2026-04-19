@@ -21,7 +21,7 @@ import { PROPERTY_TYPES, LISTING_TYPES } from "@/lib/properties";
 import { createProperty, uploadPropertyImage } from "@/lib/api-client";
 import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
-import { AddPropertyMediaStep } from "./AddProperty4";
+import { AddPropertyMediaStep, MAX_PROPERTY_IMAGES } from "./AddProperty4";
 import { AddPropertyRentalStep, type AddPropertyRentalForm } from "./AddProperty5";
 
 const STEPS = [
@@ -75,6 +75,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [bathrooms, setBathrooms] = React.useState(2);
   const [area, setArea] = React.useState(2000);
   const [photoFiles, setPhotoFiles] = React.useState<File[]>([]);
+  const [primaryPhotoIndex, setPrimaryPhotoIndex] = React.useState(0);
   const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
 
   const resetForm = React.useCallback(() => {
@@ -90,6 +91,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     setBathrooms(2);
     setArea(2000);
     setPhotoFiles([]);
+    setPrimaryPhotoIndex(0);
     setRentalForm(defaultRentalForm());
     setSaveError(null);
     setShowSaveDialog(false);
@@ -174,8 +176,15 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
       const rawId = (created.property as { id?: unknown })?.id;
       const propertyId = typeof rawId === "number" ? rawId : Number(rawId);
       if (Number.isFinite(propertyId) && photoFiles.length > 0) {
-        for (let i = 0; i < photoFiles.length; i++) {
-          await uploadPropertyImage(propertyId, photoFiles[i], { isPrimary: i === 0 });
+        const capped = photoFiles.slice(0, MAX_PROPERTY_IMAGES);
+        const n = capped.length;
+        const pi = Math.min(Math.max(0, primaryPhotoIndex), n - 1);
+        const ordered: File[] = [capped[pi]];
+        for (let i = 0; i < n; i++) {
+          if (i !== pi) ordered.push(capped[i]);
+        }
+        for (let i = 0; i < ordered.length; i++) {
+          await uploadPropertyImage(propertyId, ordered[i], { isPrimary: i === 0 });
         }
       }
 
@@ -363,7 +372,14 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               onAreaChange={setArea}
             />
           )}
-          {step === 4 && <AddPropertyMediaStep files={photoFiles} onFilesChange={setPhotoFiles} />}
+          {step === 4 && (
+            <AddPropertyMediaStep
+              files={photoFiles}
+              onFilesChange={setPhotoFiles}
+              primaryIndex={primaryPhotoIndex}
+              onPrimaryIndexChange={setPrimaryPhotoIndex}
+            />
+          )}
           {step === 5 && <AddPropertyRentalStep value={rentalForm} onChange={setRentalForm} />}
         </div>
 

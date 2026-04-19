@@ -1,17 +1,19 @@
+"use client";
+
 /**
  * Auth layout pieces – card header (logo link) and footer (privacy, terms, help).
  */
-import Image from "next/image";
 import { Link } from "react-router-dom";
 import { Lock, FileText, HelpCircle } from "lucide-react";
+import { EstateryBrandMark } from "@/components/EstateryBrandMark";
 
-const BRAND = "Home";
+const BRAND = "Estatery";
 
 export function AuthCardHeader() {
   return (
     <header className="flex justify-center pt-8">
-      <Link to="/" className="flex items-center gap-2">
-        <Image src="/images/HomeLogo.webp" alt="" width={100} height={100} className="rounded-lg object-contain" />
+      <Link to="/" className="flex items-center gap-3">
+        <EstateryBrandMark size={52} />
         <span className="text-xl font-bold text-[#1e293b]">{BRAND}</span>
       </Link>
     </header>

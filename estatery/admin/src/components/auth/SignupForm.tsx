@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { TermsPrivacyModal } from "@/components/legal/TermsPrivacyModal";
+import { EstateryBrandMark } from "@/components/EstateryBrandMark";
 
 const EMAIL_ERROR_MESSAGE = "The email address you entered is wrong!";
 const USERNAME_REQUIRED_MESSAGE = "Username is required!";
@@ -145,7 +146,10 @@ export function SignupForm() {
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-white px-6 py-10 sm:px-8 lg:min-w-0 lg:flex-1 lg:px-14">
       <div className="w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <img src="/images/HomeLogo.webp" alt="Home Logo" className="mb-4 size-40 object-contain" />
+          <div className="mb-4 flex flex-col items-center gap-2">
+            <EstateryBrandMark size={72} />
+            <span className="text-sm font-semibold text-[var(--logo)]">Estatery Admin</span>
+          </div>
           <h1 className="text-xl font-bold tracking-tight text-[#1e293b]">
             Create New Account
           </h1>

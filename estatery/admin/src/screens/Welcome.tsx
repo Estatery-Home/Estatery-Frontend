@@ -9,6 +9,7 @@ import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Image from "next/image";
 import { Calendar, MapPin, Users, Home, Star } from "lucide-react";
+import { EstateryBrandMark } from "@/components/EstateryBrandMark";
 import { cn } from "@/lib/utils";
 
 // Brand name used in header and testimonial
@@ -51,8 +52,8 @@ export default function Welcome() {
         {/* Left: Hero content */}
         <div className="flex flex-1 flex-col justify-center px-6 py-20 lg:max-w-[55%] lg:px-16 lg:py-24">
           {/* Logo */}
-          <div className="mb-10 flex items-center gap-2">
-            <Image src="/images/HomeLogo.webp" alt="" width={48} height={48} className="rounded-xl object-contain" />
+          <div className="mb-10 flex items-center gap-3">
+            <EstateryBrandMark size={48} />
             <span className="text-2xl font-bold text-[var(--logo)]">{BRAND}</span>
           </div>
 

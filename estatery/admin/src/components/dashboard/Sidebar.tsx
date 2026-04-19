@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
-const BRAND = "Home";
+const BRAND = "Estatery";
 
 /** Primary nav items: Dashboard, Agents, Clients, Analytics, Calendar, Messages */
 const mainNav = [
@@ -113,9 +113,19 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
       {/* Header Logo Area */}
       <div className={cn("flex h-[72px] w-full shrink-0 items-center transition-all relative z-50", collapsed ? "justify-center px-0" : "justify-start px-5")}>
         <div className="flex items-center gap-3 transition-all duration-300">
-          <div className={cn("flex shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 shadow-sm transition-all duration-300 hover:scale-105 hover:rotate-2", collapsed ? "size-9" : "size-[42px]")}>
-            {/* Logo image that reduces padding to look correctly scaled when container shrinks */}
-            <Image src="/images/HomeLogo.webp" alt="Home" width={50} height={50} className={cn("object-contain transition-all duration-300", collapsed ? "p-1.5" : "p-2")} />
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition-all duration-300 hover:scale-105 hover:rotate-2",
+              collapsed ? "size-9" : "size-[42px]"
+            )}
+          >
+            <Image
+              src="/images/HomeLogo.webp"
+              alt="Home"
+              width={50}
+              height={50}
+              className={cn("object-contain transition-all duration-300", collapsed ? "p-1.5" : "p-2")}
+            />
           </div>
           {/* Brand text vanishes smoothly when collapsed */}
           {!collapsed && <span className="truncate text-xl font-extrabold tracking-tight text-slate-900 animate-in fade-in duration-300">{BRAND}</span>}

@@ -202,10 +202,12 @@ export type AdminBookingRow = {
   check_out: string;
   guests: number;
   status: string;
+  booking_type?: string;
   total_price: string;
   agreed_monthly_rate?: string;
   months_booked?: number;
   discount_applied?: string;
+  security_deposit?: string;
   applied_promo_code?: string | null;
   property_title?: string;
   property_address?: string;
@@ -215,7 +217,19 @@ export type AdminBookingRow = {
   user_email?: string;
   host_name?: string;
   host_email?: string;
+  emergency_contact?: string;
+  occupation?: string;
+  special_requests?: string;
+  rejection_reason?: string;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  completed_at?: string | null;
+  deposit_paid?: boolean;
+  deposit_paid_at?: string | null;
+  /** momo_card | offline — MoMo/card only after booking is approved */
+  tenant_payment_channel?: string;
   created_at?: string;
+  updated_at?: string;
 };
 
 export type PaginatedAdminBookings = {
