@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type EstateryBrandMarkProps = {
@@ -9,21 +9,18 @@ type EstateryBrandMarkProps = {
   className?: string;
 };
 
-/**
- * App mark — building icon on brand gradient (replaces generic home image for admin shell).
- */
+/** Project home logo — same asset as sidebar and marketing (`/images/HomeLogo.webp`). */
 export function EstateryBrandMark({ size = 40, className }: EstateryBrandMarkProps) {
-  const icon = Math.max(14, Math.round(size * 0.52));
+  const s = Math.max(24, size);
   return (
-    <div
+    <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--logo)] to-[#1e40af] shadow-md shadow-[var(--logo)]/25 ring-1 ring-white/30",
+        "inline-flex shrink-0 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/80",
         className
       )}
-      style={{ width: size, height: size }}
       aria-hidden
     >
-      <Building2 width={icon} height={icon} className="text-white" strokeWidth={2.2} />
-    </div>
+      <Image src="/images/HomeLogo.webp" alt="" width={s} height={s} className="object-contain p-0.5" />
+    </span>
   );
 }

@@ -18,6 +18,7 @@ import {
   isIdleExceeded,
   readStoredAuth,
   refreshAccessToken,
+  setRememberMeSession,
   touchLastActivity,
 } from "@/lib/auth-session";
 
@@ -25,7 +26,11 @@ type AuthContextValue = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    username: string,
+    password: string,
+    opts?: { keepLoggedIn?: boolean }
+  ) => Promise<{ success: boolean; error?: string }>;
   register: (data: {
     username: string;
     email: string;
@@ -150,12 +155,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, bumpActivityThrottled]);
 
   const login = React.useCallback(
-    async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    async (
+      username: string,
+      password: string,
+      opts?: { keepLoggedIn?: boolean }
+    ): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch(api.endpoints.login, {
           method: "POST",
           headers: apiHeaders(false),
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({
+            username,
+            password,
+            keep_logged_in: Boolean(opts?.keepLoggedIn),
+          }),
         });
         let data: Record<string, unknown>;
         try {
@@ -184,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setUser(auth.user);
         try {
+          setRememberMeSession(Boolean(opts?.keepLoggedIn));
           localStorage.setItem(AUTH_ACCESS_KEY, auth.access);
           if (auth.refresh) localStorage.setItem(AUTH_REFRESH_KEY, auth.refresh);
           localStorage.setItem(AUTH_USER_KEY, JSON.stringify(auth.user));

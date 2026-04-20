@@ -34,6 +34,7 @@ class Notification(models.Model):
         PROPERTY_ALERT = "property_alert", "Property alert"
         EXPIRED = "expired", "Expired"
         MESSAGE = "message", "Message"
+        CALENDAR = "calendar", "Calendar"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

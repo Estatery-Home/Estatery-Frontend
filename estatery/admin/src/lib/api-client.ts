@@ -15,6 +15,7 @@ import type {
   PaginatedAdminBookings,
   PromoCode,
   PromoCodeCreateInput,
+  ScheduleEvent,
   ThreadMessage,
   User,
 } from "@/lib/api-types";
@@ -90,6 +91,10 @@ export const api = {
     /** Platform-wide booking nights (user_type admin or staff) */
     adminCalendar: (start: string, end: string) =>
       `${API_BASE}/admin/calendar/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    scheduleEventsList: `${API_BASE}/calendar/events/`,
+    scheduleEvents: (start: string, end: string) =>
+      `${API_BASE}/calendar/events/?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    scheduleEventDetail: (id: number) => `${API_BASE}/calendar/events/${id}/`,
     bookingReschedule: (id: number) => `${API_BASE}/bookings/${id}/reschedule/`,
     hostPayments: (limit: number) => `${API_BASE}/host/payments/?limit=${limit}`,
     /** Payments */
@@ -750,4 +755,55 @@ export async function patchAdminBookingDecision(
     throw new Error(data.message ?? "Unexpected response from server.");
   }
   return { message: data.message ?? "OK", booking: data.booking };
+}
+
+/** GET /api/calendar/events/?start=&end= — shared schedule (bookings calendar + manual events). */
+export async function fetchScheduleEvents(start: string, end: string): Promise<ScheduleEvent[] | null> {
+  const res = await fetch(api.endpoints.scheduleEvents(start, end), { headers: apiHeaders(true) });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => []);
+  return Array.isArray(data) ? (data as ScheduleEvent[]) : [];
+}
+
+export async function createScheduleEvent(body: {
+  title: string;
+  description?: string;
+  starts_at: string;
+  ends_at: string;
+  participant_ids?: number[];
+}): Promise<ScheduleEvent | null> {
+  const res = await fetch(api.endpoints.scheduleEventsList, {
+    method: "POST",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as ScheduleEvent;
+}
+
+export async function patchScheduleEvent(
+  id: number,
+  body: Partial<{
+    title: string;
+    description: string;
+    starts_at: string;
+    ends_at: string;
+    participant_ids: number[];
+  }>
+): Promise<ScheduleEvent | null> {
+  const res = await fetch(api.endpoints.scheduleEventDetail(id), {
+    method: "PATCH",
+    headers: apiHeaders(true),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as ScheduleEvent;
+}
+
+export async function deleteScheduleEvent(id: number): Promise<boolean> {
+  const res = await fetch(api.endpoints.scheduleEventDetail(id), {
+    method: "DELETE",
+    headers: apiHeaders(true),
+  });
+  return res.status === 204 || res.ok;
 }

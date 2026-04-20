@@ -1,6 +1,7 @@
 # properties/urls.py
 from django.urls import path
 from . import views
+from .schedule_api import ScheduleEventDetailView, ScheduleEventListCreateView
 
 urlpatterns = [
     # === CUSTOMER / PUBLIC CATALOG ===
@@ -16,6 +17,8 @@ urlpatterns = [
         name='admin-booking-decision',
     ),
     path('admin/calendar/', views.AdminCalendarView.as_view(), name='admin-calendar'),
+    path('calendar/events/', ScheduleEventListCreateView.as_view(), name='schedule-event-list'),
+    path('calendar/events/<int:pk>/', ScheduleEventDetailView.as_view(), name='schedule-event-detail'),
     # === PROPERTIES ===
     path('properties/', views.PropertyListView.as_view(), name='property-list'),
     path('properties/wishlist/my/', views.MyPropertyWishlistIdsView.as_view(), name='my-property-wishlist'),

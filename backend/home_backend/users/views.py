@@ -1,6 +1,9 @@
 from rest_framework import generics, permissions, status, serializers as drf_serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from datetime import timedelta
+
+from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as JWTTokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -101,10 +104,18 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data
-            
-            # Create JWT tokens for the user
+
+            remember_me = bool(
+                request.data.get("remember_me")
+                or request.data.get("keep_logged_in")
+            )
             refresh = RefreshToken.for_user(user)
-            
+            if remember_me:
+                lifetime = settings.SIMPLE_JWT.get(
+                    "REFRESH_TOKEN_LIFETIME_REMEMBER", timedelta(days=30)
+                )
+                refresh.set_exp(lifetime=lifetime)
+
             return Response({
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),

@@ -432,6 +432,19 @@ export type PromoCodeCreateInput = {
   applies_to_property?: number | null;
 };
 
+/** GET/POST/PATCH /api/calendar/events/ — shared customer + admin schedules */
+export type ScheduleEvent = {
+  id: number;
+  title: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  created_by: number;
+  participant_user_ids: number[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type HostAnalyticsSummary = {
   properties_total: number;
   properties_available: number;

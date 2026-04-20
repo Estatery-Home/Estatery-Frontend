@@ -715,3 +715,38 @@ class PropertyReview(models.Model):
     
     def __str__(self):
         return f"Review for {self.property.title} - {self.rating}★"
+
+
+# ============ SHARED SCHEDULE (customer + admin calendar) ============
+class ScheduleEvent(models.Model):
+    """
+    Cross-portal calendar entry: creator plus optional participants (e.g. customer + admin).
+    Visible to staff/admins globally; otherwise only creator and participants.
+    """
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="schedule_events_created",
+    )
+    participants = models.ManyToManyField(
+        CustomUser,
+        related_name="schedule_events",
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["starts_at"]
+        indexes = [
+            models.Index(fields=["starts_at"]),
+            models.Index(fields=["created_by", "starts_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.starts_at})"
