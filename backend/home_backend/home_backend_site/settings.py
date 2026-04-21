@@ -227,4 +227,6 @@ from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # Used when client sends remember_me / keep_logged_in on login
+    'REFRESH_TOKEN_LIFETIME_REMEMBER': timedelta(days=30),
 }

@@ -9,9 +9,30 @@ export const AUTH_ACCESS_KEY = "estatery-access";
 export const AUTH_REFRESH_KEY = "estatery-refresh";
 export const AUTH_USER_KEY = "estatery-user";
 export const AUTH_LAST_ACTIVITY_KEY = "estatery-last-activity";
+/** Set on login when “Keep me logged in” / “Remember me” — longer idle window + backend refresh lifetime. */
+export const AUTH_SESSION_EXTENDED_KEY = "estatery-session-extended";
+
+export function setRememberMeSession(isExtended: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (isExtended) localStorage.setItem(AUTH_SESSION_EXTENDED_KEY, "1");
+    else localStorage.removeItem(AUTH_SESSION_EXTENDED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Max idle time without interaction before requiring login (ms). Override with NEXT_PUBLIC_SESSION_IDLE_MS */
 export function getSessionIdleMs(): number {
+  if (typeof window !== "undefined") {
+    try {
+      if (localStorage.getItem(AUTH_SESSION_EXTENDED_KEY) === "1") {
+        return 30 * 24 * 60 * 60 * 1000;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   const raw = process.env.NEXT_PUBLIC_SESSION_IDLE_MS;
   if (raw != null && raw !== "") {
     const n = Number(raw);
@@ -51,6 +72,7 @@ export function clearAuthStorage(): void {
     localStorage.removeItem(AUTH_REFRESH_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+    localStorage.removeItem(AUTH_SESSION_EXTENDED_KEY);
     localStorage.removeItem("estatery-user-profile");
   } catch {
     /* ignore */

@@ -227,14 +227,14 @@ class PromoCodeValidateView(APIView):
 class AdminPromoCodeListCreateView(generics.ListCreateAPIView):
     queryset = PromoCode.objects.all()
     serializer_class = PromoCodeSerializer
-    permission_classes = [IsAdminUserType]
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
 
 
 @extend_schema(tags=['Discounts'])
 class AdminPromoCodeDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PromoCode.objects.all()
     serializer_class = PromoCodeSerializer
-    permission_classes = [IsAdminUserType]
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserType]
 
 
 class AdminBookingPagination(PageNumberPagination):

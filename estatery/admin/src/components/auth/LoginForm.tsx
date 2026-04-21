@@ -47,7 +47,7 @@ export function LoginForm() {
 
     setUsernameError(null);
     setLoading(true);
-    const result = await login(username, password);
+    const result = await login(username, password, { keepLoggedIn });
     setLoading(false);
     if (result.success) {
       // Defer navigation so auth state is committed before ProtectedRoute checks it
@@ -186,7 +186,7 @@ export function LoginForm() {
                 id="keep-login-label"
                 className="text-sm font-normal text-black"
               >
-                Keep me login
+                Keep me logged in
               </span>
             </label>
             <Link

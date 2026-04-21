@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
-const BRAND = "Estatery";
+const BRAND = "Home";
 
 /** Primary nav items: Dashboard, Agents, Clients, Analytics, Calendar, Messages */
 const mainNav = [

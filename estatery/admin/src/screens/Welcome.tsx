@@ -142,18 +142,19 @@ export default function Welcome() {
           </div>
         </div>
 
-        {/* Right: Background image */}
+        {/* Right: Brand panel (home logo) */}
         <div className="relative hidden min-h-[50vh] flex-1 lg:block">
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[var(--logo-muted)] via-white to-slate-100">
             <Image
-              src="/images/login_home.webp"
-              alt="Modern property"
-              fill
-              className="object-cover"
+              src="/images/HomeLogo.webp"
+              alt="Estatery"
+              width={420}
+              height={420}
+              className="max-h-[min(52vh,400px)] w-auto max-w-[72%] object-contain opacity-95 drop-shadow-lg"
               priority
               sizes="50vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--logo-muted)] via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[var(--logo-muted)]/85 via-transparent to-transparent" />
           </div>
 
           {/* Testimonial card */}
@@ -192,12 +193,13 @@ export default function Welcome() {
       </div>
 
       {/* Mobile: Show image below content */}
-      <div className="relative block min-h-[320px] lg:hidden">
+      <div className="relative flex min-h-[320px] items-center justify-center bg-gradient-to-br from-[var(--logo-muted)] via-white to-slate-100 lg:hidden">
         <Image
-          src="/images/login_home.webp"
-          alt="Modern property"
-          fill
-          className="object-cover"
+          src="/images/HomeLogo.webp"
+          alt="Estatery"
+          width={280}
+          height={280}
+          className="my-10 max-h-[220px] w-auto max-w-[70%] object-contain drop-shadow-md"
           sizes="100vw"
         />
         <div className="absolute bottom-6 left-6 right-6 rounded-xl bg-[var(--logo)] px-4 py-3 text-white">

@@ -1,5 +1,5 @@
 /**
- * Signup page hero – decorative image (same as Login).
+ * Signup page hero – full-height side image (half of viewport on lg+; hidden on mobile). Matches LoginHero.
  */
 import Image from "next/image";
 

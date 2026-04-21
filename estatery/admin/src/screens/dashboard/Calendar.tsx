@@ -8,6 +8,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import {
   addDays,
+  addHours,
   addMonths,
   addWeeks,
   endOfMonth,
@@ -15,6 +16,8 @@ import {
   getDate,
   isSameMonth,
   isToday,
+  parseISO,
+  startOfDay,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -27,8 +30,13 @@ import { cn } from "@/lib/utils";
 import {
   fetchAdminCalendar,
   fetchHostCalendar,
+  fetchScheduleEvents,
   patchBookingReschedule,
+  createScheduleEvent,
+  patchScheduleEvent,
+  deleteScheduleEvent,
 } from "@/lib/api-client";
+import type { ScheduleEvent } from "@/lib/api-types";
 import { useAuth } from "@/contexts/AuthContext";
 
 type ViewMode = "month" | "week" | "day";
@@ -36,6 +44,8 @@ type ViewMode = "month" | "week" | "day";
 type CalendarEvent = {
   id: string;
   booking_id: number;
+  schedule_id?: number;
+  schedule?: ScheduleEvent;
   title: string;
   date: string;
   allDay?: boolean;
@@ -72,13 +82,36 @@ function calendarRangeForView(view: ViewMode, currentDate: Date): { start: Date;
   return { start: currentDate, end: currentDate };
 }
 
-/** One row per booking on a day (API emits one event per night). */
-function uniqueBookingsOnDay(events: CalendarEvent[]): CalendarEvent[] {
-  const seen = new Set<number>();
+function expandScheduleToDays(ev: ScheduleEvent): CalendarEvent[] {
+  const start = startOfDay(parseISO(ev.starts_at));
+  const end = startOfDay(parseISO(ev.ends_at));
+  const out: CalendarEvent[] = [];
+  let d = start;
+  while (d <= end) {
+    const key = format(d, "yyyy-MM-dd");
+    out.push({
+      id: `sch-${ev.id}-${key}`,
+      booking_id: 0,
+      schedule_id: ev.id,
+      schedule: ev,
+      title: ev.title,
+      date: key,
+      allDay: true,
+      status: "schedule",
+    });
+    d = addDays(d, 1);
+  }
+  return out;
+}
+
+/** One row per booking per day; schedule entries deduped by synthetic id. */
+function uniqueEventsOnDay(events: CalendarEvent[]): CalendarEvent[] {
+  const seen = new Set<string>();
   const out: CalendarEvent[] = [];
   for (const ev of events) {
-    if (seen.has(ev.booking_id)) continue;
-    seen.add(ev.booking_id);
+    const key = ev.booking_id > 0 ? `b:${ev.booking_id}` : ev.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(ev);
   }
   return out;
@@ -107,6 +140,15 @@ export default function Calendar() {
   const [saving, setSaving] = React.useState(false);
   const [modalError, setModalError] = React.useState<string | null>(null);
 
+  const [scheduleOpen, setScheduleOpen] = React.useState(false);
+  const [scheduleDraft, setScheduleDraft] = React.useState<ScheduleEvent | null>(null);
+  const [scheduleTitle, setScheduleTitle] = React.useState("");
+  const [scheduleStart, setScheduleStart] = React.useState("");
+  const [scheduleEnd, setScheduleEnd] = React.useState("");
+  const [scheduleDesc, setScheduleDesc] = React.useState("");
+  const [scheduleSaving, setScheduleSaving] = React.useState(false);
+  const [scheduleErr, setScheduleErr] = React.useState<string | null>(null);
+
   const { startStr, endStr } = React.useMemo(() => {
     const { start, end } = calendarRangeForView(view, currentDate);
     return { startStr: toKeyDate(start), endStr: toKeyDate(end) };
@@ -123,21 +165,23 @@ export default function Calendar() {
       setLoading(false);
       return;
     }
-    setEvents(
-      res.events.map((ev) => ({
-        id: ev.id,
-        booking_id: ev.booking_id,
-        title: ev.title,
-        date: ev.date,
-        allDay: ev.all_day,
-        status: ev.status,
-        property_id: ev.property_id,
-        property_title: ev.property_title,
-        check_in: ev.check_in,
-        check_out: ev.check_out,
-        guests: ev.guests,
-      }))
-    );
+    const bookingRows: CalendarEvent[] = res.events.map((ev) => ({
+      id: ev.id,
+      booking_id: ev.booking_id,
+      title: ev.title,
+      date: ev.date,
+      allDay: ev.all_day,
+      status: ev.status,
+      property_id: ev.property_id,
+      property_title: ev.property_title,
+      check_in: ev.check_in,
+      check_out: ev.check_out,
+      guests: ev.guests,
+    }));
+    const schedList = await fetchScheduleEvents(startStr, endStr);
+    const schedRows =
+      schedList?.flatMap((s) => expandScheduleToDays(s)) ?? [];
+    setEvents([...bookingRows, ...schedRows]);
     setLoading(false);
   }, [startStr, endStr, isPlatformAdmin]);
 
@@ -145,7 +189,97 @@ export default function Calendar() {
     void loadCalendar();
   }, [loadCalendar]);
 
+  const openScheduleEditor = (ev: CalendarEvent) => {
+    const src = ev.schedule;
+    if (!src) return;
+    setScheduleErr(null);
+    setScheduleDraft(src);
+    setScheduleTitle(src.title);
+    setScheduleDesc(src.description ?? "");
+    const toLocal = (iso: string) => {
+      try {
+        const d = parseISO(iso);
+        return format(d, "yyyy-MM-dd'T'HH:mm");
+      } catch {
+        return "";
+      }
+    };
+    setScheduleStart(toLocal(src.starts_at));
+    setScheduleEnd(toLocal(src.ends_at));
+    setScheduleOpen(true);
+  };
+
+  const closeScheduleEditor = () => {
+    setScheduleOpen(false);
+    setScheduleDraft(null);
+    setScheduleErr(null);
+    setScheduleSaving(false);
+  };
+
+  const saveScheduleEditor = async () => {
+    if (!scheduleTitle.trim() || !scheduleStart || !scheduleEnd) {
+      setScheduleErr("Title, start, and end are required.");
+      return;
+    }
+    setScheduleSaving(true);
+    setScheduleErr(null);
+    const toIso = (v: string) => {
+      const d = parseISO(v);
+      return d.toISOString();
+    };
+    try {
+      if (scheduleDraft) {
+        const updated = await patchScheduleEvent(scheduleDraft.id, {
+          title: scheduleTitle.trim(),
+          description: scheduleDesc,
+          starts_at: toIso(scheduleStart),
+          ends_at: toIso(scheduleEnd),
+        });
+        if (!updated) setScheduleErr("Could not update event.");
+        else closeScheduleEditor();
+      } else {
+        const created = await createScheduleEvent({
+          title: scheduleTitle.trim(),
+          description: scheduleDesc,
+          starts_at: toIso(scheduleStart),
+          ends_at: toIso(scheduleEnd),
+        });
+        if (!created) setScheduleErr("Could not create event.");
+        else closeScheduleEditor();
+      }
+      await loadCalendar();
+    } catch (e) {
+      setScheduleErr(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const removeSchedule = async () => {
+    if (!scheduleDraft) return;
+    if (!window.confirm("Delete this schedule entry?")) return;
+    setScheduleSaving(true);
+    await deleteScheduleEvent(scheduleDraft.id);
+    closeScheduleEditor();
+    await loadCalendar();
+  };
+
+  const openNewSchedule = () => {
+    setScheduleErr(null);
+    setScheduleDraft(null);
+    setScheduleTitle("");
+    setScheduleDesc("");
+    const now = new Date();
+    setScheduleStart(format(now, "yyyy-MM-dd'T'HH:mm"));
+    setScheduleEnd(format(addHours(now, 1), "yyyy-MM-dd'T'HH:mm"));
+    setScheduleOpen(true);
+  };
+
   const openReschedule = (ev: CalendarEvent) => {
+    if (ev.schedule_id) {
+      openScheduleEditor(ev);
+      return;
+    }
     setModalError(null);
     setActiveEv(ev);
     const cin = ev.check_in ? isoDateOnly(ev.check_in) : "";
@@ -228,6 +362,9 @@ export default function Calendar() {
   const eventChipClass =
     "w-full truncate rounded-md bg-[#fef3c7] px-1.5 py-0.5 text-left text-[10px] font-medium text-[#b45309] transition hover:bg-[#fde68a] hover:ring-1 hover:ring-amber-300";
 
+  const scheduleChipClass =
+    "w-full truncate rounded-md bg-[#e0e7ff] px-1.5 py-0.5 text-left text-[10px] font-medium text-[#3730a3] transition hover:bg-[#c7d2fe] hover:ring-1 hover:ring-indigo-300";
+
   const renderMonthView = () => {
     const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 });
     const end = endOfMonth(currentDate);
@@ -252,7 +389,7 @@ export default function Calendar() {
         <div className="grid grid-cols-7 gap-px rounded-2xl border border-[#e2e8f0] bg-[#e2e8f0]">
           {cells.map((day) => {
             const key = toKeyDate(day);
-            const dayEvents = eventsByDate.get(key) ?? [];
+            const dayEvents = uniqueEventsOnDay(eventsByDate.get(key) ?? []);
             const isCurrentMonth = isSameMonth(day, currentDate);
             const today = isToday(day);
             return (
@@ -278,8 +415,8 @@ export default function Calendar() {
                     <button
                       key={ev.id}
                       type="button"
-                      className={eventChipClass}
-                      title="Reschedule"
+                      className={ev.schedule_id ? scheduleChipClass : eventChipClass}
+                      title={ev.schedule_id ? "Edit schedule" : "Reschedule booking"}
                       onClick={(e) => {
                         e.stopPropagation();
                         openReschedule(ev);
@@ -319,15 +456,15 @@ export default function Calendar() {
           <div className="px-2 py-2 text-[10px] font-medium text-[#92400e]">All day</div>
           {days.map((day) => {
             const key = toKeyDate(day);
-            const dayEvents = eventsByDate.get(key) ?? [];
+            const dayEvents = uniqueEventsOnDay(eventsByDate.get(key) ?? []);
             return (
               <div key={key} className="flex min-h-[44px] flex-col gap-1 border-l border-[#fde68a]/60 px-1.5 py-1.5">
                 {dayEvents.map((ev) => (
                   <button
                     key={ev.id}
                     type="button"
-                    className={eventChipClass}
-                    title={ev.title}
+                    className={ev.schedule_id ? scheduleChipClass : eventChipClass}
+                    title={ev.schedule_id ? "Edit schedule" : "Reschedule booking"}
                     onClick={() => openReschedule(ev)}
                   >
                     {ev.title}
@@ -345,7 +482,7 @@ export default function Calendar() {
     const day = currentDate;
     const key = toKeyDate(day);
     const raw = eventsByDate.get(key) ?? [];
-    const dayBookings = uniqueBookingsOnDay(raw);
+    const dayBookings = uniqueEventsOnDay(raw);
 
     return (
       <div className="overflow-hidden rounded-2xl border border-[#e2e8f0]">
@@ -355,29 +492,37 @@ export default function Calendar() {
         {dayBookings.length > 0 && (
           <div className="border-b border-[#e2e8f0] bg-[#fffbeb] px-4 py-3">
             <div className="text-[10px] font-medium uppercase tracking-wide text-[#92400e]">
-              Bookings (click to reschedule)
+              Bookings &amp; shared schedule
             </div>
             <div className="mt-2 flex flex-col gap-2">
               {dayBookings.map((ev) => (
                 <button
-                  key={String(ev.booking_id)}
+                  key={ev.id}
                   type="button"
                   onClick={() => openReschedule(ev)}
-                  className="rounded-lg border border-amber-200/80 bg-[#fef3c7] px-3 py-2 text-left text-xs font-medium text-[#b45309] transition hover:bg-[#fde68a]"
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left text-xs font-medium transition",
+                    ev.schedule_id
+                      ? "border-indigo-200/80 bg-[#e0e7ff] text-[#3730a3] hover:bg-[#c7d2fe]"
+                      : "border-amber-200/80 bg-[#fef3c7] text-[#b45309] hover:bg-[#fde68a]"
+                  )}
                 >
                   <span className="block">{ev.title}</span>
                   {ev.property_title ? (
                     <span className="mt-0.5 block text-[10px] font-normal text-[#a16207]">{ev.property_title}</span>
                   ) : null}
-                  {ev.check_in && ev.check_out ? (
+                  {ev.check_in && ev.check_out && !ev.schedule_id ? (
                     <span className="mt-1 block text-[10px] font-normal text-[#a16207]">
                       {isoDateOnly(ev.check_in)} → {isoDateOnly(ev.check_out)}
                     </span>
                   ) : null}
-                  {ev.status ? (
+                  {ev.status && !ev.schedule_id ? (
                     <span className="mt-1 block text-[10px] font-normal capitalize text-[#a16207]">
                       {ev.status.replace(/_/g, " ")}
                     </span>
+                  ) : null}
+                  {ev.schedule_id ? (
+                    <span className="mt-1 block text-[10px] font-normal text-[#4338ca]">Schedule — click to edit</span>
                   ) : null}
                 </button>
               ))}
@@ -385,7 +530,7 @@ export default function Calendar() {
           </div>
         )}
         {dayBookings.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-[#94a3b8]">No bookings on this day.</div>
+          <div className="px-4 py-8 text-center text-sm text-[#94a3b8]">No bookings or schedule items on this day.</div>
         )}
       </div>
     );
@@ -400,11 +545,11 @@ export default function Calendar() {
               <h1 className="text-xl font-bold text-[#1e293b]">{monthLabel}</h1>
               <p className="mt-0.5 text-xs text-[#64748b]">
                 {isPlatformAdmin
-                  ? "All properties — click a booking to reschedule."
-                  : "Your listings — click a booking to reschedule."}
+                  ? "All properties — bookings and shared schedule. Click a booking to reschedule or a blue chip to edit schedule."
+                  : "Your listings — bookings and shared schedule. Click a booking to reschedule or a blue chip to edit schedule."}
               </p>
               {loading ? (
-                <p className="mt-0.5 text-xs text-[#94a3b8]">Loading bookings…</p>
+                <p className="mt-0.5 text-xs text-[#94a3b8]">Loading calendar…</p>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -465,6 +610,13 @@ export default function Calendar() {
                 onClick={goToday}
               >
                 Today
+              </Button>
+              <Button
+                type="button"
+                className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+                onClick={openNewSchedule}
+              >
+                New schedule
               </Button>
             </div>
           </div>
@@ -556,6 +708,109 @@ export default function Calendar() {
                     disabled={saving}
                   >
                     {saving ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+        {scheduleOpen &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="schedule-editor-title"
+              onClick={closeScheduleEditor}
+            >
+              <div
+                className="w-full max-w-md rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 id="schedule-editor-title" className="text-lg font-semibold text-[#1e293b]">
+                  {scheduleDraft ? "Edit schedule" : "New schedule"}
+                </h3>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  Shared with participants you add; others get a notification when you save.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sch-title">Title</Label>
+                    <Input
+                      id="sch-title"
+                      value={scheduleTitle}
+                      onChange={(e) => setScheduleTitle(e.target.value)}
+                      className="border-[#e2e8f0]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="sch-start">Start</Label>
+                      <Input
+                        id="sch-start"
+                        type="datetime-local"
+                        value={scheduleStart}
+                        onChange={(e) => setScheduleStart(e.target.value)}
+                        className="border-[#e2e8f0]"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="sch-end">End</Label>
+                      <Input
+                        id="sch-end"
+                        type="datetime-local"
+                        value={scheduleEnd}
+                        onChange={(e) => setScheduleEnd(e.target.value)}
+                        className="border-[#e2e8f0]"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sch-desc">Description (optional)</Label>
+                    <textarea
+                      id="sch-desc"
+                      value={scheduleDesc}
+                      onChange={(e) => setScheduleDesc(e.target.value)}
+                      rows={3}
+                      className="flex w-full rounded-md border border-[#e2e8f0] bg-white px-3 py-2 text-sm shadow-sm placeholder:text-[#94a3b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--logo)]/25"
+                    />
+                  </div>
+                </div>
+
+                {scheduleErr ? <p className="mt-3 text-sm text-red-600">{scheduleErr}</p> : null}
+
+                <div className="mt-6 flex flex-wrap justify-end gap-3">
+                  {scheduleDraft ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mr-auto border-red-200 text-red-700 hover:bg-red-50"
+                      onClick={() => void removeSchedule()}
+                      disabled={scheduleSaving}
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="outline" onClick={closeScheduleEditor} disabled={scheduleSaving}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-[var(--logo)] text-white hover:bg-[var(--logo-hover)]"
+                    onClick={() => void saveScheduleEditor()}
+                    disabled={scheduleSaving}
+                  >
+                    {scheduleSaving ? (
                       <>
                         <Loader2 className="mr-2 size-4 animate-spin" />
                         Saving…

@@ -1,5 +1,5 @@
 /**
- * Login page hero – decorative image panel (hidden on mobile).
+ * Login page hero – full-height side image (half of viewport on lg+; hidden on mobile).
  */
 import Image from "next/image";
 
