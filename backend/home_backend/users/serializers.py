@@ -7,16 +7,17 @@ from django.contrib.auth import authenticate
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'phone', 'avatar', 'user_type']
+        fields = ['id', 'username', 'email', 'phone', 'country', 'avatar', 'user_type']
         read_only_fields = ['id','user_type']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     phone = serializers.CharField(required=False, allow_blank=True, default="")
+    country = serializers.CharField(required=False, allow_blank=True, default="Ghana")
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'phone', 'user_type']
+        fields = ['username', 'email', 'password', 'phone', 'country', 'user_type']
 
     def create(self, validated_data):
         user = CustomUser.objects.create_user(
@@ -24,6 +25,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             phone=validated_data.get('phone', ''),
+            country=validated_data.get('country', 'Ghana'),
             user_type=validated_data.get('user_type', 'customer'),
         )
         return user

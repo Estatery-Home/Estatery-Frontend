@@ -156,6 +156,20 @@ export async function fetchProfile(): Promise<User | null> {
   return res.json() as Promise<User>;
 }
 
+/** GET /api/countries/ — sorted list used by signup and location forms. */
+export async function fetchCountries(): Promise<string[]> {
+  const res = await fetch(api.endpoints.countries, {
+    headers: apiHeaders(false),
+    cache: "no-store",
+  });
+  if (!res.ok) return [];
+  const data = (await res.json().catch(() => [])) as Array<{ name?: unknown }>;
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row) => (typeof row?.name === "string" ? row.name.trim() : ""))
+    .filter(Boolean);
+}
+
 /** PATCH /api/auth/profile/ — partial update (e.g. social URLs). */
 export async function patchProfile(body: Partial<User>): Promise<User> {
   const res = await fetch(api.endpoints.profile, {

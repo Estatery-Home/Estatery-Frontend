@@ -20,6 +20,9 @@
   --input: 210 20% 90%;
   --ring: 221 83% 53%;
   --radius: 0.5rem;
+  --brand-mix-start: color-mix(in srgb, var(--logo) 92%, #1e40af);
+  --brand-mix-mid: color-mix(in srgb, var(--logo) 72%, #0ea5e9);
+  --brand-mix-end: color-mix(in srgb, var(--logo) 58%, #8b5cf6);
 }
 
 @theme inline {
@@ -70,4 +73,11 @@ body {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out both;
+}
+
+.card-brand-mix {
+  border: 1px solid color-mix(in srgb, var(--logo) 35%, white);
+  background: linear-gradient(90deg, var(--brand-mix-start), var(--brand-mix-mid), var(--brand-mix-end));
+  color: #ffffff;
+  box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--logo) 55%, #0f172a);
 }

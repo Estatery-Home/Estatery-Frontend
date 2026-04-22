@@ -8,6 +8,7 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchCountries } from "@/lib/api-client";
 import { Eye, EyeOff, AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,8 @@ export function SignupForm() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [country, setCountry] = React.useState("Ghana");
+  const [countries, setCountries] = React.useState<string[]>(["Ghana"]);
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [termsError, setTermsError] = React.useState<string | null>(null);
   const [termsModalOpen, setTermsModalOpen] = React.useState(false);
@@ -56,6 +59,22 @@ export function SignupForm() {
   const [loading, setLoading] = React.useState(false);
 
   const hasTyped = username.length > 0 || email.length > 0 || password.length > 0;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadCountries = async () => {
+      const list = await fetchCountries();
+      if (cancelled || list.length === 0) return;
+      setCountries(list);
+      if (!list.includes(country)) {
+        setCountry(list[0]);
+      }
+    };
+    void loadCountries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /* Validate username, email, password; call API register */
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,6 +120,7 @@ export function SignupForm() {
       password,
       user_type: userType,
       phone: phone.trim() || undefined,
+      country: country.trim() || undefined,
     });
     setLoading(false);
 
@@ -265,6 +285,23 @@ export function SignupForm() {
               className="w-full rounded-lg bg-white text-black border-[#d1d5db] placeholder:text-[#9ca3af]"
               autoComplete="tel"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="country" className="text-black">
+              Country <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2.5 text-black focus:outline-none focus:ring-2 focus:ring-[var(--logo)]"
+            >
+              {countries.map((countryName) => (
+                <option key={countryName} value={countryName}>
+                  {countryName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">

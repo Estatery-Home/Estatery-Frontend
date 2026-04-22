@@ -37,6 +37,7 @@ type AuthContextValue = {
     password: string;
     user_type: string;
     phone?: string;
+    country?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -227,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
       user_type: string;
       phone?: string;
+      country?: string;
     }): Promise<{ success: boolean; error?: string }> => {
       try {
         const res = await fetch(api.endpoints.register, {

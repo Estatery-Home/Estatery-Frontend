@@ -29,6 +29,7 @@ type AddPropertyLocationStepProps = {
   country?: string;
   state?: string;
   zip_code?: string;
+  availableCountries?: string[];
   onLocationChange?: (data: LocationData) => void;
 };
 
@@ -38,6 +39,7 @@ export function AddPropertyLocationStep({
   country: countryProp = "",
   state: stateProp = "",
   zip_code: zipProp = "",
+  availableCountries = [],
   onLocationChange,
 }: AddPropertyLocationStepProps) {
   const [loc, setLoc] = React.useState<LocationData>({
@@ -101,14 +103,30 @@ export function AddPropertyLocationStep({
           <Label htmlFor="country" className="text-[#1e293b]">
             Country <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="country"
-            value={loc.country}
-            onChange={(e) => notify({ ...loc, country: e.target.value })}
-            placeholder="e.g. Ghana"
-            className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
-          />
+          {availableCountries.length > 0 ? (
+            <select
+              id="country"
+              value={loc.country}
+              onChange={(e) => notify({ ...loc, country: e.target.value })}
+              className="flex h-10 w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#1e293b] focus:border-[var(--logo)] focus:outline-none focus:ring-2 focus:ring-[var(--logo)]/20"
+              required
+            >
+              {availableCountries.map((countryName) => (
+                <option key={countryName} value={countryName}>
+                  {countryName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              id="country"
+              value={loc.country}
+              onChange={(e) => notify({ ...loc, country: e.target.value })}
+              placeholder="e.g. Ghana"
+              className="border-[#e2e8f0] bg-white text-[#1e293b]"
+              required
+            />
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="state" className="text-[#1e293b]">

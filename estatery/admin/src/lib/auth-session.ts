@@ -154,7 +154,13 @@ function mergeRequestHeaders(
  */
 export async function fetchWithAuthRetry(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = mergeRequestHeaders(apiHeaders(true), init.headers);
-  let res = await fetch(url, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch {
+    // Keep polling code resilient when backend is offline/unreachable.
+    return new Response(null, { status: 503, statusText: "Network error" });
+  }
   if (res.status !== 401) return res;
   if (typeof window === "undefined") return res;
   const refresh = localStorage.getItem(AUTH_REFRESH_KEY);
@@ -168,5 +174,9 @@ export async function fetchWithAuthRetry(url: string, init: RequestInit = {}): P
     return res;
   }
   const retryHeaders = mergeRequestHeaders(apiHeaders(true), init.headers);
-  return fetch(url, { ...init, headers: retryHeaders });
+  try {
+    return await fetch(url, { ...init, headers: retryHeaders });
+  } catch {
+    return new Response(null, { status: 503, statusText: "Network error" });
+  }
 }

@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Property } from "@/lib/properties";
 import { PROPERTY_TYPES, LISTING_TYPES } from "@/lib/properties";
-import { createProperty, uploadPropertyImage } from "@/lib/api-client";
+import { createProperty, fetchCountries, uploadPropertyImage } from "@/lib/api-client";
 import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
 import { AddPropertyMediaStep, MAX_PROPERTY_IMAGES } from "./AddProperty4";
@@ -77,6 +77,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [photoFiles, setPhotoFiles] = React.useState<File[]>([]);
   const [primaryPhotoIndex, setPrimaryPhotoIndex] = React.useState(0);
   const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
+  const [countries, setCountries] = React.useState<string[]>(["Ghana"]);
 
   const resetForm = React.useCallback(() => {
     setStep(1);
@@ -102,6 +103,23 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     if (open && !wasOpen.current) resetForm();
     wasOpen.current = open;
   }, [open, resetForm]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadCountries = async () => {
+      const list = await fetchCountries();
+      if (cancelled || list.length === 0) return;
+      setCountries(list);
+      setLocation((prev) => ({
+        ...prev,
+        country: list.includes(prev.country) ? prev.country : list[0],
+      }));
+    };
+    void loadCountries();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const canContinue = () => {
     switch (step) {
@@ -359,6 +377,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
               country={location.country}
               state={location.state}
               zip_code={location.zip_code}
+              availableCountries={countries}
               onLocationChange={setLocation}
             />
           )}

@@ -52,6 +52,22 @@ from notifications.services import create_notification
 logger = logging.getLogger(__name__)
 
 _HOST_PAYMENT_STATUS_CODES = frozenset(c[0] for c in BookingPayment.STATUS_CHOICES)
+DEFAULT_COUNTRY_CHOICES = (
+    "Ghana",
+    "Nigeria",
+    "Togo",
+    "Ivory Coast",
+    "Gabon",
+    "Kenya",
+    "Uganda",
+    "Benin",
+    "South Africa",
+    "Zambia",
+    "Zimbabwe",
+    "Tanzania",
+    "Lesotho",
+    "Cameroon",
+)
 
 
 def _notify_booking_created(booking: Booking) -> None:
@@ -246,13 +262,14 @@ class CountryListView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        names = (
+        dynamic_names = (
             Property.objects.filter(status='available')
             .values_list('country', flat=True)
             .distinct()
             .order_by('country')
         )
-        return Response([{'name': n} for n in names if n])
+        merged = list(dict.fromkeys([*DEFAULT_COUNTRY_CHOICES, *(n for n in dynamic_names if n)]))
+        return Response([{'name': n} for n in merged if n])
 
 
 @extend_schema(
