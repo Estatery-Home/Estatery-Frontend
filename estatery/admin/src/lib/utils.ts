@@ -15,14 +15,26 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Format a numeric amount for dashboard KPIs (host currency from API). */
 export function formatDashboardCurrency(code: string, amount: string | number): string {
+  void code;
   const n = typeof amount === "number" ? amount : parseFloat(String(amount));
-  const formatted = Number.isFinite(n)
-    ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : "0.00";
-  const c = (code || "ghs").toLowerCase();
-  if (c === "usd") return `$${formatted}`;
-  if (c === "cfa") return `${formatted} CFA`;
-  return `₵${formatted}`;
+  const safe = Number.isFinite(n) ? n : 0;
+  return safe.toLocaleString("en-GH", {
+    style: "currency",
+    currency: "GHS",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function formatGhanaCedi(amount: string | number, maximumFractionDigits = 2): string {
+  const n = typeof amount === "number" ? amount : parseFloat(String(amount));
+  const safe = Number.isFinite(n) ? n : 0;
+  return safe.toLocaleString("en-GH", {
+    style: "currency",
+    currency: "GHS",
+    minimumFractionDigits: maximumFractionDigits > 0 ? 2 : 0,
+    maximumFractionDigits,
+  });
 }
 
 export function formatTrendPct(pct: number | null | undefined): {

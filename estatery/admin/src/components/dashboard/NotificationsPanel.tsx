@@ -80,13 +80,10 @@ export function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
                     n.unread && "bg-[#f0f9ff]"
                   )}
                 >
-                  <div className="relative shrink-0">
+                  <div className="shrink-0">
                     <div className="flex size-10 items-center justify-center rounded-full bg-[var(--logo-muted)] text-[var(--logo)]">
                       <Icon className="size-5" />
                     </div>
-                    {n.unread && (
-                      <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-[#ef4444]" aria-hidden />
-                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-[#1e293b]">{n.title}</p>

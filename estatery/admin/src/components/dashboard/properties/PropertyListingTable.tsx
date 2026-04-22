@@ -37,7 +37,7 @@ function parseLastUpdated(s: string | undefined): number {
   return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-/** Extract numeric value from price string (e.g. "₵350,000" → 350000) */
+/** Extract numeric value from price string (e.g. "GH₵350,000" -> 350000). */
 function parsePrice(price: string): number {
   const num = price.replace(/[^0-9.]/g, "");
   return parseFloat(num) || 0;

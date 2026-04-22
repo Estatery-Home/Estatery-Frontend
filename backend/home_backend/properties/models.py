@@ -1,8 +1,11 @@
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.core.files.base import ContentFile
 from users.models import CustomUser
 from decimal import Decimal
+from io import BytesIO
+import os
 import calendar
 
 
@@ -321,7 +324,45 @@ class PropertyImage(models.Model):
                 property=self.property, 
                 is_primary=True
             ).exclude(id=self.id).update(is_primary=False)
+        self._convert_to_webp_if_needed()
         super().save(*args, **kwargs)
+
+    def _convert_to_webp_if_needed(self):
+        """
+        Convert uploaded images to WebP before persisting.
+        Keeps existing WebP files unchanged.
+        """
+        if not self.image:
+            return
+
+        name = self.image.name or ""
+        if name.lower().endswith(".webp"):
+            return
+
+        try:
+            from PIL import Image, UnidentifiedImageError
+        except Exception:
+            # If Pillow is unavailable for any reason, keep original upload.
+            return
+
+        try:
+            self.image.open("rb")
+            with Image.open(self.image) as img:
+                has_alpha = img.mode in ("RGBA", "LA") or (
+                    img.mode == "P" and "transparency" in img.info
+                )
+                converted = img.convert("RGBA" if has_alpha else "RGB")
+                buffer = BytesIO()
+                converted.save(buffer, format="WEBP", quality=85, method=6)
+                base, _ = os.path.splitext(name)
+                self.image.save(
+                    f"{base}.webp",
+                    ContentFile(buffer.getvalue()),
+                    save=False,
+                )
+        except (UnidentifiedImageError, OSError, ValueError):
+            # Non-image/corrupted upload handling remains with existing validators.
+            return
 
 
 # ============ PROPERTY WISHLIST (customer saved listings) ============
@@ -708,6 +749,12 @@ class PropertyReview(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'property'],
+                name='uniq_propertyreview_user_property',
+            ),
+        ]
         indexes = [
             models.Index(fields=['property', '-created_at']),
             models.Index(fields=['user', '-created_at']),

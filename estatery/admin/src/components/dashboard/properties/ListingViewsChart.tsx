@@ -2,11 +2,11 @@
 
 /**
  * Listing views chart – views vs properties over time.
- * Range: Daily/Weekly/Monthly/Yearly; mock data.
+ * Range: Daily/Weekly/Monthly/Yearly; API-backed only.
  */
 import * as React from "react";
 import { RefreshCw, ChevronDown } from "lucide-react";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { HostActivityChart } from "@/lib/api-types";
 
@@ -19,60 +19,6 @@ type ChartPoint = {
   property: number;
 };
 
-function generateChartData(range: RangeType, seed: number): ChartPoint[] {
-  const rnd = (base: number, variance: number) =>
-    Math.floor(base + Math.sin(seed * 0.1 + base) * variance);
-
-  const baseDate = new Date(2025, 5, 15); // June 15, 2025
-
-  if (range === "Daily") {
-    return Array.from({ length: 14 }, (_, i) => {
-      const d = addDays(baseDate, i);
-      return {
-        date: d,
-        dateLabel: format(d, "MMMM d, yyyy"),
-        views: rnd(600 + i * 40, 120),
-        property: rnd(250 + i * 15, 60),
-      };
-    });
-  }
-
-  if (range === "Weekly") {
-    return Array.from({ length: 4 }, (_, i) => {
-      const d = addDays(baseDate, i * 7);
-      return {
-        date: d,
-        dateLabel: format(d, "MMMM d, yyyy"),
-        views: rnd(650 + i * 80, 150),
-        property: rnd(280 + i * 35, 70),
-      };
-    });
-  }
-
-  if (range === "Monthly") {
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = addDays(baseDate, i * 6);
-      return {
-        date: d,
-        dateLabel: format(d, "MMMM d, yyyy"),
-        views: rnd(600 + i * 80, 130),
-        property: rnd(250 + i * 35, 65),
-      };
-    });
-  }
-
-  // Yearly - 12 months
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(2025, i, 15);
-    return {
-      date: d,
-      dateLabel: format(d, "MMMM d, yyyy"),
-      views: rnd(500 + i * 60, 180),
-      property: rnd(200 + i * 30, 80),
-    };
-  });
-}
-
 const PADDING = { top: 20, right: 16, bottom: 36, left: 40 };
 
 type ListingViewsChartProps = {
@@ -82,22 +28,18 @@ type ListingViewsChartProps = {
 
 export function ListingViewsChart({ activityChart, onRefresh }: ListingViewsChartProps) {
   const [range, setRange] = React.useState<RangeType>("Monthly");
-  const [refreshKey, setRefreshKey] = React.useState(0);
   const [hoverIndex, setHoverIndex] = React.useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
 
   const data = React.useMemo(() => {
-    const fromApi = activityChart?.[range];
-    if (fromApi?.length) {
-      return fromApi.map((p) => ({
-        date: new Date(`${p.date}T12:00:00`),
-        dateLabel: p.dateLabel,
-        views: p.views,
-        property: p.property,
-      }));
-    }
-    return generateChartData(range, refreshKey);
-  }, [activityChart, range, refreshKey]);
+    const fromApi = activityChart?.[range] ?? [];
+    return fromApi.map((p) => ({
+      date: new Date(`${p.date}T12:00:00`),
+      dateLabel: p.dateLabel,
+      views: p.views,
+      property: p.property,
+    }));
+  }, [activityChart, range]);
 
   const chartWidth = 400;
   const chartHeight = 180;
@@ -134,7 +76,6 @@ export function ListingViewsChart({ activityChart, onRefresh }: ListingViewsChar
 
   const handleRefresh = () => {
     onRefresh?.();
-    setRefreshKey((k) => k + 1);
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -156,6 +97,30 @@ export function ListingViewsChart({ activityChart, onRefresh }: ListingViewsChar
   const handleMouseLeave = () => setHoverIndex(null);
 
   const hoveredPoint = hoverIndex != null ? data[hoverIndex] : null;
+
+  if (data.length === 0) {
+    return (
+      <div className="flex flex-col rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-[#1e293b]">Activity</h3>
+            <p className="mt-1 text-xs text-[#94a3b8]">No booking/listing activity yet.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="flex size-9 items-center justify-center rounded-lg border border-[#e2e8f0] text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[var(--logo)]"
+            aria-label="Refresh"
+          >
+            <RefreshCw className="size-4" />
+          </button>
+        </div>
+        <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#94a3b8]">
+          No data available
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm sm:p-5">

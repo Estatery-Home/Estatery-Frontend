@@ -731,7 +731,7 @@ export async function fetchAdminBookings(params: {
 /** PATCH /api/admin/bookings/:id/decision/ — confirm or reject a pending booking (admin/staff). */
 export async function patchAdminBookingDecision(
   bookingId: number,
-  body: { action: "confirm" | "reject"; reason?: string }
+  body: { action: "confirm" | "reject" | "cancel"; reason?: string }
 ): Promise<{ message: string; booking: AdminBookingRow }> {
   const res = await fetch(api.endpoints.adminBookingDecision(bookingId), {
     method: "PATCH",

@@ -4,7 +4,7 @@
  * Add Property step 4 – multiple photos and pick featured (primary) for listings.
  */
 import * as React from "react";
-import { Star } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,22 @@ export function AddPropertyMediaStep({
 
   const safePrimary = files.length === 0 ? 0 : Math.min(primaryIndex, files.length - 1);
 
+  const handleRemoveAt = (index: number) => {
+    const next = files.filter((_, i) => i !== index);
+    onFilesChange(next);
+    if (next.length === 0) {
+      onPrimaryIndexChange(0);
+      return;
+    }
+    if (index === primaryIndex) {
+      onPrimaryIndexChange(0);
+      return;
+    }
+    if (index < primaryIndex) {
+      onPrimaryIndexChange(primaryIndex - 1);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <h3 className="text-lg font-semibold text-[#1e293b]">Photos</h3>
@@ -108,30 +124,43 @@ export function AddPropertyMediaStep({
               const isPrimary = i === safePrimary;
               return (
                 <li key={`${file.name}-${i}`}>
-                  <button
-                    type="button"
-                    onClick={() => onPrimaryIndexChange(i)}
+                  <div
                     className={cn(
-                      "relative aspect-square w-full overflow-hidden rounded-lg border-2 bg-slate-100 text-left shadow-sm transition",
+                      "relative aspect-square w-full overflow-hidden rounded-lg border-2 bg-slate-100 shadow-sm transition",
                       isPrimary
                         ? "border-[var(--logo)] ring-2 ring-[var(--logo)]/30"
                         : "border-transparent hover:border-[#cbd5e1]"
                     )}
                   >
-                    {thumb ? (
-                      <img src={thumb} alt="" className="size-full object-cover" />
-                    ) : (
-                      <span className="flex size-full items-center justify-center text-[10px] text-[#94a3b8]">
-                        {file.name}
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onPrimaryIndexChange(i)}
+                      className="size-full text-left"
+                      aria-label={`Set ${file.name} as featured image`}
+                    >
+                      {thumb ? (
+                        <img src={thumb} alt="" className="size-full object-cover" />
+                      ) : (
+                        <span className="flex size-full items-center justify-center text-[10px] text-[#94a3b8]">
+                          {file.name}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAt(i)}
+                      className="absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/75"
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      <X className="size-3.5" />
+                    </button>
                     {isPrimary && (
-                      <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded bg-[var(--logo)] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow">
+                      <span className="absolute left-1 top-1 inline-flex items-center gap-0.5 rounded bg-[var(--logo)] px-1.5 py-0.5 pr-2 text-[10px] font-semibold text-white shadow">
                         <Star className="size-3 fill-white text-white" />
                         Main
                       </span>
                     )}
-                  </button>
+                  </div>
                 </li>
               );
             })}

@@ -184,10 +184,10 @@ export function getPropertyImage(p: Property): string {
   return "/images/property-1.webp";
 }
 
-/** Display helper: price with period (monthly for rent, one-time for sale) */
+/** Display helper: price with period (monthly for rent, one-time for sale). */
 export function getPropertyPriceDisplay(p: Property): string {
   const prefix =
-    p.currency === "ghs" ? "₵" : p.currency === "usd" ? "$" : p.currency === "cfa" ? "CFA " : "";
+    p.currency === "ghs" ? "GH₵" : p.currency === "usd" ? "GH₵" : p.currency === "cfa" ? "GH₵" : "GH₵";
   if (p.listing_type === "sale") return `${prefix}${p.monthly_price}`;
   return `${prefix}${p.monthly_price} / month`;
 }

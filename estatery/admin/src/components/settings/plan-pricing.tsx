@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatGhanaCedi } from "@/lib/utils";
 
 type PlanActionVariant = "default" | "outline";
 
@@ -74,7 +74,7 @@ export function PlanPricing() {
               <div>
                 <h4 className="font-semibold text-[#1e293b]">{plan.name}</h4>
                 <p className="mt-1 text-2xl font-bold text-[#1e293b]">
-                  ₵{plan.price}{" "}
+                  {formatGhanaCedi(plan.price, 0)}{" "}
                   <span className="text-sm font-normal text-[#64748b]">/ month</span>
                 </p>
               </div>

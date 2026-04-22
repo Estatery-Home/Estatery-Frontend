@@ -427,6 +427,20 @@ class BookingSerializer(serializers.ModelSerializer):
                     "property": "Property is not available for the selected dates."
                 })
 
+            # 6. Prevent repeat booking for same property unless previous booking was rejected/cancelled.
+            has_open_or_future_booking = Booking.objects.filter(
+                user=user,
+                rented_property=property_obj,
+                status__in=['pending', 'confirmed', 'active', 'completed'],
+            ).exists()
+            if has_open_or_future_booking:
+                raise serializers.ValidationError({
+                    "property": (
+                        "You already have a booking for this property. "
+                        "You can only book again if your previous request was rejected or cancelled."
+                    )
+                })
+
             promo = None
             raw_promo = (attrs.get('promo_code') or '').strip()
             if raw_promo:
@@ -721,10 +735,17 @@ class PropertyReviewSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"detail": "Booking not found"})
         if booking.user != request.user:
             raise serializers.ValidationError({"detail": "You can only review your own bookings"})
-        if booking.status != 'completed':
-            raise serializers.ValidationError({"detail": "You can only review completed stays"})
+        if booking.status in ('cancelled', 'rejected'):
+            raise serializers.ValidationError({"detail": "You cannot review a cancelled or rejected booking"})
         if PropertyReview.objects.filter(booking=booking).exists():
             raise serializers.ValidationError({"detail": "This booking has already been reviewed"})
+        if PropertyReview.objects.filter(
+            user=request.user,
+            property=booking.rented_property,
+        ).exists():
+            raise serializers.ValidationError(
+                {"detail": "You have already reviewed this property."}
+            )
         validated_data['user'] = request.user
         validated_data['property'] = booking.rented_property
         validated_data['booking'] = booking
