@@ -28,8 +28,8 @@ export function MyProperties() {
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-5">
+    <div className="flex flex-col rounded-2xl border border-slate-200/70 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 tracking-tight">My Properties</h3>
           <p className="text-[13px] text-slate-500 mt-0.5">Your active listings overview</p>
@@ -45,12 +45,12 @@ export function MyProperties() {
         </button>
       </div>
       
-      <div className="space-y-4 overflow-x-hidden px-6 py-5">
+      <div className="space-y-3 overflow-x-hidden px-4 py-4">
         {properties.slice(0, 4).map((prop) => (
           <Link
             key={prop.id}
             to={`/dashboard/properties/${prop.id}`}
-            className="group relative flex gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white hover:border-indigo-100/50 hover:shadow-[0_4px_20px_rgb(0,0,0,0.05)] active:scale-[0.98]"
+            className="group relative flex gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-white hover:border-blue-100 hover:shadow-sm active:scale-[0.99]"
           >
             <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 shadow-sm">
               <img
@@ -61,7 +61,7 @@ export function MyProperties() {
               <div className="absolute inset-0 bg-indigo-900/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
             </div>
             <div className="relative min-w-0 flex-1 flex flex-col justify-center">
-              <p className="truncate text-sm font-bold text-slate-800 transition-colors group-hover:text-indigo-600">
+              <p className="truncate text-sm font-bold text-slate-800 transition-colors group-hover:text-blue-600">
                 {prop.title}
               </p>
               <p className="truncate text-[11px] font-medium text-slate-400 mt-0.5">{getPropertyLocation(prop)}</p>
@@ -72,7 +72,7 @@ export function MyProperties() {
                   {getRentalPeriodLabel(prop) && <span className="text-[11px] font-medium text-slate-400 font-normal"> / {getRentalPeriodLabel(prop).toLowerCase().replace('/', '')}</span>}
                 </p>
                 
-                <div className="flex size-6 items-center justify-center rounded-full bg-slate-200/50 text-slate-400 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:bg-indigo-50 group-hover:text-indigo-600">
+                <div className="flex size-6 items-center justify-center rounded-full bg-slate-200/50 text-slate-400 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:bg-blue-50 group-hover:text-blue-600">
                   <Play className="size-3 ml-0.5" fill="currentColor" />
                 </div>
               </div>

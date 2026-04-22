@@ -150,23 +150,20 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-slate-200/70 bg-white px-6 py-5 shadow-sm">
           <div>
-            <h1 className="text-xl font-bold text-[#1e293b]">Welcome back, {profile.username || "User"}!</h1>
-            <p className="mt-1 text-xs text-[#64748b]">
-              Track and manage your property dashboard efficiently.
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Admin dashboard</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">Welcome back, {profile.username || "User"}!</h1>
+            <p className="mt-1 text-sm text-slate-500">Track and manage your property dashboard efficiently.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 shadow-sm">
-              <Calendar className="size-3.5 shrink-0 text-[#64748b]" />
-              <span className="text-xs font-medium text-[#64748b]">
-                Last updated: {lastUpdated || "—"}
-              </span>
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+              <Calendar className="size-3.5 shrink-0 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600">Last updated: {lastUpdated || "—"}</span>
               <button
                 type="button"
                 onClick={handleRefresh}
-                className="flex size-6 items-center justify-center rounded text-[var(--logo)] transition-colors hover:bg-[var(--logo-muted)] hover:text-[var(--logo-hover)]"
+                className="flex size-6 items-center justify-center rounded text-slate-500 transition-colors hover:bg-white hover:text-blue-600"
                 aria-label="Refresh"
               >
                 <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
@@ -174,7 +171,7 @@ export default function Dashboard() {
             </div>
             <Button
               onClick={handleExport}
-              className="h-9 shrink-0 rounded-lg bg-[var(--logo)] px-3 text-xs text-white hover:bg-[var(--logo-hover)]"
+              className="h-9 shrink-0 rounded-lg bg-blue-600 px-3 text-xs text-white hover:bg-blue-700"
             >
               <Download className="mr-1.5 size-3.5" />
               Export CSV
@@ -186,6 +183,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-6 lg:col-span-3">
             <OverviewCards
               properties={dash?.properties ?? null}
+              bookings={dash?.bookings ?? null}
               revenue={dash?.revenue ?? null}
               comparison={dash?.comparison ?? null}
               currency={dash?.currency ?? "ghs"}

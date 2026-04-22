@@ -75,7 +75,7 @@ export function Sidebar({ collapsed, onToggle, onLogoutClick }: SidebarProps) {
       collapsed ? "justify-center size-10 mx-auto" : "min-h-[38px] w-full gap-3 px-3 py-1.5",
       "text-xs font-semibold",
       isActive
-        ? "bg-[var(--logo)] text-white shadow-md shadow-[var(--logo)]/20"
+        ? "bg-blue-600 text-white shadow-sm"
         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98]"
     );
 

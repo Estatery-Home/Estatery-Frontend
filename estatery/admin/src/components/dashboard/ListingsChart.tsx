@@ -86,7 +86,7 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
   };
 
   return (
-    <div className="flex min-h-[260px] flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:min-h-[300px] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+    <div className="flex min-h-[260px] flex-col rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm sm:min-h-[300px] transition-all duration-300 hover:shadow-md">
       {/* Header: title left, dropdown + refresh right */}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -98,7 +98,7 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
             <select
               value={range}
               onChange={(e) => setRange(e.target.value as Range)}
-              className="appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-sm font-medium text-slate-700 transition-all cursor-pointer group-hover:bg-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+              className="appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-4 pr-10 text-sm font-medium text-slate-700 transition-all cursor-pointer group-hover:bg-slate-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -109,10 +109,10 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
           <button
             type="button"
             onClick={handleRefresh}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-all hover:bg-white hover:text-indigo-600 hover:shadow-sm hover:border-indigo-100 active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition-all hover:bg-white hover:text-blue-600 hover:shadow-sm hover:border-blue-100 active:scale-95"
             aria-label="Refresh chart"
           >
-            <RefreshCw className={cn("w-4 h-4", animating && "animate-spin text-indigo-600")} />
+            <RefreshCw className={cn("w-4 h-4", animating && "animate-spin text-blue-600")} />
           </button>
         </div>
       </div>
@@ -139,13 +139,13 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
         </div>
         <div className="flex gap-5 px-1">
           <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-gradient-to-tr from-indigo-600 to-indigo-400 shadow-sm shadow-indigo-200 transition-transform group-hover:scale-110">
+            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-blue-500 shadow-sm shadow-blue-200 transition-transform group-hover:scale-110">
               <div className="absolute inset-0 rounded-[4px] bg-white opacity-0 mix-blend-overlay transition-opacity group-hover:opacity-20" />
             </div>
             <span className="text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-900">Rentals</span>
           </div>
           <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-gradient-to-tr from-emerald-500 to-emerald-300 shadow-sm shadow-emerald-200 transition-transform group-hover:scale-110">
+            <div className="relative flex h-3 w-3 items-center justify-center rounded-[4px] bg-emerald-500 shadow-sm shadow-emerald-200 transition-transform group-hover:scale-110">
               <div className="absolute inset-0 rounded-[4px] bg-white opacity-0 mix-blend-overlay transition-opacity group-hover:opacity-20" />
             </div>
             <span className="text-sm font-medium text-slate-500 transition-colors group-hover:text-slate-900">Sales</span>
@@ -180,8 +180,8 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
               className="absolute left-0 right-0 z-0 flex items-center group"
               style={{ bottom: `calc(${Math.min(100, (avgVal / scaleMax) * 100)}% + 32px)` }}
             >
-              <div className="w-full border-t border-dashed border-indigo-300/60" />
-              <div className="absolute right-0 translate-x-3 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold tracking-wider text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 shadow-sm border border-indigo-100">
+              <div className="w-full border-t border-dashed border-blue-300/70" />
+              <div className="absolute right-0 translate-x-3 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold tracking-wider text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 shadow-sm border border-blue-100">
                 AVG {avgVal.toFixed(1)}
               </div>
             </div>
@@ -212,9 +212,9 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
                     <div className="relative z-10 flex h-full w-full max-w-[48px] items-end justify-center gap-1.5 sm:gap-2">
                       <div
                         className={cn(
-                          "w-full rounded-t-md bg-gradient-to-t from-indigo-700 to-indigo-400 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden",
+                          "w-full rounded-t-md bg-blue-500 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden",
                           isNotHovered && "opacity-40 grayscale-[30%]",
-                          isHovered && "shadow-indigo-300/50 shadow-lg -translate-y-1 brightness-110",
+                          isHovered && "shadow-blue-300/50 shadow-lg -translate-y-1 brightness-110",
                           !animating ? "" : "!h-0"
                         )}
                         style={{ height: animating ? '0%' : `${Math.max(4, (d.rent / scaleMax) * 100)}%` }}
@@ -223,7 +223,7 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
                       </div>
                       <div
                         className={cn(
-                          "w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-emerald-300 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden delay-[50ms]",
+                          "w-full rounded-t-md bg-emerald-500 shadow-sm transition-all duration-500 ease-out relative group/bar overflow-hidden delay-[50ms]",
                           isNotHovered && "opacity-40 grayscale-[30%]",
                           isHovered && "shadow-emerald-300/50 shadow-lg -translate-y-1 brightness-110",
                           !animating ? "" : "!h-0"
@@ -238,7 +238,7 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
                     <span
                       className={cn(
                         "relative z-10 w-full truncate text-center text-[11px] font-semibold transition-all duration-300",
-                        isHovered ? "text-indigo-700 scale-110" : "text-slate-400 scale-100"
+                        isHovered ? "text-blue-700 scale-110" : "text-slate-400 scale-100"
                       )}
                     >
                       {d.label}
@@ -254,10 +254,10 @@ export function ListingsChart({ listingsChart, loading, onRefresh }: ListingsCha
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-1.5">
-                                <span className="size-2 rounded-full bg-indigo-500 shadow-sm" />
+                                <span className="size-2 rounded-full bg-blue-500 shadow-sm" />
                                 <span className="text-xs font-medium text-slate-500">Rentals</span>
                               </div>
-                              <span className="text-xs font-bold text-indigo-700">{d.rent}</span>
+                              <span className="text-xs font-bold text-blue-700">{d.rent}</span>
                             </div>
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-1.5">
