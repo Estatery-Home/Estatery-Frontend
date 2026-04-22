@@ -9,6 +9,7 @@ class CustomUser(AbstractUser):
     # Add extra fields to Django's default User model
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    country = models.CharField(max_length=100, blank=True, default="Ghana")
     email = models.EmailField(_('email address'), unique=True, error_messages={
         'unique': _("A user with that email already exists."),
     })

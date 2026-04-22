@@ -7,16 +7,17 @@ from .models import CustomUser, OtpChallenge
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = UserAdmin.list_display + ('user_type', 'phone')
-    list_filter = UserAdmin.list_filter + ('user_type',)
+    list_display = UserAdmin.list_display + ('user_type', 'phone', 'country', 'email_verified')
+    list_filter = UserAdmin.list_filter + ('user_type', 'country', 'email_verified')
+    search_fields = UserAdmin.search_fields + ('phone', 'country')
     fieldsets = UserAdmin.fieldsets + (
         (
             _('Estatery profile'),
-            {'fields': ('phone', 'avatar', 'user_type', 'instagram_url', 'facebook_url', 'twitter_url', 'youtube_url')},
+            {'fields': ('phone', 'country', 'avatar', 'user_type', 'email_verified', 'instagram_url', 'facebook_url', 'twitter_url', 'youtube_url')},
         ),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        (_('Estatery profile'), {'fields': ('email', 'phone', 'user_type')}),
+        (_('Estatery profile'), {'fields': ('email', 'phone', 'country', 'user_type')}),
     )
 
 

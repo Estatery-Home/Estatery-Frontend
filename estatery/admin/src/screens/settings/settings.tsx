@@ -41,6 +41,7 @@ function copyProfile(p: UserProfile): UserProfile {
     username: p.username,
     email: p.email,
     phone: p.phone,
+    country: p.country,
     avatar: p.avatar ?? null,
     user_type: p.user_type,
   };

@@ -135,6 +135,17 @@ export function MyAccount({ draft: draftProp, onUpdateDraft }: MyAccountProps) {
               className="border-[#e2e8f0] bg-white text-[#1e293b]"
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="country" className="text-[#1e293b]">
+              Country
+            </Label>
+            <Input
+              id="country"
+              value={draft.country}
+              onChange={(e) => update({ country: e.target.value })}
+              className="border-[#e2e8f0] bg-white text-[#1e293b]"
+            />
+          </div>
         </div>
       </section>
     </div>

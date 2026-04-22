@@ -14,6 +14,7 @@ export type UserProfile = {
   username: string;
   email: string;
   phone: string;
+  country: string;
   avatar?: string | null;
   user_type: UserType;
 };
@@ -32,6 +33,7 @@ function getStoredProfile(): UserProfile {
     username: "",
     email: "",
     phone: "",
+    country: "Ghana",
     avatar: null,
     user_type: "customer",
   };
@@ -47,6 +49,7 @@ function getStoredProfile(): UserProfile {
       username: parsed.username || "",
       email: parsed.email || "",
       phone: parsed.phone || "",
+      country: parsed.country || "Ghana",
       avatar: parsed.avatar ?? null,
       user_type: parsed.user_type || "customer",
     };
@@ -55,12 +58,13 @@ function getStoredProfile(): UserProfile {
   }
 }
 
-function userToProfile(user: { id?: number; username: string; email: string; phone?: string; avatar?: string | null; user_type: string }): UserProfile {
+function userToProfile(user: { id?: number; username: string; email: string; phone?: string; country?: string; avatar?: string | null; user_type: string }): UserProfile {
   return {
     id: user.id,
     username: user.username,
     email: user.email,
     phone: user.phone ?? "",
+    country: user.country ?? "Ghana",
     avatar: user.avatar ?? null,
     user_type: user.user_type as UserType,
   };

@@ -14,6 +14,7 @@ export type User = {
   username: string;
   email: string;
   phone: string;
+  country?: string;
   avatar: string | null;
   user_type: UserType;
   email_verified?: boolean;
@@ -29,6 +30,7 @@ export type RegisterRequest = {
   email: string;
   password: string;
   phone?: string;
+  country?: string;
   user_type: UserType;
 };
 
@@ -44,7 +46,7 @@ export type AuthResponse = {
   message: string;
 };
 
-export type ProfileUpdateRequest = Partial<Pick<User, "username" | "email" | "phone" | "avatar">>;
+export type ProfileUpdateRequest = Partial<Pick<User, "username" | "email" | "phone" | "country" | "avatar">>;
 
 /* ---- Property ---- */
 
