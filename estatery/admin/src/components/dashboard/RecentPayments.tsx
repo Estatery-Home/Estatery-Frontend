@@ -54,11 +54,11 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const statusClass: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200/60 shadow-amber-100",
-  paid: "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-emerald-100",
-  overdue: "bg-rose-50 text-rose-700 border-rose-200/60 shadow-rose-100",
-  refunded: "bg-indigo-50 text-indigo-700 border-indigo-200/60 shadow-indigo-100",
-  cancelled: "bg-slate-50 text-slate-700 border-slate-200/60 shadow-slate-100",
+  pending: "bg-amber-50 text-amber-700 border-amber-200/70",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-200/70",
+  overdue: "bg-rose-50 text-rose-700 border-rose-200/70",
+  refunded: "bg-blue-50 text-blue-700 border-blue-200/70",
+  cancelled: "bg-slate-50 text-slate-700 border-slate-200/70",
 };
 
 const FILTER_OPTIONS = [
@@ -192,7 +192,7 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
   }, [openMenuId]);
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative z-0">
+    <div className="relative z-0 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md sm:p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 tracking-tight">Recent Payments</h3>
@@ -204,22 +204,22 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Bar */}
           <div className="relative flex-1 min-w-[200px] group">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500" />
             <input
               type="search"
               placeholder="Search payments..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 transition-all hover:bg-slate-100/50 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               aria-label="Search payments"
             />
           </div>
           
           {/* Filter Dropdown */}
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none">
+            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none">
               <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 min-w-0">
-                <Filter className="size-4 shrink-0 text-slate-400 group-focus:text-indigo-500" aria-hidden />
+                <Filter className="size-4 shrink-0 text-slate-400 group-focus:text-blue-500" aria-hidden />
                 <SelectValue placeholder="Filter" />
               </div>
             </SelectTrigger>
@@ -238,9 +238,9 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
 
           {/* Sort Dropdown */}
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none">
+            <SelectTrigger className="w-[140px] h-10 px-3.5 py-2 group relative flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 transition-all hover:bg-slate-100/50 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none">
               <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 min-w-0">
-                <ArrowUpDown className="size-4 shrink-0 text-slate-400 group-focus:text-indigo-500" aria-hidden />
+                <ArrowUpDown className="size-4 shrink-0 text-slate-400 group-focus:text-blue-500" aria-hidden />
                 <SelectValue placeholder="Sort by" />
               </div>
             </SelectTrigger>
@@ -262,9 +262,9 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
       <div className="overflow-x-auto rounded-xl border border-slate-100 shadow-sm">
         <table className="w-full min-w-[760px] text-sm text-left">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-500">
+            <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500">
               <th className="py-3.5 pl-5 pr-2 w-10">
-                <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600/20 cursor-pointer" aria-label="Select all" />
+                <input type="checkbox" className="cursor-pointer rounded-md border-slate-300 text-blue-600 focus:ring-blue-600/20" aria-label="Select all" />
               </th>
               <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Payment ID</th>
               <th className="py-3.5 px-3 font-semibold uppercase tracking-wider text-[11px]">Property</th>
@@ -282,20 +282,20 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
               return (
                 <tr
                   key={p.id}
-                  className="group relative transition-all duration-200 hover:bg-slate-50/80 hover:shadow-[0_0_15px_rgba(0,0,0,0.02)]"
+                  className="group relative transition-all duration-200 hover:bg-slate-50"
                 >
-                  <td className="py-3.5 pl-5 pr-2">
-                    <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-600/20 cursor-pointer" aria-label={`Select ${p.id}`} />
+                  <td className="py-4 pl-5 pr-2">
+                    <input type="checkbox" className="cursor-pointer rounded-md border-slate-300 text-blue-600 focus:ring-blue-600/20" aria-label={`Select ${p.id}`} />
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-4 px-3">
                     <span className="font-semibold text-slate-700">#{p.id}</span>
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-4 px-3">
                     <p className="font-semibold text-slate-900 truncate max-w-[160px]" title={p.property_title ?? "—"}>
                       {p.property_title ?? "—"}
                     </p>
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-4 px-3">
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr text-xs font-bold text-white shadow-sm ring-2 ring-white",
@@ -306,21 +306,21 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
                       <span className="font-medium text-slate-700">{p.customer ?? "—"}</span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-3 font-medium text-slate-500 whitespace-nowrap">
+                  <td className="py-4 px-3 font-medium text-slate-500 whitespace-nowrap">
                     {formatDate(p.due_date)}
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-4 px-3">
                     <span className="inline-flex rounded-lg bg-slate-100 border border-slate-200/60 px-2.5 py-1 text-xs font-semibold text-slate-700">
                       {PAYMENT_TYPE_LABEL[p.payment_type] || p.payment_type}
                     </span>
                   </td>
-                  <td className="py-3.5 px-3 font-bold text-slate-900 whitespace-nowrap">
+                  <td className="py-4 px-3 font-bold text-slate-900 whitespace-nowrap">
                     {formatAmount(p.amount)}
                   </td>
-                  <td className="py-3.5 px-3">
+                  <td className="py-4 px-3">
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize shadow-sm",
+                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold capitalize",
                         statusClass[p.status] ?? "bg-slate-50 text-slate-700 border-slate-200/60"
                       )}
                     >
@@ -328,7 +328,7 @@ export function RecentPayments({ payments, loading, onRefetch }: RecentPaymentsP
                       {p.status}
                     </span>
                   </td>
-                  <td className="relative py-3.5 pr-5 pl-2">
+                  <td className="relative py-4 pr-5 pl-2">
                     <div
                       ref={openMenuId === p.id ? (el) => { menuRef.current = el; } : undefined}
                       className="relative inline-flex"
