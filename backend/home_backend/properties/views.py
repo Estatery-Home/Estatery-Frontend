@@ -46,10 +46,96 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from collections import Counter
 import logging
+from notifications.models import Notification
+from notifications.services import create_notification
 
 logger = logging.getLogger(__name__)
 
 _HOST_PAYMENT_STATUS_CODES = frozenset(c[0] for c in BookingPayment.STATUS_CHOICES)
+
+
+def _notify_booking_created(booking: Booking) -> None:
+    """Notify owner + customer when booking request is submitted."""
+    create_notification(
+        user=booking.rented_property.owner,
+        notification_type=Notification.NotificationType.PROPERTY_ALERT,
+        title="New booking request",
+        body=f"{booking.user.username} requested to book \"{booking.rented_property.title}\".",
+        action_href="/dashboard/bookings",
+        action_label="Review booking",
+    )
+    create_notification(
+        user=booking.user,
+        notification_type=Notification.NotificationType.PROPERTY_ALERT,
+        title="Booking request submitted",
+        body=f"Your booking request for \"{booking.rented_property.title}\" is pending approval.",
+        action_href="/dashboard/bookings",
+        action_label="View booking",
+    )
+
+
+def _notify_booking_decision(booking: Booking, approved: bool, reason: str = "") -> None:
+    """Notify customer when booking is approved/rejected."""
+    if approved:
+        title = "Booking approved"
+        body = f"Your booking for \"{booking.rented_property.title}\" has been approved."
+    else:
+        title = "Booking rejected"
+        body = f"Your booking for \"{booking.rented_property.title}\" was rejected."
+        if reason:
+            body = f"{body} Reason: {reason}"
+    create_notification(
+        user=booking.user,
+        notification_type=Notification.NotificationType.PROPERTY_ALERT,
+        title=title,
+        body=body,
+        action_href="/dashboard/bookings",
+        action_label="View booking",
+    )
+
+
+def _notify_booking_cancellation(
+    booking: Booking,
+    *,
+    cancelled_by: str,
+    reason: str = "",
+) -> None:
+    """Notify tenant + owner when a booking is cancelled by admin/customer."""
+    detail_suffix = f" Reason: {reason}" if reason else ""
+    if cancelled_by == "customer":
+        create_notification(
+            user=booking.rented_property.owner,
+            notification_type=Notification.NotificationType.PROPERTY_ALERT,
+            title="Booking cancelled by customer",
+            body=(
+                f"{booking.user.username} cancelled booking for "
+                f"\"{booking.rented_property.title}\".{detail_suffix}"
+            ),
+            action_href="/dashboard/bookings",
+            action_label="View booking",
+        )
+        return
+
+    # Admin/staff cancellation notifies both tenant and listing owner.
+    create_notification(
+        user=booking.user,
+        notification_type=Notification.NotificationType.PROPERTY_ALERT,
+        title="Booking cancelled by admin",
+        body=f"Your booking for \"{booking.rented_property.title}\" was cancelled by admin.{detail_suffix}",
+        action_href="/dashboard/bookings",
+        action_label="View booking",
+    )
+    create_notification(
+        user=booking.rented_property.owner,
+        notification_type=Notification.NotificationType.PROPERTY_ALERT,
+        title="Booking cancelled by admin",
+        body=(
+            f"Booking for \"{booking.rented_property.title}\" "
+            f"(customer: {booking.user.username}) was cancelled by admin.{detail_suffix}"
+        ),
+        action_href="/dashboard/bookings",
+        action_label="View booking",
+    )
 
 # ============ PROPERTY VIEWS ============
 
@@ -297,7 +383,7 @@ class AdminBookingDecisionView(generics.UpdateAPIView):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Booking.objects.none()
-        return Booking.objects.filter(status="pending").select_related(
+        return Booking.objects.filter(status__in=("pending", "confirmed", "active")).select_related(
             "user", "rented_property", "rented_property__owner", "promo"
         )
 
@@ -311,6 +397,10 @@ class AdminBookingDecisionView(generics.UpdateAPIView):
                 booking.confirmed_at = timezone.now()
                 booking.save()
                 message = "Booking confirmed successfully"
+                try:
+                    _notify_booking_decision(booking, approved=True)
+                except Exception:
+                    logger.exception("Failed creating approval notification for booking_id=%s", booking.id)
                 if not settings.DEBUG:
                     send_mail(
                         "Booking Confirmed",
@@ -325,6 +415,10 @@ class AdminBookingDecisionView(generics.UpdateAPIView):
                 booking.rejection_reason = reason
                 booking.save()
                 message = "Booking rejected"
+                try:
+                    _notify_booking_decision(booking, approved=False, reason=reason)
+                except Exception:
+                    logger.exception("Failed creating rejection notification for booking_id=%s", booking.id)
                 if not settings.DEBUG:
                     send_mail(
                         "Booking Update",
@@ -334,8 +428,22 @@ class AdminBookingDecisionView(generics.UpdateAPIView):
                         [booking.user.email],
                         fail_silently=True,
                     )
+            elif action == "cancel":
+                reason = request.data.get("reason", "")
+                if booking.status not in ("confirmed", "active", "pending"):
+                    raise ValidationError({"action": "Only pending/confirmed/active bookings can be cancelled"})
+                booking.status = "cancelled"
+                booking.cancelled_at = timezone.now()
+                if reason:
+                    booking.rejection_reason = reason
+                booking.save()
+                message = "Booking cancelled"
+                try:
+                    _notify_booking_cancellation(booking, cancelled_by="admin", reason=reason)
+                except Exception:
+                    logger.exception("Failed creating admin cancellation notification for booking_id=%s", booking.id)
             else:
-                raise ValidationError({"action": "Must be 'confirm' or 'reject'"})
+                raise ValidationError({"action": "Must be 'confirm', 'reject', or 'cancel'"})
 
         return Response(
             {
@@ -759,6 +867,10 @@ class BookingCreateView(generics.CreateAPIView):
             self.send_booking_notification(booking)
         except Exception:
             logger.exception("Failed sending booking notifications for booking_id=%s", booking.id)
+        try:
+            _notify_booking_created(booking)
+        except Exception:
+            logger.exception("Failed creating in-app notifications for booking_id=%s", booking.id)
         
         return Response({
             'message': 'Booking request submitted successfully',
@@ -837,18 +949,16 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def perform_destroy(self, instance):
         """Cancel booking instead of deleting"""
-        if instance.status in ['confirmed', 'active']:
-            # Cancellation policy
-            days_until_checkin = (instance.check_in - timezone.now().date()).days
-            
-            if days_until_checkin < 7:
-                raise ValidationError(
-                    "Cannot cancel booking within 7 days of check-in. Please contact support."
-                )
-        
+        if instance.status not in ['pending', 'confirmed', 'active']:
+            raise ValidationError("Only pending, confirmed, or active bookings can be cancelled.")
+
         instance.status = 'cancelled'
         instance.cancelled_at = timezone.now()
         instance.save()
+        try:
+            _notify_booking_cancellation(instance, cancelled_by="customer")
+        except Exception:
+            logger.exception("Failed creating customer cancellation notification for booking_id=%s", instance.id)
         
         # Send cancellation email
         if not settings.DEBUG:
@@ -934,6 +1044,10 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 booking.save()
                 
                 message = 'Booking confirmed successfully'
+                try:
+                    _notify_booking_decision(booking, approved=True)
+                except Exception:
+                    logger.exception("Failed creating approval notification for booking_id=%s", booking.id)
                 
                 # Send confirmation email
                 if not settings.DEBUG:
@@ -952,6 +1066,10 @@ class ConfirmBookingView(generics.UpdateAPIView):
                 booking.save()
                 
                 message = 'Booking rejected'
+                try:
+                    _notify_booking_decision(booking, approved=False, reason=reason)
+                except Exception:
+                    logger.exception("Failed creating rejection notification for booking_id=%s", booking.id)
                 
                 # Send rejection email
                 if not settings.DEBUG:
@@ -1307,22 +1425,20 @@ class HostCalendarView(APIView):
         for b in bookings:
             tenant_label = (b.user.get_full_name() or '').strip() or b.user.username
             title = f'{b.rented_property.title} · {tenant_label}'
-            d = max(b.check_in, start_date)
-            while d < b.check_out and d <= end_date:
-                events.append({
-                    'id': f'{b.id}-{d.isoformat()}',
-                    'booking_id': b.id,
-                    'title': title,
-                    'date': d.isoformat(),
-                    'status': b.status,
-                    'property_id': b.rented_property_id,
-                    'property_title': b.rented_property.title,
-                    'all_day': True,
-                    'check_in': b.check_in.isoformat(),
-                    'check_out': b.check_out.isoformat(),
-                    'guests': b.guests,
-                })
-                d += timedelta(days=1)
+            events.append({
+                'id': str(b.id),
+                'booking_id': b.id,
+                'title': title,
+                'start': b.check_in.isoformat(),
+                'end': b.check_out.isoformat(),
+                'status': b.status,
+                'property_id': b.rented_property_id,
+                'property_title': b.rented_property.title,
+                'all_day': True,
+                'check_in': b.check_in.isoformat(),
+                'check_out': b.check_out.isoformat(),
+                'guests': b.guests,
+            })
 
         return Response({'events': events})
 
@@ -1367,22 +1483,20 @@ class AdminCalendarView(APIView):
         for b in bookings:
             tenant_label = (b.user.get_full_name() or '').strip() or b.user.username
             title = f'{b.rented_property.title} · {tenant_label}'
-            d = max(b.check_in, start_date)
-            while d < b.check_out and d <= end_date:
-                events.append({
-                    'id': f'{b.id}-{d.isoformat()}',
-                    'booking_id': b.id,
-                    'title': title,
-                    'date': d.isoformat(),
-                    'status': b.status,
-                    'property_id': b.rented_property_id,
-                    'property_title': b.rented_property.title,
-                    'all_day': True,
-                    'check_in': b.check_in.isoformat(),
-                    'check_out': b.check_out.isoformat(),
-                    'guests': b.guests,
-                })
-                d += timedelta(days=1)
+            events.append({
+                'id': str(b.id),
+                'booking_id': b.id,
+                'title': title,
+                'start': b.check_in.isoformat(),
+                'end': b.check_out.isoformat(),
+                'status': b.status,
+                'property_id': b.rented_property_id,
+                'property_title': b.rented_property.title,
+                'all_day': True,
+                'check_in': b.check_in.isoformat(),
+                'check_out': b.check_out.isoformat(),
+                'guests': b.guests,
+            })
 
         return Response({'events': events})
 

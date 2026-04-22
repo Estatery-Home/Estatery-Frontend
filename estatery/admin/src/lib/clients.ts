@@ -38,117 +38,8 @@ export function mapHostClientListRow(raw: HostClientListRowApi): ClientRow {
   };
 }
 
-// clientsTableData to be used in the app to access the client table data
-export const clientsTableData: ClientRow[] = [
-  {
-    id: "c1",
-    clientId: "32484",
-    name: "James Smith",
-    avatarInitials: "JS",
-    propertyName: "Pine View Apartments",
-    propertyAddress: "123 Maple St, Springfield, USA",
-    type: "Rent",
-    amount: 1800,
-    nextPayment: "2025-07-15",
-    status: "On Going",
-  },
-  {
-    id: "c2",
-    clientId: "32485",
-    name: "Linda Johnson",
-    avatarInitials: "LJ",
-    propertyName: "Cedar Park",
-    propertyAddress: "456 Oak Ave, Springfield, USA",
-    type: "Buy",
-    amount: 950,
-    nextPayment: "2025-08-05",
-    status: "On Going",
-  },
-  {
-    id: "c3",
-    clientId: "32486",
-    name: "Robert Brown",
-    avatarInitials: "RB",
-    propertyName: "Sunnydale Residences",
-    propertyAddress: "789 Birch Blvd, Springfield, USA",
-    type: "Rent",
-    amount: 1200,
-    nextPayment: "2025-09-01",
-    status: "On Going",
-  },
-  {
-    id: "c4",
-    clientId: "32487",
-    name: "Jessica Wilson",
-    avatarInitials: "JW",
-    propertyName: "Lakeside Manor",
-    propertyAddress: "321 Willow Way, Springfield, USA",
-    type: "Buy",
-    amount: 1450,
-    nextPayment: "2025-10-10",
-    status: "On Going",
-  },
-  {
-    id: "c5",
-    clientId: "32488",
-    name: "Michael Taylor",
-    avatarInitials: "MT",
-    propertyName: "Hilltop Suites",
-    propertyAddress: "654 Pine St, Springfield, USA",
-    type: "Rent",
-    amount: 1350,
-    nextPayment: "2025-11-20",
-    status: "On Going",
-  },
-  {
-    id: "c6",
-    clientId: "32489",
-    name: "Sara Davis",
-    avatarInitials: "SD",
-    propertyName: "Riverbend Apartments",
-    propertyAddress: "987 River Rd, Springfield, USA",
-    type: "Rent",
-    amount: 1100,
-    nextPayment: "2025-12-30",
-    status: "On Going",
-  },
-  {
-    id: "c7",
-    clientId: "32490",
-    name: "David Martinez",
-    avatarInitials: "DM",
-    propertyName: "Oak Grove Estates",
-    propertyAddress: "159 Elm St, Springfield, USA",
-    type: "Rent",
-    amount: 1300,
-    nextPayment: "2026-01-05",
-    status: "On Going",
-  },
-  {
-    id: "c8",
-    clientId: "32483",
-    name: "Amanda Lee",
-    avatarInitials: "AL",
-    propertyName: "Murphy House",
-    propertyAddress: "742 Evergreen Terrace, Springfield, USA",
-    type: "Rent",
-    amount: 213,
-    nextPayment: "2025-06-21",
-    status: "Completed",
-  },
-  {
-    id: "c9",
-    clientId: "32491",
-    name: "Karen Hernandez",
-    avatarInitials: "KH",
-    propertyName: "Seaside Retreat",
-    propertyAddress: "258 Coastline Dr, Springfield, USA",
-    type: "Buy",
-    amount: 1700,
-    nextPayment: "2026-02-14",
-    status: "On Going",
-  },
-];
+// Intentionally empty: use API-backed client rows only.
+export const clientsTableData: ClientRow[] = [];
 
 // ClientDetail to be used in the app to access the client detail data
 export type ClientDetail = {
@@ -206,51 +97,8 @@ export function getClientDetail(clientId: string): ClientDetail | undefined {
   };
 }
 
-// baseTransactions to be used in the app to access the base transactions data
-const baseTransactions: ClientTransaction[] = [
-  {
-    id: "34943",
-    paymentType: "Final Payment",
-    dueDate: "2025-07-28",
-    amount: 426.0,
-    status: "Pending",
-  },
-  {
-    id: "34944",
-    paymentType: "4th Payment",
-    dueDate: "2025-07-23",
-    amount: 150.0,
-    status: "Pending",
-  },
-  {
-    id: "34945",
-    paymentType: "3rd Payment",
-    dueDate: "2025-07-19",
-    amount: 732.5,
-    status: "Pending",
-  },
-  {
-    id: "34946",
-    paymentType: "2nd Payment",
-    dueDate: "2025-07-10",
-    amount: 300.0,
-    status: "Pending",
-  },
-  {
-    id: "34947",
-    paymentType: "1st Payment",
-    dueDate: "2025-06-30",
-    amount: 200.0,
-    status: "Paid",
-  },
-  {
-    id: "34948",
-    paymentType: "Deposit",
-    dueDate: "2025-06-27",
-    amount: 550.75,
-    status: "Paid",
-  },
-];
+// Intentionally empty: use API-backed transaction rows only.
+const baseTransactions: ClientTransaction[] = [];
 
 export function getClientTransactions(clientId: string): ClientTransaction[] {
   // For now all clients share the same demo transactions.

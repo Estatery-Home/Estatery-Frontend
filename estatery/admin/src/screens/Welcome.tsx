@@ -174,7 +174,7 @@ export default function Welcome() {
               I loved how smooth the move was, and finally got the house we wanted.
             </p>
             <div className="mt-4 flex gap-4 text-xs font-medium">
-              <span className="text-[#2e7d32]">₵1,500 Saved up to</span>
+              <span className="text-[#2e7d32]">GH₵1,500 Saved up to</span>
               <span className="text-[var(--logo)]">-24 hrs Process time</span>
             </div>
           </div>

@@ -282,7 +282,7 @@ export type CheckAvailabilityResponse = {
 /* ---- Host Confirm/Reject ---- */
 
 export type HostBookingConfirmRequest = {
-  action: "confirm" | "reject";
+  action: "confirm" | "reject" | "cancel";
   reason?: string;
 };
 

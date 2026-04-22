@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Check, MoreVertical, Download, Bell } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatGhanaCedi } from "@/lib/utils";
 import { Pagination } from "@/components/ui";
 
 const PAYMENT_METHODS = [
@@ -15,8 +15,8 @@ const PAYMENT_METHODS = [
 ];
 
 const INVOICES = [
-  { id: "018298", date: "Jan 20, 2025", plan: "Pro Plan", amount: "₵79" },
-  { id: "015274", date: "Feb 20, 2025", plan: "Basic Plan", amount: "₵29" },
+  { id: "018298", date: "Jan 20, 2025", plan: "Pro Plan", amount: formatGhanaCedi(79, 0) },
+  { id: "015274", date: "Feb 20, 2025", plan: "Basic Plan", amount: formatGhanaCedi(29, 0) },
 ];
 
 export function PaymentBilling() {
@@ -116,7 +116,7 @@ export function PaymentBilling() {
             <div className="relative flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h4 className="font-semibold text-[#1e293b]">Basic Plan</h4>
-                <p className="mt-1 text-2xl font-bold text-[#1e293b]">₵29 <span className="text-sm font-normal text-[#64748b]">/month</span></p>
+                <p className="mt-1 text-2xl font-bold text-[#1e293b]">{formatGhanaCedi(29, 0)} <span className="text-sm font-normal text-[#64748b]">/month</span></p>
                 <p className="mt-2 text-sm text-[#64748b]">All the basics for starting a new business</p>
               </div>
               <Button

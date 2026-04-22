@@ -6,7 +6,7 @@
  */
 import * as React from "react";
 import { Search, Filter, ArrowUpDown, MoreVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatGhanaCedi } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination"; 
 import { Button } from "@/components/ui/button";
 import {
@@ -90,7 +90,7 @@ function formatDate(d: string) {
 }
 
 function formatAmount(amount: string) {
-  return `₵${Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  return formatGhanaCedi(amount);
 }
 
 // Generate consistent vibrant colors from a string (for avatars)

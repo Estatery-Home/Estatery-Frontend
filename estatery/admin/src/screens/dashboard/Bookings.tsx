@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Pagination } from "@/components/ui";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, formatGhanaCedi } from "@/lib/utils";
 import { fetchAdminBookings, patchAdminBookingDecision } from "@/lib/api-client";
 import type { AdminBookingRow } from "@/lib/api-types";
 import { apiMediaUrl } from "@/lib/properties";
@@ -94,7 +94,7 @@ function statusLabel(s: string) {
 
 type ConfirmState = {
   booking: AdminBookingRow;
-  action: "confirm" | "reject";
+  action: "confirm" | "reject" | "cancel";
 };
 
 export default function Bookings() {
@@ -235,8 +235,11 @@ export default function Bookings() {
     setDecidingId(confirmState.booking.id);
     try {
       const { booking } = await patchAdminBookingDecision(confirmState.booking.id, {
-        action: confirmState.action === "confirm" ? "confirm" : "reject",
-        reason: confirmState.action === "reject" ? rejectReason.trim() || undefined : undefined,
+        action: confirmState.action,
+        reason:
+          confirmState.action === "reject" || confirmState.action === "cancel"
+            ? rejectReason.trim() || undefined
+            : undefined,
       });
       mergeUpdatedRow(booking);
       setConfirmState(null);
@@ -249,7 +252,7 @@ export default function Bookings() {
     }
   };
 
-  const openConfirm = (booking: AdminBookingRow, action: "confirm" | "reject") => {
+  const openConfirm = (booking: AdminBookingRow, action: "confirm" | "reject" | "cancel") => {
     setDecisionError(null);
     setRejectReason("");
     setConfirmState({ booking, action });
@@ -260,6 +263,7 @@ export default function Bookings() {
     const guest = b.user_name || b.user_email || "—";
     const host = b.host_name || b.host_email || "—";
     const isPending = b.status === "pending";
+    const canCancel = b.status === "pending" || b.status === "confirmed" || b.status === "active";
 
     return (
       <article
@@ -330,7 +334,7 @@ export default function Bookings() {
             ) : null}
           </p>
           <p className="font-semibold tabular-nums text-[#0f172a]">
-            {b.total_price != null ? `₵${Number(b.total_price).toLocaleString()}` : "—"}
+            {b.total_price != null ? formatGhanaCedi(b.total_price, 0) : "—"}
             {b.applied_promo_code ? (
               <span className="ml-2 text-[10px] font-normal text-emerald-600">Promo {b.applied_promo_code}</span>
             ) : null}
@@ -367,6 +371,21 @@ export default function Bookings() {
               </Button>
             </>
           ) : null}
+          {canCancel ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                openConfirm(b, "cancel");
+              }}
+            >
+              <XCircle className="size-3.5" />
+              Cancel booking
+            </Button>
+          ) : null}
           <Link
             to={`/dashboard/transactions?booking=${b.id}`}
             onClick={(e) => e.stopPropagation()}
@@ -390,7 +409,7 @@ export default function Bookings() {
         ["Check-in", formatDate(b.check_in)],
         ["Check-out", formatDate(b.check_out)],
         ["Guests", String(b.guests ?? "—")],
-        ["Total", b.total_price != null ? `₵${Number(b.total_price).toLocaleString()}` : "—"],
+        ["Total", b.total_price != null ? formatGhanaCedi(b.total_price, 0) : "—"],
         ["Monthly rate", b.agreed_monthly_rate ?? "—"],
         ["Months", b.months_booked != null ? String(b.months_booked) : "—"],
         ["Security deposit", b.security_deposit ?? "—"],
@@ -611,6 +630,7 @@ export default function Bookings() {
                       const guest = b.user_name || b.user_email || "—";
                       const host = b.host_name || b.host_email || "—";
                       const isPending = b.status === "pending";
+                      const canCancel = b.status === "pending" || b.status === "confirmed" || b.status === "active";
                       return (
                         <tr
                           key={b.id}
@@ -650,7 +670,7 @@ export default function Bookings() {
                           </td>
                           <td className="px-3 py-2.5 text-[#475569]">{b.guests}</td>
                           <td className="px-3 py-2.5 text-right font-medium tabular-nums text-[#0f172a]">
-                            {b.total_price != null ? `₵${Number(b.total_price).toLocaleString()}` : "—"}
+                            {b.total_price != null ? formatGhanaCedi(b.total_price, 0) : "—"}
                           </td>
                           <td className="px-3 py-2.5">
                             <span
@@ -685,6 +705,17 @@ export default function Bookings() {
                                     Reject
                                   </Button>
                                 </>
+                              ) : null}
+                              {canCancel ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 border-rose-200 px-2 text-[10px] text-rose-700 hover:bg-rose-50"
+                                  onClick={() => openConfirm(b, "cancel")}
+                                >
+                                  Cancel
+                                </Button>
                               ) : null}
                               <Link
                                 to={`/dashboard/transactions?booking=${b.id}`}
@@ -785,6 +816,20 @@ export default function Bookings() {
                     </Button>
                   </>
                 ) : null}
+                {detailBooking.status === "pending" ||
+                detailBooking.status === "confirmed" ||
+                detailBooking.status === "active" ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 border-rose-200 text-rose-700 hover:bg-rose-50"
+                    onClick={() => openConfirm(detailBooking, "cancel")}
+                  >
+                    <XCircle className="size-3.5" />
+                    Cancel booking
+                  </Button>
+                ) : null}
                 <Button type="button" variant="outline" size="sm" className="ml-auto" asChild>
                   <Link to={`/dashboard/transactions?booking=${detailBooking.id}`} onClick={() => setDetailBooking(null)}>
                     Open payments
@@ -816,22 +861,28 @@ export default function Bookings() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 id="confirm-decision-title" className="text-lg font-semibold text-[#1e293b]">
-              {confirmState.action === "confirm" ? "Approve this booking?" : "Reject this booking?"}
+              {confirmState.action === "confirm"
+                ? "Approve this booking?"
+                : confirmState.action === "reject"
+                  ? "Reject this booking?"
+                  : "Cancel this booking?"}
             </h3>
             <p className="mt-2 text-sm text-[#64748b]">
               {confirmState.action === "confirm"
                 ? "The guest will be able to choose MoMo or card checkout (when enabled) or bank transfer/cash."
-                : "The guest will be notified that this request was rejected."}
+                : confirmState.action === "reject"
+                  ? "The guest will be notified that this request was rejected."
+                  : "The guest and host will be notified that this booking was cancelled."}
             </p>
             <p className="mt-3 rounded-lg bg-[#f8fafc] px-3 py-2 text-sm text-[#334155]">
               <span className="font-medium">{confirmState.booking.property_title || `Property #${confirmState.booking.property}`}</span>
               <span className="text-[#94a3b8]"> · </span>
               {formatDate(confirmState.booking.check_in)} → {formatDate(confirmState.booking.check_out)}
             </p>
-            {confirmState.action === "reject" ? (
+            {confirmState.action === "reject" || confirmState.action === "cancel" ? (
               <div className="mt-4 space-y-2">
                 <Label htmlFor="reject-reason" className="text-[#1e293b]">
-                  Reason (optional)
+                  {confirmState.action === "cancel" ? "Cancellation reason (optional)" : "Reason (optional)"}
                 </Label>
                 <textarea
                   id="reject-reason"
@@ -874,8 +925,10 @@ export default function Bookings() {
                   </>
                 ) : confirmState.action === "confirm" ? (
                   "Approve"
-                ) : (
+                ) : confirmState.action === "reject" ? (
                   "Reject"
+                ) : (
+                  "Cancel booking"
                 )}
               </Button>
             </div>
