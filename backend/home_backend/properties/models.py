@@ -47,6 +47,12 @@ class Property(models.Model):
         ('rent', _("For Rent")),
         ('sale', _("For Sale")),
     )
+
+    PROPERTY_CONDITION_CHOICES = (
+        ('newly_built', _("Newly Built")),
+        ('fairly_used', _("Fairly Used")),
+        ('used', _("Used")),
+    )
     
     STATUS_CHOICES = (
         ('available', _("Available")),
@@ -102,7 +108,12 @@ class Property(models.Model):
     # Details
     bedrooms = models.IntegerField(_("Bedrooms"), default=1)
     bathrooms = models.IntegerField(_("Bathrooms"), default=1)
-    area = models.IntegerField(_("Area (sq ft)"))
+    area = models.IntegerField(_("Area (sqm)"), null=True, blank=True)
+    property_condition = models.CharField(
+        max_length=20,
+        choices=PROPERTY_CONDITION_CHOICES,
+        default='fairly_used',
+    )
     
     # Amenities
     has_wifi = models.BooleanField(_("WiFi"), default=False)
@@ -111,6 +122,12 @@ class Property(models.Model):
     has_gym = models.BooleanField(_("Gym"), default=False)
     is_furnished = models.BooleanField(_("Furnished"), default=False)
     has_kitchen = models.BooleanField(_("Kitchen"), default=True)
+    has_prepaid_meter = models.BooleanField(_("Prepaid meter"), default=False)
+    has_postpaid_meter = models.BooleanField(_("Postpaid meter"), default=False)
+    has_24h_electricity = models.BooleanField(_("24-hour electricity"), default=False)
+    has_kitchen_cabinets = models.BooleanField(_("Kitchen cabinets"), default=False)
+    has_dining_area = models.BooleanField(_("Dining area"), default=False)
+    custom_facilities = models.JSONField(default=list, blank=True)
     
     # MONTHLY RENTAL SETTINGS
     min_stay_months = models.PositiveIntegerField(
@@ -140,6 +157,7 @@ class Property(models.Model):
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    times_booked = models.PositiveIntegerField(default=0)
     
     # Dates
     created_at = models.DateTimeField(auto_now_add=True)

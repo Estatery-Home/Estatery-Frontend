@@ -59,6 +59,7 @@ class PropertySerializer(serializers.ModelSerializer):
     monthly_price_display = serializers.SerializerMethodField()
     security_deposit_display = serializers.SerializerMethodField()
     amenities = serializers.SerializerMethodField()
+    upload_timestamp = serializers.DateTimeField(source='created_at', read_only=True)
     
     class Meta:
         model = Property
@@ -66,16 +67,18 @@ class PropertySerializer(serializers.ModelSerializer):
             'id', 'title', 'address', 'city', 'state', 'country', 'zip_code',
             'description', 'daily_price', 'monthly_price', 'currency', 
             'bedrooms', 'bathrooms', 'area',  
-            'property_type', 'listing_type', 'status',  
+            'property_type', 'listing_type', 'property_condition', 'status',  
             'has_wifi', 'has_parking', 'has_pool', 'has_gym', 'is_furnished', 'has_kitchen',
+            'has_prepaid_meter', 'has_postpaid_meter', 'has_24h_electricity',
+            'has_kitchen_cabinets', 'has_dining_area', 'custom_facilities',
             'min_stay_months', 'max_stay_months', 'monthly_cycle_start', 'security_deposit_months',
             'latitude', 'longitude',
             'images', 'owner', 'primary_image', 
             'monthly_price_display', 'security_deposit_display',
-            'amenities', 
+            'amenities', 'times_booked', 'upload_timestamp',
             'created_at', 'updated_at'
         )
-        read_only_fields = ('owner', 'created_at', 'updated_at')
+        read_only_fields = ('owner', 'times_booked', 'upload_timestamp', 'created_at', 'updated_at')
     
     def get_primary_image(self, obj):
         primary = obj.primary_image
@@ -109,6 +112,17 @@ class PropertySerializer(serializers.ModelSerializer):
             amenities.append("Furnished")
         if obj.has_kitchen:
             amenities.append("Kitchen")
+        if obj.has_prepaid_meter:
+            amenities.append("Prepaid meter")
+        if obj.has_postpaid_meter:
+            amenities.append("Postpaid meter")
+        if obj.has_24h_electricity:
+            amenities.append("24-hour electricity")
+        if obj.has_kitchen_cabinets:
+            amenities.append("Kitchen cabinets")
+        if obj.has_dining_area:
+            amenities.append("Dining area")
+        amenities.extend([str(item).strip() for item in (obj.custom_facilities or []) if str(item).strip()])
         return amenities
     
     def create(self, validated_data):
@@ -129,6 +143,18 @@ class PropertySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'min_stay_months': 'Minimum stay must be at least 1 month'
             })
+
+        if 'custom_facilities' in attrs:
+            raw_facilities = attrs.get('custom_facilities') or []
+            if not isinstance(raw_facilities, list):
+                raise serializers.ValidationError({
+                    'custom_facilities': 'Custom facilities must be a list of text values.'
+                })
+            attrs['custom_facilities'] = [
+                str(item).strip()
+                for item in raw_facilities
+                if str(item).strip()
+            ]
         
         # Validate max_stay_months > min_stay_months if provided
         if attrs.get('max_stay_months') and attrs.get('min_stay_months'):
