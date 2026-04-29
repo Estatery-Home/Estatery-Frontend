@@ -70,6 +70,13 @@ DEFAULT_COUNTRY_CHOICES = (
 )
 
 
+def _increment_property_times_booked(booking: Booking) -> None:
+    """Count successful bookings once, when a pending request is first confirmed."""
+    Property.objects.filter(pk=booking.rented_property_id).update(
+        times_booked=models.F('times_booked') + 1
+    )
+
+
 def _notify_booking_created(booking: Booking) -> None:
     """Notify owner + customer when booking request is submitted."""
     create_notification(
@@ -162,9 +169,12 @@ class PublicPropertyCatalogMixin:
     # Note: `status` is handled only in get_queryset() (supports `all`, `available`, `rented`,
     # `maintenance`). It must not be in filterset_fields — django-filter would treat `status=all`
     # as an exact match and return zero rows.
-    filterset_fields = ['property_type', 'listing_type', 'bedrooms', 'bathrooms', 'city', 'country']
-    search_fields = ['title', 'description', 'address', 'city']
-    ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms']
+    filterset_fields = [
+        'property_type', 'listing_type', 'property_condition',
+        'bedrooms', 'bathrooms', 'city', 'state', 'country',
+    ]
+    search_fields = ['title', 'description', 'address', 'city', 'state']
+    ordering_fields = ['daily_price', 'monthly_price', 'created_at', 'area', 'bedrooms', 'times_booked']
     ordering = ['-created_at']
 
     def get_queryset(self):
@@ -184,11 +194,25 @@ class PublicPropertyCatalogMixin:
             queryset = queryset.filter(monthly_price__gte=min_price)
         if max_price:
             queryset = queryset.filter(monthly_price__lte=max_price)
-        amenities = ['wifi', 'parking', 'pool', 'gym', 'furnished', 'kitchen']
+        region = self.request.query_params.get('region')
+        if region:
+            queryset = queryset.filter(state__iexact=region)
+        town = self.request.query_params.get('town')
+        if town:
+            queryset = queryset.filter(address__icontains=town)
+        verified_owner = self.request.query_params.get('verified_owner')
+        if verified_owner is not None:
+            verified = str(verified_owner).lower() in ('1', 'true', 'yes')
+            queryset = queryset.filter(owner__email_verified=verified)
+        amenities = [
+            'wifi', 'parking', 'pool', 'gym', 'furnished', 'kitchen',
+            'prepaid_meter', 'postpaid_meter', '24h_electricity',
+            'kitchen_cabinets', 'dining_area',
+        ]
         for amenity in amenities:
             if self.request.query_params.get(f'has_{amenity}'):
                 queryset = queryset.filter(**{f'has_{amenity}': True})
-        return queryset.prefetch_related("images")
+        return queryset.select_related("owner").prefetch_related("images")
 
 
 @extend_schema(
@@ -407,12 +431,15 @@ class AdminBookingDecisionView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         booking = self.get_object()
         action = request.data.get("action")
+        previous_status = booking.status
 
         with transaction.atomic():
             if action == "confirm":
                 booking.status = "confirmed"
                 booking.confirmed_at = timezone.now()
                 booking.save()
+                if previous_status != "confirmed":
+                    _increment_property_times_booked(booking)
                 message = "Booking confirmed successfully"
                 try:
                     _notify_booking_decision(booking, approved=True)
@@ -1053,12 +1080,15 @@ class ConfirmBookingView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         booking = self.get_object()
         action = request.data.get('action')
+        previous_status = booking.status
         
         with transaction.atomic():
             if action == 'confirm':
                 booking.status = 'confirmed'
                 booking.confirmed_at = timezone.now()
                 booking.save()
+                if previous_status != 'confirmed':
+                    _increment_property_times_booked(booking)
                 
                 message = 'Booking confirmed successfully'
                 try:

@@ -235,12 +235,13 @@ export async function createProperty(data: {
   country: string;
   property_type: string;
   listing_type?: "rent" | "sale";
+  property_condition?: "newly_built" | "fairly_used" | "used";
   daily_price: string;
   monthly_price: string;
   currency?: string;
   bedrooms: number;
   bathrooms: number;
-  area: number;
+  area?: number | null;
   min_stay_months?: number;
   max_stay_months?: number;
   monthly_cycle_start?: number;
@@ -253,10 +254,19 @@ export async function createProperty(data: {
   has_gym?: boolean;
   is_furnished?: boolean;
   has_kitchen?: boolean;
+  has_prepaid_meter?: boolean;
+  has_postpaid_meter?: boolean;
+  has_24h_electricity?: boolean;
+  has_kitchen_cabinets?: boolean;
+  has_dining_area?: boolean;
+  custom_facilities?: string[];
 }): Promise<{ property: { id: number; [key: string]: unknown }; message: string }> {
   const payload: Record<string, unknown> = { ...data };
   if (payload.max_stay_months == null || payload.max_stay_months === 0) {
     delete payload.max_stay_months;
+  }
+  if (payload.area == null || payload.area === 0) {
+    delete payload.area;
   }
   const res = await fetch(api.endpoints.properties, {
     method: "POST",

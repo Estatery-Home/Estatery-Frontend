@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Add Property step 3 – bedrooms, bathrooms, area (Property model).
+ * Add Property step 3 – bedrooms, bathrooms, optional area (Property model).
  */
 import * as React from "react";
 import { Label } from "@/components/ui/label";
@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 type AddPropertyDetailsStepProps = {
   bedrooms?: number;
   bathrooms?: number;
-  area?: number;
+  area?: number | null;
   onBedroomsChange?: (v: number) => void;
   onBathroomsChange?: (v: number) => void;
-  onAreaChange?: (v: number) => void;
+  onAreaChange?: (v: number | null) => void;
 };
 
 export function AddPropertyDetailsStep({
@@ -37,27 +37,26 @@ export function AddPropertyDetailsStep({
   return (
     <div className="space-y-5">
       <h3 className="text-lg font-semibold text-[#1e293b]">Property Details</h3>
-      <p className=" text-sm text-[#64748b]">Area is stored in square feet (backend field).</p>
+      <p className=" text-sm text-[#64748b]">Area is optional and stored in square meters when provided.</p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="building-area" className="text-[#1e293b]">
-            Area (sq ft) <span className="text-red-500">*</span>
+            Area (sqm, optional)
           </Label>
           <Input
             id="building-area"
             type="number"
-            min={1}
+            min={0}
             value={buildingArea}
             onChange={(e) => {
               const v = e.target.value;
               setBuildingArea(v);
               const n = parseInt(v, 10);
-              onAreaChange?.(isNaN(n) ? 0 : n);
+              onAreaChange?.(isNaN(n) || n <= 0 ? null : n);
             }}
-            placeholder="e.g. 2000"
+            placeholder="e.g. 185"
             className="border-[#e2e8f0] bg-white text-[#1e293b]"
-            required
           />
         </div>
 

@@ -26,6 +26,12 @@ export type AddPropertyRentalForm = {
   has_gym: boolean;
   is_furnished: boolean;
   has_kitchen: boolean;
+  has_prepaid_meter: boolean;
+  has_postpaid_meter: boolean;
+  has_24h_electricity: boolean;
+  has_kitchen_cabinets: boolean;
+  has_dining_area: boolean;
+  custom_facilities: string;
 };
 
 type AddPropertyRentalStepProps = {
@@ -128,6 +134,11 @@ export function AddPropertyRentalStep({ value, onChange }: AddPropertyRentalStep
               ["has_gym", "Gym"],
               ["is_furnished", "Furnished"],
               ["has_kitchen", "Kitchen"],
+              ["has_prepaid_meter", "Prepaid meter"],
+              ["has_postpaid_meter", "Postpaid meter"],
+              ["has_24h_electricity", "24-hour electricity"],
+              ["has_kitchen_cabinets", "Kitchen cabinets"],
+              ["has_dining_area", "Dining area"],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-[#1e293b]">
@@ -141,6 +152,20 @@ export function AddPropertyRentalStep({ value, onChange }: AddPropertyRentalStep
             </label>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="custom-facilities" className="text-[#1e293b]">
+          Custom facilities
+        </Label>
+        <Input
+          id="custom-facilities"
+          value={value.custom_facilities}
+          onChange={(e) => patch({ custom_facilities: e.target.value })}
+          placeholder="Separate multiple facilities with commas"
+          className="border-[#e2e8f0] bg-white text-[#1e293b]"
+        />
+        <p className="text-xs text-[#64748b]">Example: rooftop terrace, borehole, CCTV.</p>
       </div>
     </div>
   );

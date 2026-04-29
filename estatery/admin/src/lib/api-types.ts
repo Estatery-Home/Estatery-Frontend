@@ -59,6 +59,8 @@ export type ListingTypeApi = "rent" | "sale";
 /** status: available | rented | maintenance */
 export type PropertyStatusApi = "available" | "rented" | "maintenance";
 
+export type PropertyConditionApi = "newly_built" | "fairly_used" | "used";
+
 export type PropertyImage = {
   id?: number;
   image: string;
@@ -82,6 +84,7 @@ export type Property = {
   area: number;
   property_type: PropertyTypeApi;
   listing_type?: ListingTypeApi;
+  property_condition?: PropertyConditionApi;
   status: PropertyStatusApi;
   has_wifi: boolean;
   has_parking: boolean;
@@ -89,6 +92,14 @@ export type Property = {
   has_gym: boolean;
   is_furnished: boolean;
   has_kitchen: boolean;
+  has_prepaid_meter?: boolean;
+  has_postpaid_meter?: boolean;
+  has_24h_electricity?: boolean;
+  has_kitchen_cabinets?: boolean;
+  has_dining_area?: boolean;
+  custom_facilities?: string[];
+  times_booked?: number;
+  upload_timestamp?: string;
   min_stay_months?: number;
   max_stay_months?: number;
   monthly_cycle_start?: number;
@@ -114,7 +125,7 @@ export type PropertyCreateRequest = Omit<
   city: string;
   country: string;
   daily_price: string;
-  area: number;
+  area?: number | null;
 };
 
 /* ---- Booking ---- */
