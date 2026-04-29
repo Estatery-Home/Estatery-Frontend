@@ -1,7 +1,7 @@
 /**
  * Property types – aligned with API Property object (PropertySerializer).
  */
-import type { PropertyTypeApi, PropertyStatusApi, ListingTypeApi } from "./api-types";
+import type { PropertyTypeApi, PropertyStatusApi, ListingTypeApi, PropertyConditionApi } from "./api-types";
 
 const API_ORIGIN =
   typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL
@@ -66,6 +66,12 @@ export function normalizePropertyStatus(raw: unknown): PropertyStatusApi {
   return "available";
 }
 
+export function normalizePropertyCondition(raw: unknown): PropertyConditionApi {
+  const value = String(raw ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (value === "newly_built" || value === "fairly_used" || value === "used") return value;
+  return "fairly_used";
+}
+
 /** Map GET /api/properties/… JSON to local Property (shared by context + detail fetch). */
 export function propertyFromApiJson(raw: unknown): Property | null {
   if (!raw || typeof raw !== "object") return null;
@@ -111,6 +117,7 @@ export function propertyFromApiJson(raw: unknown): Property | null {
     area: Number(o.area ?? 0),
     property_type,
     listing_type,
+    property_condition: normalizePropertyCondition(o.property_condition),
     status,
     owner_id,
     has_wifi: Boolean(o.has_wifi),
@@ -119,6 +126,15 @@ export function propertyFromApiJson(raw: unknown): Property | null {
     has_gym: Boolean(o.has_gym),
     is_furnished: Boolean(o.is_furnished),
     has_kitchen: o.has_kitchen === undefined ? true : Boolean(o.has_kitchen),
+    has_prepaid_meter: Boolean(o.has_prepaid_meter),
+    has_postpaid_meter: Boolean(o.has_postpaid_meter),
+    has_24h_electricity: Boolean(o.has_24h_electricity),
+    has_kitchen_cabinets: Boolean(o.has_kitchen_cabinets),
+    has_dining_area: Boolean(o.has_dining_area),
+    custom_facilities: Array.isArray(o.custom_facilities)
+      ? o.custom_facilities.map((item) => String(item)).filter(Boolean)
+      : [],
+    times_booked: Number(o.times_booked ?? 0),
     min_stay_months: Number(o.min_stay_months ?? 12),
     max_stay_months: o.max_stay_months != null ? Number(o.max_stay_months) : undefined,
     monthly_cycle_start: o.monthly_cycle_start != null ? Number(o.monthly_cycle_start) : undefined,
@@ -126,6 +142,7 @@ export function propertyFromApiJson(raw: unknown): Property | null {
     primary_image: normalizePrimaryImage(o.primary_image),
     images: normalizeImages(o.images),
     created_at: o.created_at ? String(o.created_at) : undefined,
+    upload_timestamp: o.upload_timestamp ? String(o.upload_timestamp) : undefined,
     updated_at: o.updated_at ? String(o.updated_at) : undefined,
   };
 }
@@ -148,6 +165,7 @@ export type Property = {
   area: number;
   property_type: PropertyTypeApi;
   listing_type?: ListingTypeApi;
+  property_condition?: PropertyConditionApi;
   status: PropertyStatusApi;
   /** Present when property JSON includes owner (for edit permissions in UI). */
   owner_id?: number;
@@ -157,6 +175,13 @@ export type Property = {
   has_gym?: boolean;
   is_furnished?: boolean;
   has_kitchen?: boolean;
+  has_prepaid_meter?: boolean;
+  has_postpaid_meter?: boolean;
+  has_24h_electricity?: boolean;
+  has_kitchen_cabinets?: boolean;
+  has_dining_area?: boolean;
+  custom_facilities?: string[];
+  times_booked?: number;
   min_stay_months?: number;
   max_stay_months?: number;
   monthly_cycle_start?: number;
@@ -164,6 +189,7 @@ export type Property = {
   images?: { id?: number; image: string; is_primary?: boolean }[];
   primary_image?: { image: string } | null;
   created_at?: string;
+  upload_timestamp?: string;
   updated_at?: string;
 };
 
@@ -242,6 +268,7 @@ export function getRentalPeriodLabel(p: Property): string {
 
 export const PROPERTY_TYPES: PropertyTypeApi[] = ["apartment", "house", "condo", "villa", "studio"];
 export const LISTING_TYPES: ListingTypeApi[] = ["rent", "sale"];
+export const PROPERTY_CONDITIONS: PropertyConditionApi[] = ["newly_built", "fairly_used", "used"];
 export const PROPERTY_STATUSES: PropertyStatusApi[] = ["available", "rented", "maintenance"];
 
 export const PROPERTY_CURRENCIES = ["ghs", "usd", "cfa"] as const;

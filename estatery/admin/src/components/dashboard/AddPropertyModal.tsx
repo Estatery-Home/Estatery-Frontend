@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Property } from "@/lib/properties";
-import { PROPERTY_TYPES, LISTING_TYPES } from "@/lib/properties";
+import { PROPERTY_TYPES, LISTING_TYPES, PROPERTY_CONDITIONS } from "@/lib/properties";
 import { createProperty, fetchCountries, uploadPropertyImage } from "@/lib/api-client";
 import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
@@ -50,6 +50,12 @@ const defaultRentalForm = (): AddPropertyRentalForm => ({
   has_gym: false,
   is_furnished: false,
   has_kitchen: true,
+  has_prepaid_meter: false,
+  has_postpaid_meter: false,
+  has_24h_electricity: false,
+  has_kitchen_cabinets: false,
+  has_dining_area: false,
+  custom_facilities: "",
 });
 
 type AddPropertyModalProps = {
@@ -64,6 +70,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [propertyType, setPropertyType] = React.useState<Property["property_type"]>("house");
+  const [propertyCondition, setPropertyCondition] = React.useState<Property["property_condition"]>("fairly_used");
   const [listingType, setListingType] = React.useState<"rent" | "sale">("rent");
   const [price, setPrice] = React.useState("");
   const [rentalPeriod, setRentalPeriod] = React.useState("1 year");
@@ -73,7 +80,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [location, setLocation] = React.useState<LocationData>({ ...emptyLocation, country: "Ghana" });
   const [bedrooms, setBedrooms] = React.useState(3);
   const [bathrooms, setBathrooms] = React.useState(2);
-  const [area, setArea] = React.useState(2000);
+  const [area, setArea] = React.useState<number | null>(null);
   const [photoFiles, setPhotoFiles] = React.useState<File[]>([]);
   const [primaryPhotoIndex, setPrimaryPhotoIndex] = React.useState(0);
   const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
@@ -84,13 +91,14 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     setTitle("");
     setDescription("");
     setPropertyType("house");
+    setPropertyCondition("fairly_used");
     setListingType("rent");
     setPrice("");
     setRentalPeriod("1 year");
     setLocation({ ...emptyLocation, country: "Ghana" });
     setBedrooms(3);
     setBathrooms(2);
-    setArea(2000);
+    setArea(null);
     setPhotoFiles([]);
     setPrimaryPhotoIndex(0);
     setRentalForm(defaultRentalForm());
@@ -128,7 +136,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
       case 2:
         return !!(location.address.trim() && location.city.trim() && location.country.trim());
       case 3:
-        return area > 0 && bedrooms > 0 && bathrooms > 0;
+        return bedrooms > 0 && bathrooms > 0;
       case 4:
         return true;
       case 5:
@@ -161,6 +169,10 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
       const m = parseInt(rentalForm.max_stay_months, 10);
       if (!Number.isNaN(m) && m > 0) maxStay = m;
     }
+    const customFacilities = rentalForm.custom_facilities
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
 
     try {
       const created = await createProperty({
@@ -173,6 +185,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         zip_code: location.zip_code.trim() || undefined,
         property_type: propertyType,
         listing_type: listingType,
+        property_condition: propertyCondition,
         daily_price: dailyPrice,
         monthly_price: priceVal,
         currency: rentalForm.currency,
@@ -189,6 +202,12 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         has_gym: rentalForm.has_gym,
         is_furnished: rentalForm.is_furnished,
         has_kitchen: rentalForm.has_kitchen,
+        has_prepaid_meter: rentalForm.has_prepaid_meter,
+        has_postpaid_meter: rentalForm.has_postpaid_meter,
+        has_24h_electricity: rentalForm.has_24h_electricity,
+        has_kitchen_cabinets: rentalForm.has_kitchen_cabinets,
+        has_dining_area: rentalForm.has_dining_area,
+        custom_facilities: customFacilities,
       });
 
       const rawId = (created.property as { id?: unknown })?.id;
@@ -327,6 +346,30 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
                     {PROPERTY_TYPES.map((t) => (
                       <SelectItem key={t} value={t}>
                         {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="property-condition" className="text-[#1e293b]">
+                  Property Condition <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={propertyCondition}
+                  onValueChange={(v) => setPropertyCondition(v as Property["property_condition"])}
+                >
+                  <SelectTrigger id="property-condition" className="border-[#e2e8f0] bg-white text-[#1e293b]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROPERTY_CONDITIONS.map((condition) => (
+                      <SelectItem key={condition} value={condition}>
+                        {condition === "newly_built"
+                          ? "Newly Built"
+                          : condition === "fairly_used"
+                            ? "Fairly Used"
+                            : "Used"}
                       </SelectItem>
                     ))}
                   </SelectContent>
