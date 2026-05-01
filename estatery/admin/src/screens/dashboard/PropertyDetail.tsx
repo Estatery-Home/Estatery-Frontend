@@ -176,6 +176,14 @@ export default function PropertyDetail() {
               Rental period:{" "}
               <span className="font-medium text-[#1e293b]">{getRentalPeriodLabel(property)}</span>
             </p>
+            {(property.primary_video?.video || property.videos?.[0]?.video) ? (
+              <div className="mt-5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#64748b]">Property video</p>
+                <video controls className="max-h-[360px] w-full rounded-lg border border-[#e2e8f0] bg-black">
+                  <source src={property.primary_video?.video ?? property.videos?.[0]?.video ?? ""} />
+                </video>
+              </div>
+            ) : null}
             {isAuthenticated ? (
               <div className="mt-6 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 py-4">
                 <Label className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">

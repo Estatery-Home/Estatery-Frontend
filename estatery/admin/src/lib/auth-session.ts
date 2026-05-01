@@ -11,6 +11,7 @@ export const AUTH_USER_KEY = "estatery-user";
 export const AUTH_LAST_ACTIVITY_KEY = "estatery-last-activity";
 /** Set on login when “Keep me logged in” / “Remember me” — longer idle window + backend refresh lifetime. */
 export const AUTH_SESSION_EXTENDED_KEY = "estatery-session-extended";
+export type AuthStorageKind = "local" | "session";
 
 export function setRememberMeSession(isExtended: boolean): void {
   if (typeof window === "undefined") return;
@@ -74,6 +75,11 @@ export function clearAuthStorage(): void {
     localStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
     localStorage.removeItem(AUTH_SESSION_EXTENDED_KEY);
     localStorage.removeItem("estatery-user-profile");
+    sessionStorage.removeItem(AUTH_ACCESS_KEY);
+    sessionStorage.removeItem(AUTH_REFRESH_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
+    sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY);
+    sessionStorage.removeItem("estatery-user-profile");
   } catch {
     /* ignore */
   }
@@ -82,34 +88,83 @@ export function clearAuthStorage(): void {
 export function touchLastActivity(): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+    const next = String(Date.now());
+    const hasLocal = !!localStorage.getItem(AUTH_ACCESS_KEY);
+    const hasSession = !!sessionStorage.getItem(AUTH_ACCESS_KEY);
+    if (hasLocal) localStorage.setItem(AUTH_LAST_ACTIVITY_KEY, next);
+    if (hasSession) sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, next);
+    if (!hasLocal && !hasSession) localStorage.setItem(AUTH_LAST_ACTIVITY_KEY, next);
   } catch {
     /* ignore */
   }
 }
 
+function readStoredAuthFrom(storage: Storage, kind: AuthStorageKind):
+  | { access: string; refresh: string | null; user: User; lastActivity: number | null; storage: AuthStorageKind }
+  | null {
+  const access = storage.getItem(AUTH_ACCESS_KEY);
+  const refresh = storage.getItem(AUTH_REFRESH_KEY);
+  const userRaw = storage.getItem(AUTH_USER_KEY);
+  const lastRaw = storage.getItem(AUTH_LAST_ACTIVITY_KEY);
+  if (!access || !userRaw) return null;
+  const user = JSON.parse(userRaw) as User;
+  const lastActivity = lastRaw != null && lastRaw !== "" ? parseInt(lastRaw, 10) : null;
+  return {
+    access,
+    refresh,
+    user,
+    lastActivity: lastActivity != null && !Number.isNaN(lastActivity) ? lastActivity : null,
+    storage: kind,
+  };
+}
+
 export function readStoredAuth():
-  | { access: string; refresh: string | null; user: User; lastActivity: number | null }
+  | { access: string; refresh: string | null; user: User; lastActivity: number | null; storage: AuthStorageKind }
   | null {
   if (typeof window === "undefined") return null;
   try {
-    const access = localStorage.getItem(AUTH_ACCESS_KEY);
-    const refresh = localStorage.getItem(AUTH_REFRESH_KEY);
-    const userRaw = localStorage.getItem(AUTH_USER_KEY);
-    const lastRaw = localStorage.getItem(AUTH_LAST_ACTIVITY_KEY);
-    if (!access || !userRaw) return null;
-    const user = JSON.parse(userRaw) as User;
-    const lastActivity =
-      lastRaw != null && lastRaw !== "" ? parseInt(lastRaw, 10) : null;
-    return {
-      access,
-      refresh,
-      user,
-      lastActivity: lastActivity != null && !Number.isNaN(lastActivity) ? lastActivity : null,
-    };
+    const local = readStoredAuthFrom(localStorage, "local");
+    if (local) return local;
+    return readStoredAuthFrom(sessionStorage, "session");
   } catch {
     return null;
   }
+}
+
+export function persistAuthSession(args: {
+  access: string;
+  refresh?: string | null;
+  user: User;
+  keepLoggedIn: boolean;
+}): void {
+  if (typeof window === "undefined") return;
+  const target = args.keepLoggedIn ? localStorage : sessionStorage;
+  const other = args.keepLoggedIn ? sessionStorage : localStorage;
+  target.setItem(AUTH_ACCESS_KEY, args.access);
+  if (args.refresh) target.setItem(AUTH_REFRESH_KEY, args.refresh);
+  else target.removeItem(AUTH_REFRESH_KEY);
+  target.setItem(AUTH_USER_KEY, JSON.stringify(args.user));
+  target.setItem(AUTH_LAST_ACTIVITY_KEY, String(Date.now()));
+  other.removeItem(AUTH_ACCESS_KEY);
+  other.removeItem(AUTH_REFRESH_KEY);
+  other.removeItem(AUTH_USER_KEY);
+  other.removeItem(AUTH_LAST_ACTIVITY_KEY);
+}
+
+export function persistRefreshedTokens(
+  storage: AuthStorageKind,
+  next: { access: string; refresh?: string }
+): void {
+  if (typeof window === "undefined") return;
+  const target = storage === "local" ? localStorage : sessionStorage;
+  target.setItem(AUTH_ACCESS_KEY, next.access);
+  if (next.refresh) target.setItem(AUTH_REFRESH_KEY, next.refresh);
+}
+
+export function persistStoredUser(storage: AuthStorageKind, user: User): void {
+  if (typeof window === "undefined") return;
+  const target = storage === "local" ? localStorage : sessionStorage;
+  target.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
 
 export function isIdleExceeded(lastActivity: number | null, idleMs: number): boolean {
@@ -163,13 +218,13 @@ export async function fetchWithAuthRetry(url: string, init: RequestInit = {}): P
   }
   if (res.status !== 401) return res;
   if (typeof window === "undefined") return res;
-  const refresh = localStorage.getItem(AUTH_REFRESH_KEY);
+  const stored = readStoredAuth();
+  const refresh = stored?.refresh ?? null;
   if (!refresh) return res;
   const next = await refreshAccessToken(refresh);
   if (!next?.access) return res;
   try {
-    localStorage.setItem(AUTH_ACCESS_KEY, next.access);
-    if (next.refresh) localStorage.setItem(AUTH_REFRESH_KEY, next.refresh);
+    persistRefreshedTokens(stored?.storage ?? "local", next);
   } catch {
     return res;
   }

@@ -63,6 +63,8 @@ export const api = {
     /** Properties */
     properties: `${API_BASE}/properties/`,
     propertyImages: (id: number) => `${API_BASE}/properties/${id}/images/`,
+    propertyVideos: (id: number) => `${API_BASE}/properties/${id}/videos/`,
+    propertyVideoDetail: (id: number, videoId: number) => `${API_BASE}/properties/${id}/videos/${videoId}/`,
     propertyDetail: (id: number) => `${API_BASE}/properties/${id}/`,
     myProperties: `${API_BASE}/properties/my/`,
     checkAvailability: (id: number) => `${API_BASE}/properties/${id}/check-availability/`,
@@ -306,6 +308,44 @@ export async function uploadPropertyImage(
     throwFromPropertyErrorResponse(err, `Image upload failed (${res.status})`);
   }
   return (await res.json()) as Record<string, unknown>;
+}
+
+/** POST multipart: attach a video file to a property (authenticated owner/admin). */
+export async function uploadPropertyVideo(
+  propertyId: number,
+  file: File
+): Promise<Record<string, unknown>> {
+  const form = new FormData();
+  form.append("video", file);
+  const token = getAccessToken();
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(api.endpoints.propertyVideos(propertyId), {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    throwFromPropertyErrorResponse(
+      err,
+      "Video upload failed. Ensure backend video uploads are enabled for this property."
+    );
+  }
+  return (await res.json()) as Record<string, unknown>;
+}
+
+export async function deletePropertyVideo(propertyId: number, videoId: number): Promise<void> {
+  const res = await fetch(api.endpoints.propertyVideoDetail(propertyId, videoId), {
+    method: "DELETE",
+    headers: apiHeaders(true),
+  });
+  if (!res.ok && res.status !== 204) {
+    const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    throwFromPropertyErrorResponse(err, `Video delete failed (${res.status})`);
+  }
 }
 
 /** GET all available properties from API. Returns array or empty on error. */

@@ -9,13 +9,14 @@ import * as React from "react";
 import { api, apiHeaders, fetchProfile, getAccessToken } from "@/lib/api-client";
 import type { User, AuthResponse } from "@/lib/api-types";
 import {
-  AUTH_ACCESS_KEY,
-  AUTH_REFRESH_KEY,
-  AUTH_USER_KEY,
+  AUTH_SESSION_EXTENDED_KEY,
   clearAuthStorage,
   getSessionIdleMs,
   isAccessTokenExpired,
   isIdleExceeded,
+  persistAuthSession,
+  persistRefreshedTokens,
+  persistStoredUser,
   readStoredAuth,
   refreshAccessToken,
   setRememberMeSession,
@@ -52,10 +53,47 @@ const ACTIVITY_THROTTLE_MS = 30_000;
 const IDLE_CHECK_INTERVAL_MS = 60_000;
 const ADMIN_ALLOWED_ROLES = new Set(["admin", "owner"]);
 
+async function revokeServerSessionBestEffort(stored: ReturnType<typeof readStoredAuth>): Promise<void> {
+  if (!stored) return;
+  let access = stored.access;
+  if (isAccessTokenExpired(access) && stored.refresh) {
+    const next = await refreshAccessToken(stored.refresh);
+    if (next?.access) access = next.access;
+  }
+  if (!access) return;
+  try {
+    await fetch(api.endpoints.logout, {
+      method: "POST",
+      headers: {
+        ...apiHeaders(false),
+        Authorization: `Bearer ${access}`,
+      },
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 async function restoreSession(): Promise<User | null> {
   const stored = readStoredAuth();
   if (!stored) return null;
   if (!ADMIN_ALLOWED_ROLES.has(stored.user?.user_type)) {
+    clearAuthStorage();
+    return null;
+  }
+  if (
+    stored.storage === "local" &&
+    typeof window !== "undefined" &&
+    localStorage.getItem(AUTH_SESSION_EXTENDED_KEY) !== "1"
+  ) {
+    // Backward-compatibility cleanup: previous builds stored all sessions in localStorage.
+    // If this local session is not marked "keep me logged in", force fresh login.
+    await revokeServerSessionBestEffort(stored);
+    clearAuthStorage();
+    return null;
+  }
+  if (stored.lastActivity == null) {
+    // Legacy/stale browser sessions without activity tracking should not auto-authenticate.
     clearAuthStorage();
     return null;
   }
@@ -79,16 +117,32 @@ async function restoreSession(): Promise<User | null> {
     }
     access = next.access;
     try {
-      localStorage.setItem(AUTH_ACCESS_KEY, access);
-      if (next.refresh) localStorage.setItem(AUTH_REFRESH_KEY, next.refresh);
+      persistRefreshedTokens(stored.storage, next);
     } catch {
       clearAuthStorage();
       return null;
     }
   }
 
-  touchLastActivity();
-  return stored.user;
+  // Always validate the session with backend profile to avoid stale local user/session restores.
+  try {
+    const liveUser = await fetchProfile();
+    if (!liveUser || !ADMIN_ALLOWED_ROLES.has(liveUser.user_type)) {
+      clearAuthStorage();
+      return null;
+    }
+    try {
+      persistStoredUser(stored.storage, liveUser);
+    } catch {
+      clearAuthStorage();
+      return null;
+    }
+    touchLastActivity();
+    return liveUser;
+  } catch {
+    clearAuthStorage();
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -199,9 +253,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(auth.user);
         try {
           setRememberMeSession(Boolean(opts?.keepLoggedIn));
-          localStorage.setItem(AUTH_ACCESS_KEY, auth.access);
-          if (auth.refresh) localStorage.setItem(AUTH_REFRESH_KEY, auth.refresh);
-          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(auth.user));
+          persistAuthSession({
+            access: auth.access,
+            refresh: auth.refresh,
+            user: auth.user,
+            keepLoggedIn: Boolean(opts?.keepLoggedIn),
+          });
           touchLastActivity();
         } catch {
           clearAuthStorage();
@@ -274,7 +331,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!u) return;
       setUser(u);
       try {
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
+        const stored = readStoredAuth();
+        persistStoredUser(stored?.storage ?? "local", u);
       } catch {
         /* ignore */
       }

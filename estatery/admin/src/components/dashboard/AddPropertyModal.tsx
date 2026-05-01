@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Property } from "@/lib/properties";
 import { PROPERTY_TYPES, LISTING_TYPES, PROPERTY_CONDITIONS } from "@/lib/properties";
-import { createProperty, fetchCountries, uploadPropertyImage } from "@/lib/api-client";
+import { createProperty, fetchCountries, uploadPropertyImage, uploadPropertyVideo } from "@/lib/api-client";
 import { AddPropertyLocationStep, emptyLocation, type LocationData } from "./AddProperty2";
 import { AddPropertyDetailsStep } from "./AddProperty3";
 import { AddPropertyMediaStep, MAX_PROPERTY_IMAGES } from "./AddProperty4";
@@ -82,6 +82,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
   const [bathrooms, setBathrooms] = React.useState(2);
   const [area, setArea] = React.useState<number | null>(null);
   const [photoFiles, setPhotoFiles] = React.useState<File[]>([]);
+  const [videoFile, setVideoFile] = React.useState<File | null>(null);
   const [primaryPhotoIndex, setPrimaryPhotoIndex] = React.useState(0);
   const [rentalForm, setRentalForm] = React.useState<AddPropertyRentalForm>(defaultRentalForm);
   const [countries, setCountries] = React.useState<string[]>(["Ghana"]);
@@ -100,6 +101,7 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
     setBathrooms(2);
     setArea(null);
     setPhotoFiles([]);
+    setVideoFile(null);
     setPrimaryPhotoIndex(0);
     setRentalForm(defaultRentalForm());
     setSaveError(null);
@@ -223,6 +225,9 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
         for (let i = 0; i < ordered.length; i++) {
           await uploadPropertyImage(propertyId, ordered[i], { isPrimary: i === 0 });
         }
+      }
+      if (Number.isFinite(propertyId) && videoFile) {
+        await uploadPropertyVideo(propertyId, videoFile);
       }
 
       onPropertyAdded?.();
@@ -438,6 +443,8 @@ export function AddPropertyModal({ open, onClose, onPropertyAdded }: AddProperty
             <AddPropertyMediaStep
               files={photoFiles}
               onFilesChange={setPhotoFiles}
+              videoFile={videoFile}
+              onVideoFileChange={setVideoFile}
               primaryIndex={primaryPhotoIndex}
               onPrimaryIndexChange={setPrimaryPhotoIndex}
             />

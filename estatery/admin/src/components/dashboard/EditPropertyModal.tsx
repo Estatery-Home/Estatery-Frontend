@@ -24,10 +24,11 @@ import {
   getPropertyStatusDisplay,
 } from "@/lib/properties";
 import type { PropertyStatusApi } from "@/lib/api-types";
-import { updateProperty } from "@/lib/api-client";
+import { deletePropertyVideo, fetchPropertyFromApi, updateProperty, uploadPropertyVideo } from "@/lib/api-client";
 import { bumpPropertyCatalogCache } from "@/lib/catalog-bump";
 import { cn } from "@/lib/utils";
 import { useProperties } from "@/contexts/PropertiesContext";
+import { propertyFromApiJson } from "@/lib/properties";
 
 type EditPropertyModalProps = {
   property: Property | null;
@@ -68,6 +69,11 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
   const [hasGym, setHasGym] = React.useState(false);
   const [isFurnished, setIsFurnished] = React.useState(false);
   const [hasKitchen, setHasKitchen] = React.useState(true);
+  const [currentVideoId, setCurrentVideoId] = React.useState<number | null>(null);
+  const [currentVideoUrl, setCurrentVideoUrl] = React.useState<string | null>(null);
+  const [removeCurrentVideo, setRemoveCurrentVideo] = React.useState(false);
+  const [replacementVideoFile, setReplacementVideoFile] = React.useState<File | null>(null);
+  const [replacementVideoPreviewUrl, setReplacementVideoPreviewUrl] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -106,8 +112,23 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
     setHasGym(Boolean(property.has_gym));
     setIsFurnished(Boolean(property.is_furnished));
     setHasKitchen(property.has_kitchen !== false);
+    const existingVideo = property.primary_video ?? property.videos?.[0] ?? null;
+    setCurrentVideoId(existingVideo?.id ?? null);
+    setCurrentVideoUrl(existingVideo?.video ?? null);
+    setRemoveCurrentVideo(false);
+    setReplacementVideoFile(null);
     setError(null);
   }, [open, property]);
+
+  React.useEffect(() => {
+    if (!replacementVideoFile || !replacementVideoFile.type.startsWith("video/")) {
+      setReplacementVideoPreviewUrl(null);
+      return;
+    }
+    const preview = URL.createObjectURL(replacementVideoFile);
+    setReplacementVideoPreviewUrl(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [replacementVideoFile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +183,23 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
 
     try {
       const res = await updateProperty(numId, payload);
-      applyPropertyFromApi(res.property);
+      if ((removeCurrentVideo || replacementVideoFile) && currentVideoId != null) {
+        await deletePropertyVideo(numId, currentVideoId);
+      }
+      if (replacementVideoFile) {
+        await uploadPropertyVideo(numId, replacementVideoFile);
+      }
+      const fresh = await fetchPropertyFromApi(numId);
+      if (fresh) {
+        applyPropertyFromApi(fresh as Record<string, unknown>);
+      } else {
+        applyPropertyFromApi(res.property);
+      }
+      const merged = propertyFromApiJson(fresh ?? res.property);
+      if (merged) {
+        setCurrentVideoId(merged.primary_video?.id ?? merged.videos?.[0]?.id ?? null);
+        setCurrentVideoUrl(merged.primary_video?.video ?? merged.videos?.[0]?.video ?? null);
+      }
       bumpPropertyCatalogCache();
       await Promise.resolve(onSaved());
       onClose();
@@ -496,6 +533,55 @@ export function EditPropertyModal({ property, open, onClose, onSaved }: EditProp
                   />
                   Kitchen
                 </label>
+              </div>
+
+              <div className="space-y-2 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                <Label>Property video</Label>
+                {currentVideoUrl && !removeCurrentVideo ? (
+                  <div className="space-y-2">
+                    <video controls className="max-h-56 w-full rounded border border-[#e2e8f0] bg-black">
+                      <source src={currentVideoUrl} />
+                    </video>
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-red-700 hover:underline"
+                      onClick={() => setRemoveCurrentVideo(true)}
+                    >
+                      Remove current video
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#64748b]">
+                    {currentVideoUrl && removeCurrentVideo ? "Current video will be removed on save." : "No video uploaded yet."}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  <Input
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !file.type.startsWith("video/")) return;
+                      setReplacementVideoFile(file);
+                      setRemoveCurrentVideo(false);
+                    }}
+                    className="border-[#e2e8f0]"
+                  />
+                  {replacementVideoPreviewUrl ? (
+                    <video controls className="max-h-56 w-full rounded border border-[#e2e8f0] bg-black">
+                      <source src={replacementVideoPreviewUrl} type={replacementVideoFile?.type || "video/mp4"} />
+                    </video>
+                  ) : null}
+                  {replacementVideoFile ? (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-[#475569] hover:underline"
+                      onClick={() => setReplacementVideoFile(null)}
+                    >
+                      Clear selected replacement video
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

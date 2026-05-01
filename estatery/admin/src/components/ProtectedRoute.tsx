@@ -5,7 +5,7 @@
  * Redirects to login if not authenticated.
  */
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 type ProtectedRouteProps = {
@@ -24,13 +24,19 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   /** Redirect to login when auth check is done and user is not authenticated */
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate(redirectTo, { replace: true });
+      navigate(redirectTo, {
+        replace: true,
+        state: {
+          from: `${location.pathname}${location.search}${location.hash}`,
+        },
+      });
     }
-  }, [isLoading, isAuthenticated, redirectTo, navigate]);
+  }, [isLoading, isAuthenticated, redirectTo, navigate, location.pathname, location.search, location.hash]);
 
   /** Show nothing while loading or if not authenticated (redirect will run) */
   if (isLoading || !isAuthenticated) {

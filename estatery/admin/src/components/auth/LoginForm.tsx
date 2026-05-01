@@ -21,7 +21,12 @@ const USERNAME_ERROR_MESSAGE = "Username is required!";
 export function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const bannerMessage = (location.state as { bannerMessage?: string } | null)?.bannerMessage;
+  const routeState = location.state as { bannerMessage?: string; from?: string } | null;
+  const bannerMessage = routeState?.bannerMessage;
+  const redirectTarget =
+    typeof routeState?.from === "string" && routeState.from.startsWith("/")
+      ? routeState.from
+      : "/dashboard";
   const { login } = useAuth();
   // Form field values
   const [username, setUsername] = React.useState("");
@@ -51,7 +56,7 @@ export function LoginForm() {
     setLoading(false);
     if (result.success) {
       // Defer navigation so auth state is committed before ProtectedRoute checks it
-      setTimeout(() => navigate("/dashboard"), 0);
+      setTimeout(() => navigate(redirectTarget, { replace: true }), 0);
     } else {
       setSubmitError(result.error ?? "Login failed.");
     }

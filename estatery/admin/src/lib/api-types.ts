@@ -67,6 +67,13 @@ export type PropertyImage = {
   is_primary?: boolean;
 };
 
+export type PropertyVideo = {
+  id?: number;
+  video: string;
+  video_url?: string;
+  is_primary?: boolean;
+};
+
 export type Property = {
   id: number;
   title: string;
@@ -107,7 +114,9 @@ export type Property = {
   latitude?: number | null;
   longitude?: number | null;
   images?: PropertyImage[];
+  videos?: PropertyVideo[];
   primary_image?: PropertyImage | null;
+  primary_video?: PropertyVideo | null;
   owner?: User;
   amenities?: string[];
   created_at?: string;

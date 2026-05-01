@@ -32,6 +32,20 @@ function normalizePrimaryImage(raw: unknown): { image: string } | null {
   return url ? { image: url } : null;
 }
 
+function normalizePrimaryVideo(raw: unknown): { id?: number; video: string; is_primary?: boolean } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const url =
+    (typeof o.video_url === "string" && o.video_url) ||
+    apiMediaUrl(typeof o.video === "string" ? o.video : undefined);
+  if (!url) return null;
+  return {
+    id: typeof o.id === "number" ? o.id : undefined,
+    video: url,
+    is_primary: Boolean(o.is_primary),
+  };
+}
+
 function normalizeImages(raw: unknown): Property["images"] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -45,6 +59,25 @@ function normalizeImages(raw: unknown): Property["images"] {
       return {
         id: typeof o.id === "number" ? o.id : undefined,
         image: url,
+        is_primary: Boolean(o.is_primary),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
+}
+
+function normalizeVideos(raw: unknown): Property["videos"] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const o = item as Record<string, unknown>;
+      const url =
+        (typeof o.video_url === "string" && o.video_url) ||
+        apiMediaUrl(typeof o.video === "string" ? o.video : undefined);
+      if (!url) return null;
+      return {
+        id: typeof o.id === "number" ? o.id : undefined,
+        video: url,
         is_primary: Boolean(o.is_primary),
       };
     })
@@ -141,6 +174,8 @@ export function propertyFromApiJson(raw: unknown): Property | null {
     security_deposit_months: o.security_deposit_months != null ? String(o.security_deposit_months) : undefined,
     primary_image: normalizePrimaryImage(o.primary_image),
     images: normalizeImages(o.images),
+    primary_video: normalizePrimaryVideo(o.primary_video),
+    videos: normalizeVideos(o.videos),
     created_at: o.created_at ? String(o.created_at) : undefined,
     upload_timestamp: o.upload_timestamp ? String(o.upload_timestamp) : undefined,
     updated_at: o.updated_at ? String(o.updated_at) : undefined,
@@ -188,6 +223,8 @@ export type Property = {
   security_deposit_months?: string;
   images?: { id?: number; image: string; is_primary?: boolean }[];
   primary_image?: { image: string } | null;
+  videos?: { id?: number; video: string; is_primary?: boolean }[];
+  primary_video?: { id?: number; video: string; is_primary?: boolean } | null;
   created_at?: string;
   upload_timestamp?: string;
   updated_at?: string;

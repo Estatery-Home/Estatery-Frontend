@@ -13,6 +13,8 @@ export const MAX_PROPERTY_IMAGES = 5;
 type AddPropertyMediaStepProps = {
   files: File[];
   onFilesChange: (files: File[]) => void;
+  videoFile: File | null;
+  onVideoFileChange: (file: File | null) => void;
   /** Index in `files` of the image used as cover / primary after upload */
   primaryIndex: number;
   onPrimaryIndexChange: (index: number) => void;
@@ -21,11 +23,15 @@ type AddPropertyMediaStepProps = {
 export function AddPropertyMediaStep({
   files,
   onFilesChange,
+  videoFile,
+  onVideoFileChange,
   primaryIndex,
   onPrimaryIndexChange,
 }: AddPropertyMediaStepProps) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const videoInputRef = React.useRef<HTMLInputElement | null>(null);
   const [thumbUrls, setThumbUrls] = React.useState<string[]>([]);
+  const [videoPreviewUrl, setVideoPreviewUrl] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const urls = files.map((f) => (f.type.startsWith("image/") ? URL.createObjectURL(f) : ""));
@@ -36,6 +42,16 @@ export function AddPropertyMediaStep({
       }
     };
   }, [files]);
+
+  React.useEffect(() => {
+    if (!videoFile || !videoFile.type.startsWith("video/")) {
+      setVideoPreviewUrl(null);
+      return;
+    }
+    const preview = URL.createObjectURL(videoFile);
+    setVideoPreviewUrl(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [videoFile]);
 
   React.useEffect(() => {
     if (files.length === 0 && primaryIndex !== 0) {
@@ -50,6 +66,9 @@ export function AddPropertyMediaStep({
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
   };
+  const handleVideoBrowseClick = () => {
+    videoInputRef.current?.click();
+  };
 
   const handleFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const list = event.target.files;
@@ -59,6 +78,16 @@ export function AddPropertyMediaStep({
     const incoming = Array.from(list).filter((f) => f.type.startsWith("image/"));
     const merged = [...files, ...incoming].slice(0, MAX_PROPERTY_IMAGES);
     onFilesChange(merged);
+    event.target.value = "";
+  };
+
+  const handleVideoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith("video/")) {
+      event.target.value = "";
+      return;
+    }
+    onVideoFileChange(file);
     event.target.value = "";
   };
 
@@ -167,6 +196,45 @@ export function AddPropertyMediaStep({
           </ul>
         </div>
       )}
+
+      <div className="space-y-2">
+        <Label className="text-[#1e293b]">Property video</Label>
+        <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-4">
+          <p className="mb-2 text-sm text-[#64748b]">
+            {videoFile ? `Selected: ${videoFile.name}` : "Upload an optional short property video (MP4, WebM, MOV)."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleVideoBrowseClick}
+              className="rounded-full bg-[var(--logo)] px-4 py-2 text-xs font-medium text-white shadow-sm transition-transform transition-colors duration-150 hover:-translate-y-0.5 hover:bg-[var(--logo-hover)] active:scale-95"
+            >
+              {videoFile ? "Replace video" : "Browse video"}
+            </button>
+            {videoFile && (
+              <button
+                type="button"
+                onClick={() => onVideoFileChange(null)}
+                className="rounded-full border border-[#cbd5e1] bg-white px-4 py-2 text-xs font-medium text-[#475569] transition-colors hover:bg-[#f1f5f9]"
+              >
+                Remove video
+              </button>
+            )}
+          </div>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleVideoChange}
+          />
+          {videoPreviewUrl && (
+            <video controls className="mt-3 max-h-56 w-full rounded-lg border border-[#e2e8f0] bg-black">
+              <source src={videoPreviewUrl} type={videoFile?.type || "video/mp4"} />
+            </video>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
