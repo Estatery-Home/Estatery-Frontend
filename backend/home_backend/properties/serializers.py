@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg, F
-from .models import Property, PropertyImage, Booking, BookingPayment, PropertyReview, PromoCode
+from .models import Property, PropertyImage, PropertyVideo, Booking, BookingPayment, PropertyReview, PromoCode
 from users.serializers import UserSerializer
 from django.utils import timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -51,11 +51,33 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class PropertyVideoSerializer(serializers.ModelSerializer):
+    video_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PropertyVideo
+        fields = ('id', 'video', 'video_url', 'is_primary', 'uploaded_at')
+        read_only_fields = ('id', 'uploaded_at')
+
+    def get_video_url(self, obj):
+        if not obj.video:
+            return None
+        path = obj.video.url
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        request = self.context.get("request")
+        if request is not None:
+            return request.build_absolute_uri(path)
+        return path
+
+
 # ============ PROPERTY SERIALIZER ============
 class PropertySerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)
+    videos = PropertyVideoSerializer(many=True, read_only=True)
     owner = UserSerializer(read_only=True)
     primary_image = serializers.SerializerMethodField()
+    primary_video = serializers.SerializerMethodField()
     monthly_price_display = serializers.SerializerMethodField()
     security_deposit_display = serializers.SerializerMethodField()
     amenities = serializers.SerializerMethodField()
@@ -73,7 +95,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'has_kitchen_cabinets', 'has_dining_area', 'custom_facilities',
             'min_stay_months', 'max_stay_months', 'monthly_cycle_start', 'security_deposit_months',
             'latitude', 'longitude',
-            'images', 'owner', 'primary_image', 
+            'images', 'videos', 'owner', 'primary_image', 'primary_video',
             'monthly_price_display', 'security_deposit_display',
             'amenities', 'times_booked', 'upload_timestamp',
             'created_at', 'updated_at'
@@ -84,6 +106,12 @@ class PropertySerializer(serializers.ModelSerializer):
         primary = obj.primary_image
         if primary:
             return PropertyImageSerializer(primary, context=self.context).data
+        return None
+
+    def get_primary_video(self, obj):
+        primary = obj.videos.filter(is_primary=True).first() or obj.videos.order_by('-uploaded_at').first()
+        if primary:
+            return PropertyVideoSerializer(primary, context=self.context).data
         return None
     
     def get_monthly_price_display(self, obj):

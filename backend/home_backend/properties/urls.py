@@ -27,6 +27,16 @@ urlpatterns = [
         views.PropertyImageUploadView.as_view(),
         name='property-images-upload',
     ),
+    path(
+        'properties/<int:pk>/videos/',
+        views.PropertyVideoUploadView.as_view(),
+        name='property-videos',
+    ),
+    path(
+        'properties/<int:pk>/videos/<int:video_id>/',
+        views.PropertyVideoDetailView.as_view(),
+        name='property-video-detail',
+    ),
     path('properties/<int:pk>/wishlist/', views.PropertyWishlistView.as_view(), name='property-wishlist'),
     path('properties/<int:pk>/', views.PropertyDetailView.as_view(), name='property-detail'),
     path('properties/my/', views.MyPropertiesView.as_view(), name='my-properties'),

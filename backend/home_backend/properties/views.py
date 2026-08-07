@@ -6,9 +6,10 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from decimal import Decimal
 
-from .models import Property, PropertyImage, PropertyWishlist, Booking, BookingPayment, PropertyReview, PromoCode
+from .models import Property, PropertyImage, PropertyVideo, PropertyWishlist, Booking, BookingPayment, PropertyReview, PromoCode
 from .serializers import (
     PropertyImageSerializer,
+    PropertyVideoSerializer,
     PropertySerializer, PropertyDetailSerializer, PropertyAvailabilitySerializer,
     BookingSerializer, AdminBookingListSerializer, HostBookingSerializer, BookingPaymentSerializer,
     BulkMarkBookingPaymentsSerializer,
@@ -212,7 +213,7 @@ class PublicPropertyCatalogMixin:
         for amenity in amenities:
             if self.request.query_params.get(f'has_{amenity}'):
                 queryset = queryset.filter(**{f'has_{amenity}': True})
-        return queryset.select_related("owner").prefetch_related("images")
+        return queryset.select_related("owner").prefetch_related("images", "videos")
 
 
 @extend_schema(
@@ -269,6 +270,76 @@ class PropertyImageUploadView(APIView):
         )
         ser = PropertyImageSerializer(row, context={"request": request})
         return Response(ser.data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    tags=["Properties"],
+    summary="List/upload property videos",
+    description=(
+        "GET returns all uploaded videos for a listing. "
+        "POST multipart with field `video` uploads one video; optional `is_primary` (true/false)."
+    ),
+)
+class PropertyVideoUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def _can_manage(self, request_user, prop: Property) -> bool:
+        return (
+            prop.owner_id == request_user.id
+            or bool(getattr(request_user, "is_staff", False))
+            or getattr(request_user, "user_type", None) == "admin"
+        )
+
+    def get(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        if not self._can_manage(request.user, prop):
+            raise PermissionDenied("You can only view videos on your own properties.")
+        rows = prop.videos.all()
+        return Response(PropertyVideoSerializer(rows, many=True, context={"request": request}).data)
+
+    def post(self, request, pk):
+        prop = get_object_or_404(Property, pk=pk)
+        if not self._can_manage(request.user, prop):
+            raise PermissionDenied("You can only add videos to your own properties.")
+        file_obj = request.FILES.get("video")
+        if not file_obj:
+            return Response(
+                {"detail": 'Missing file field "video".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        raw_primary = request.data.get("is_primary", True)
+        if isinstance(raw_primary, bool):
+            is_primary = raw_primary
+        else:
+            is_primary = str(raw_primary).lower() in ("1", "true", "yes", "on")
+        if not prop.videos.exists():
+            is_primary = True
+        row = PropertyVideo.objects.create(
+            property=prop,
+            video=file_obj,
+            is_primary=is_primary,
+        )
+        ser = PropertyVideoSerializer(row, context={"request": request})
+        return Response(ser.data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(tags=["Properties"], summary="Delete property video")
+class PropertyVideoDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, pk, video_id):
+        prop = get_object_or_404(Property, pk=pk)
+        can_manage = (
+            prop.owner_id == request.user.id
+            or bool(getattr(request.user, "is_staff", False))
+            or getattr(request.user, "user_type", None) == "admin"
+        )
+        if not can_manage:
+            raise PermissionDenied("You can only delete videos on your own properties.")
+        row = get_object_or_404(PropertyVideo, pk=video_id, property_id=prop.id)
+        row.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=['Customer catalog'], summary='List properties (customer)')
@@ -544,7 +615,7 @@ class PropertyListView(PublicPropertyCatalogMixin, generics.ListCreateAPIView):
 
 class PropertyDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update or delete a property"""
-    queryset = Property.objects.prefetch_related("images").all()
+    queryset = Property.objects.prefetch_related("images", "videos").all()
     
     def get_serializer_class(self):
         """Use detailed serializer for GET, regular for others"""
@@ -667,7 +738,7 @@ class MyPropertiesView(generics.ListAPIView):
             return Property.objects.none()
         return (
             Property.objects.filter(owner=self.request.user)
-            .prefetch_related("images")
+            .prefetch_related("images", "videos")
             .order_by("-created_at")
         )
     

@@ -383,6 +383,27 @@ class PropertyImage(models.Model):
             return
 
 
+class PropertyVideo(models.Model):
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='videos')
+    video = models.FileField(upload_to='property_videos/')
+    is_primary = models.BooleanField(default=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_primary', '-uploaded_at']
+
+    def __str__(self):
+        return f"Video for {self.property.title}"
+
+    def save(self, *args, **kwargs):
+        if self.is_primary:
+            PropertyVideo.objects.filter(
+                property=self.property,
+                is_primary=True
+            ).exclude(id=self.id).update(is_primary=False)
+        super().save(*args, **kwargs)
+
+
 # ============ PROPERTY WISHLIST (customer saved listings) ============
 class PropertyWishlist(models.Model):
     """
